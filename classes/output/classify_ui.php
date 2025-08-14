@@ -35,11 +35,11 @@ class classify_ui {
     private static function preflight_checks(): bool {
         global $PAGE;
 
-        if (during_initial_install() || !get_config('aiplacement_classifyassist', 'version')) {
+	if (during_initial_install() || !get_config('aiplacement_classifyassist', 'version')) {
             return false;
         }
 
-        if (!$PAGE->user_is_editing() || !has_capability('moodle/course:update', $PAGE->context)) {
+	if (!has_capability('moodle/course:update', $PAGE->context)) {
             return false;
         }
 
