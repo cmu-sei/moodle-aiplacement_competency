@@ -9,6 +9,6 @@ $functions = [
         'description' => 'Classify arbitrary text using the configured AI provider.',
         'type'        => 'write',
         'ajax'        => true,
-        'capabilities'=> 'aiplacement/classifyassist:use',
+        'capabilities'=> 'aiplacement/classifyassist:classify_text',
     ],
 ];

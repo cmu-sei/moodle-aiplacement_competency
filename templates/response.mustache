@@ -32,50 +32,76 @@
     }
 }}
 <section class="course-assist-response card mb-3" data-action-performed="{{action}}">
-    <div class="card-body p-3">
-        <h3 class="course-assist-response-header h5 card-title d-inline">
-            <span class="ai-course-assist-sparkles-icon">
-                {{#pix}} sparkles, aiplacement_classifyassist {{/pix}}
-            </span>
-            {{heading}}
-        </h3>
-        <div class="card-text content mt-3">
-            <div id="course-assist-response-content-{{uniqid}}">
-                <dl class="row">
-                    <dt class="col-sm-4">{{#str}} role, aiplacement_classifyassist{{/str}}</dt>
-                    <dd class="col-sm-8">{{role}}</dd>
+  <div class="card-body p-3">
+    <h3 class="course-assist-response-header h5 card-title d-inline">
+      <span class="ai-course-assist-sparkles-icon">
+        {{#pix}} sparkles, aiplacement_classifyassist {{/pix}}
+      </span>
+      {{heading}}
+    </h3>
 
-                    <dt class="col-sm-4">{{#str}} workrole, aiplacement_classifyassist{{/str}}</dt>
-                    <dd class="col-sm-8">
-                        <ul class="list-unstyled mb-0 pl-0">
-                        {{#work_role}}
-                            <li>{{.}}</li>
-                        {{/work_role}}
-                        {{^work_role}}
-                            <li>{{#str}} none, aiplacement_classifyassist{{/str}}</li>
-                        {{/work_role}}
-                        </ul>
-                    </dd>
-                </dl>
-            </div>
-            <div class="course-assist-response-watermark">
-                <small class="text-muted">
-                    <span class="ai-course-assist-sparkles-icon">
-                        {{#pix}} sparkles, aiplacement_classifyassist {{/pix}}
-                    </span>
-                    {{#str}} contentwatermark, core_ai {{/str}}
-                </small>
-            </div>
-            <div class="course-assist-controls d-block pt-3">
-                <button class="btn btn-sm btn-outline-secondary" data-action="regenerate">
-                    {{#pix}} a/refresh, core {{/pix}}
-                    {{#str}} regenerate, aiplacement_classifyassist {{/str}}
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" data-action="copytoclipboard" data-clipboard-target="#course-assist-response-content-{{uniqid}}">
-                    {{#pix}} e/copy, core {{/pix}}
-                    {{#str}} copy, aiplacement_classifyassist {{/str}}
-                </button>
-            </div>
-        </div>
+    <div class="card-text content mt-3">
+      <div id="course-assist-response-content-{{uniqid}}" class="course-assist-response-content mb-3">
+        <dl class="row">
+            <dt class="col-sm-4">{{#str}} tasks, aiplacement_classifyassist {{/str}}</dt>
+            <dd class="col-sm-8">
+                <ul class="list-unstyled mb-0 pl-0">
+                    {{#tasks}}
+                        <li>{{.}}</li>
+                    {{/tasks}}
+                    {{^tasks}}
+                        <li>{{#str}} none, aiplacement_classifyassist {{/str}}</li>
+                    {{/tasks}}
+                </ul>
+            </dd>
+
+            <dt class="col-sm-4">{{#str}} skills, aiplacement_classifyassist {{/str}}</dt>
+            <dd class="col-sm-8">
+                <ul class="list-unstyled mb-0 pl-0">
+                    {{#skills}}
+                        <li>{{.}}</li>
+                    {{/skills}}
+                    {{^skills}}
+                        <li>{{#str}} none, aiplacement_classifyassist {{/str}}</li>
+                    {{/skills}}
+                </ul>
+            </dd>
+
+            <dt class="col-sm-4">{{#str}} knowledge, aiplacement_classifyassist {{/str}}</dt>
+            <dd class="col-sm-8">
+                <ul class="list-unstyled mb-0 pl-0">
+                    {{#knowledge}}
+                        <li>{{.}}</li>
+                    {{/knowledge}}
+                    {{^knowledge}}
+                        <li>{{#str}} none, aiplacement_classifyassist {{/str}}</li>
+                    {{/knowledge}}
+                </ul>
+            </dd>
+        </dl>
+      </div>
+
+      <div class="course-assist-response-watermark">
+        <small class="text-muted">
+          <span class="ai-course-assist-sparkles-icon">
+            {{#pix}} sparkles, aiplacement_classifyassist {{/pix}}
+          </span>
+          {{#str}} contentwatermark, core_ai {{/str}}
+        </small>
+      </div>
+
+      <div class="course-assist-controls d-block pt-3">
+        <button class="btn btn-sm btn-outline-secondary" data-action="regenerate">
+          {{#pix}} a/refresh, core {{/pix}}
+          {{#str}} regenerate, aiplacement_classifyassist {{/str}}
+        </button>
+        <button class="btn btn-sm btn-outline-secondary"
+                data-action="copytoclipboard"
+                data-clipboard-target="#course-assist-response-content-{{uniqid}}">
+          {{#pix}} e/copy, core {{/pix}}
+          {{#str}} copy, aiplacement_classifyassist {{/str}}
+        </button>
+      </div>
     </div>
+  </div>
 </section>

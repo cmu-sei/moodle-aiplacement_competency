@@ -3,7 +3,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $capabilities = [
-    'aiplacement/classifyassist:use' => [
+    'aiplacement/classifyassist:classify_text' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => [

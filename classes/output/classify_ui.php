@@ -23,23 +23,24 @@ class classify_ui {
         $hook->add_html($html);
 
         $PAGE->requires->js_call_amd(
-            'aiplacement_classifyassist/classify_dropdown',
+            'aiplacement_classifyassist/classify_button',
             'init',
             [$PAGE->context->id]
         );
     }
 
-    /**
-     * Everything that must be true before we add the button.
-     */
     private static function preflight_checks(): bool {
         global $PAGE;
 
-	if (during_initial_install() || !get_config('aiplacement_classifyassist', 'version')) {
+        if (during_initial_install() || !get_config('aiplacement_classifyassist', 'version')) {
             return false;
         }
 
-	if (!has_capability('moodle/course:update', $PAGE->context)) {
+        if (!has_capability('moodle/course:update', $PAGE->context)) {
+            return false;
+        }
+
+        if (!has_capability('aiplacement/classifyassist:classify_text', $PAGE->context)) {
             return false;
         }
 
