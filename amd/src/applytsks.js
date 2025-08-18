@@ -5,7 +5,8 @@ define([
   'core/templates',
   'core/str',
   'core/notification',
-], function(Modal, ModalFactory, ModalEvents, Templates, Str, Notification) {
+  'core/ajax'
+], function(Modal, ModalFactory, ModalEvents, Templates, Str, Notification, Ajax) {
 
   var toArray = function(nl){ return Array.prototype.slice.call(nl || []); };
   var MAP = { tasks: 'tasks', skills: 'skills', knowledge: 'knowledge' };
@@ -94,6 +95,22 @@ define([
                 modal.getRoot().on(ModalEvents.save, function(){
                     try {
                     var root = modal.getRoot()[0];
+                    var picked = collectChecked(root);
+                    modal.getRoot().data('selection', picked);
+                    sessionStorage.setItem('aiplacement_applytsks:last', JSON.stringify(picked));
+                    console.log('Saved selection:', picked);
+
+                    //List competencies
+                    const calls = Ajax.call([{
+                      methodname: 'core_competency_list_competencies',
+                    }]);
+
+                    calls[0].done(function(response) {
+                      console.log("Competencies response:", response);
+                    }).fail(function(err) {
+                      console.error("Competencies error:", err);
+                    });
+
                     resolve(collectChecked(root));
                     modal.hide();
                     } catch (err) {
