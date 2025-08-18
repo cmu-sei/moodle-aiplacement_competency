@@ -27,6 +27,12 @@ class classify_ui {
             'init',
             [$PAGE->context->id]
         );
+
+        $PAGE->requires->js_call_amd(
+            'aiplacement_classifyassist/applytsks',
+            'init',
+            [$PAGE->context->id]
+        );
     }
 
     private static function preflight_checks(): bool {

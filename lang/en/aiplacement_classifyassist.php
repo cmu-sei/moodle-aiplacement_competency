@@ -69,6 +69,13 @@ $string['none'] = 'None';
 $string['aiclassificationlabel'] = 'AI Classification';
 $string['aiclassification_help'] = 'Uses AI to classify course context according to the NICE Framework Competencies.';
 $string['help'] = 'Help';
+$string['applytsks'] = 'Apply TSKs';
+$string['applytsks_title'] = 'Apply classification';
+$string['applytsks_intro_checklist'] = 'Select the competencies you want to apply. You can uncheck any you don’t need.';
+$string['applytsks_selectall'] = 'Select all';
+$string['applytsks_clearall'] = 'Clear all';
+$string['applytsks_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
+$string['applynow'] = 'Apply';
 
 
 

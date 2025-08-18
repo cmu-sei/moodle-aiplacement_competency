@@ -90,16 +90,21 @@
         </small>
       </div>
 
-      <div class="course-assist-controls d-block pt-3">
+      <div class="course-assist-controls d-flex gap-2 pt-3">
         <button class="btn btn-sm btn-outline-secondary" data-action="regenerate">
           {{#pix}} a/refresh, core {{/pix}}
           {{#str}} regenerate, aiplacement_classifyassist {{/str}}
         </button>
+
         <button class="btn btn-sm btn-outline-secondary"
                 data-action="copytoclipboard"
                 data-clipboard-target="#course-assist-response-content-{{uniqid}}">
           {{#pix}} e/copy, core {{/pix}}
           {{#str}} copy, aiplacement_classifyassist {{/str}}
+        </button>
+
+        <button class="btn btn-sm btn-outline-secondary" data-action="applytsks">
+          {{#str}} applytsks, aiplacement_classifyassist {{/str}}
         </button>
       </div>
     </div>
