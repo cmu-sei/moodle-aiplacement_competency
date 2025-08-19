@@ -28,9 +28,9 @@ class placement extends \core_ai\placement {
                 '', null, $response->get_error());
         }
 
-        $raw = $response->get_response_data()['response'] ?? '{}';
+        $rawdata = $response->get_response_data();
 
-        return $raw;
+        return json_encode($rawdata, JSON_UNESCAPED_UNICODE);
     }
 
 }

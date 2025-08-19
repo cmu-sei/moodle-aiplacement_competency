@@ -43,6 +43,15 @@
     <div class="card-text content mt-3">
       <div id="course-assist-response-content-{{uniqid}}" class="course-assist-response-content mb-3">
         <dl class="row">
+            <dt class="col-sm-4">{{#str}} frameworkshortname, aiplacement_classifyassist {{/str}}</dt>
+            <dd class="col-sm-8" data-frameworkid="{{frameworkid}}">
+                {{#frameworkshortname}}
+                    {{frameworkshortname}}
+                {{/frameworkshortname}}
+                {{^frameworkshortname}}
+                    <span class="text-muted">{{#str}} none, aiplacement_classifyassist {{/str}}</span>
+                {{/frameworkshortname}}
+            </dd>
             <dt class="col-sm-4">{{#str}} tasks, aiplacement_classifyassist {{/str}}</dt>
             <dd class="col-sm-8">
                 <ul class="list-unstyled mb-0 pl-0">

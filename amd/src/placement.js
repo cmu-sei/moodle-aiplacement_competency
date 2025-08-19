@@ -63,7 +63,7 @@ define([
                 }]);
 
                 const result = await calls[0];
-                const {tasks, skills, knowledge } = result;
+                const {frameworkid, frameworkshortname, tasks, skills, knowledge } = result;
 
                 const uniqid = 'resp-' + Math.random().toString(36).substr(2, 9);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_classifyassist');
@@ -73,6 +73,8 @@ define([
                         heading,
                         action: heading,
                         uniqid,
+                        frameworkid,
+                        frameworkshortname,
                         tasks,
                         skills,
                         knowledge,

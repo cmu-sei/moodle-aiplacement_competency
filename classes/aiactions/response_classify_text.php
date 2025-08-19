@@ -34,6 +34,10 @@ class response_classify_text extends response_base {
 
     private array $labels = [];
 
+    private ?int $frameworkid = null;
+
+    protected string $frameworkshortname = '';
+
     public function __construct(
         bool $success,
         int $errorcode = 0,
@@ -56,6 +60,13 @@ class response_classify_text extends response_base {
         $this->prompttokens = $response['prompttokens'] ?? null;
         $this->completiontokens = $response['completiontokens'] ?? null;
         $this->model = $response['model'] ?? null;
+
+        $meta = $response['meta'] ?? [];
+        if (is_array($meta)) {
+            $fwid = $meta['frameworkid'] ?? null;
+            $this->frameworkid = isset($fwid) ? (int)$fwid : null;
+            $this->frameworkshortname = isset($meta['frameworkshortname']) ? (string)$meta['frameworkshortname'] : '';
+        }
     }
 
     #[\Override]
@@ -68,6 +79,10 @@ class response_classify_text extends response_base {
             'prompttokens' => $this->prompttokens,
             'completiontokens' => $this->completiontokens,
             'model' => $this->model,
+            'meta' => [
+                'frameworkid' => $this->frameworkid,
+                'frameworkshortname' => $this->frameworkshortname,
+            ],
         ];
     }
 

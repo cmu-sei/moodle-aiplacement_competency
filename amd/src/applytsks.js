@@ -5,8 +5,9 @@ define([
   'core/templates',
   'core/str',
   'core/notification',
-  'core/ajax'
-], function(Modal, ModalFactory, ModalEvents, Templates, Str, Notification, Ajax) {
+  'core/ajax',
+  'jquery'
+], function(Modal, ModalFactory, ModalEvents, Templates, Str, Notification, Aja, $) {
 
   var toArray = function(nl){ return Array.prototype.slice.call(nl || []); };
   var MAP = { tasks: 'tasks', skills: 'skills', knowledge: 'knowledge' };
@@ -99,17 +100,8 @@ define([
                     modal.getRoot().data('selection', picked);
                     sessionStorage.setItem('aiplacement_applytsks:last', JSON.stringify(picked));
                     console.log('Saved selection:', picked);
-
-                    //List competencies
-                    const calls = Ajax.call([{
-                      methodname: 'core_competency_list_competencies',
-                    }]);
-
-                    calls[0].done(function(response) {
-                      console.log("Competencies response:", response);
-                    }).fail(function(err) {
-                      console.error("Competencies error:", err);
-                    });
+                    const frameworkId = $("dd[data-frameworkid]").data("frameworkid");
+                    console.log(frameworkId);
 
                     resolve(collectChecked(root));
                     modal.hide();

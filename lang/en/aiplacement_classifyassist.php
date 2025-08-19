@@ -76,6 +76,8 @@ $string['applytsks_selectall'] = 'Select all';
 $string['applytsks_clearall'] = 'Clear all';
 $string['applytsks_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
 $string['applynow'] = 'Apply';
+$string['frameworkshortname'] = 'Framework';
+
 
 
 
