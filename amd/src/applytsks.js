@@ -77,31 +77,49 @@ define([
     });
   };
 
-// Get course id from activity body
-var getCourseIdFromBody = function() {
-  var cls = (document.body && document.body.className) || '';
-  var m = cls.match(/(?:^|\s)course-(\d+)(?:\s|$)/);
-  return m ? parseInt(m[1], 10) : null;
-};
+  // Get course id from activity body
+  var getCourseIdFromBody = function() {
+    var cls = (document.body && document.body.className) || '';
+    var m = cls.match(/(?:^|\s)course-(\d+)(?:\s|$)/);
+    return m ? parseInt(m[1], 10) : null;
+  };
 
-// Add user selected competencies from the modal to the course
-var addCompetenciesToCourse = function(courseId, competencyIds) {
-  if (!courseId || !Array.isArray(competencyIds) || competencyIds.length === 0) {
-    return Promise.resolve();
-  }
+  // Add user selected competencies from the modal to the course
+  var addCompetenciesToCourse = function(courseId, competencyIds) {
+    if (!courseId || !Array.isArray(competencyIds) || competencyIds.length === 0) {
+      return Promise.resolve([]);
+    }
 
-  var calls = competencyIds.map(function(id) {
-    return {
-      methodname: 'core_competency_add_competency_to_course',
-      args: { courseid: courseId, competencyid: id }
-    };
-  });
+    var calls = competencyIds.map(function(id) {
+      return {
+        methodname: 'core_competency_add_competency_to_course',
+        args: { courseid: courseId, competencyid: id }
+      };
+    });
 
-  var promises = require('core/ajax').call(calls);
-  return Promise.all(promises).then(function(results) {
-    console.log('Added competencies to course=' + courseId + ':', competencyIds, results);
-  });
-};
+    var reqs = Ajax.call(calls);
+
+    return Promise.all(reqs.map(function(p, idx) {
+      return Promise.resolve(p)
+        .then(function(res) { return { id: competencyIds[idx], result: res }; })
+        .catch(function(err) { return { id: competencyIds[idx], error: err }; });
+    }));
+  };
+
+  // Escape text for safe HTML output
+  var esc = function (s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  // Render a bullet list from an array of strings.
+  var renderList = function (items) {
+    return '<ul class="mb-0 mt-1">' +
+      items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+    '</ul>';
+  };
 
   var norm = function(s) {
     return (s === null || s === undefined ? '' : String(s)).toLowerCase().trim();
@@ -179,7 +197,7 @@ var addCompetenciesToCourse = function(courseId, competencyIds) {
     });
   };
 
- // Modal that shows the ai response competencies to the user, here the user will be able to select which should be added to the course
+  // Modal that shows the ai response competencies to the user, here the user will be able to select which should be added to the course
   var openModal = function(values) {
     return Str.get_string('applytsks_title', 'aiplacement_classifyassist').then(function(title) {
       return Templates.render('aiplacement_classifyassist/applytsks_modal', {
@@ -211,43 +229,112 @@ var addCompetenciesToCourse = function(courseId, competencyIds) {
 
                 var frameworkId = String($('dd[data-frameworkid]').data('frameworkid') || '0');
 
-                matchPickedToCompetencies(frameworkId, picked)
-                  .then(function(res) {
-                    // Save for later usage.
-                    var sel = modal.getRoot().data('selection') || {};
-                    sel.matchedCompetencyIds = res.matchedIds;
-                    modal.getRoot().data('selection', sel);
+                matchPickedToCompetencies(frameworkId, picked).then(function(res) {
+                  var sel = modal.getRoot().data('selection') || {};
+                  sel.matchedCompetencyIds = res.matchedIds;
+                  modal.getRoot().data('selection', sel);
 
-                    // Debug logs.
-                    console.log('Competency list:', res.list);
-                    console.log('Matched competencies:', res.matches);
-                    console.log('Matched competency IDs:', res.matchedIds);
-
-                    var courseId = getCourseIdFromBody();
-                    console.log('Detected course id from body:', courseId);
-
-                    if (courseId && res.matchedIds.length) {
-                      addCompetenciesToCourse(courseId, res.matchedIds)
-                        .then(function() {
-                          console.log('All matched competencies added to course:', courseId);
-                          resolve(collectChecked(root));
-                          modal.hide();
-                        })
-                        .catch(function(err) {
-                          console.error('Failed to add competencies to course:', err);
-                        });
-                    } else {
-                      if (!courseId) {
-                        console.warn('No course-* class found on <body>; cannot add competencies to course.');
-                      }
-                    }
-                    resolve(collectChecked(root));
-                    modal.hide();
-                  })
-                  .catch(function(err) {
-                    console.error('Failed to list/match competencies:', err);
-                    reject(err);
+                  // Split into matched vs unmatched.
+                  var all = Array.isArray(res.matches) ? res.matches : [];
+                  var matched = all.filter(function (m) {
+                    return m && m.id !== null && m.id !== undefined;
                   });
+                  var unmatched = all.filter(function (m) {
+                    return !m || m.id === null || m.id === undefined;
+                  });
+
+                  var unmatchedLabels = unmatched
+                    .map(function(m){ return (m && m.input) ? String(m.input).trim() : ''; })
+                    .filter(Boolean);
+
+
+                  console.log('Competency list:', res.list);
+                  console.log('Matched (with ids):', matched);
+                  console.log('Unmatched (no id):', unmatchedLabels);
+                  console.log('Matched competency IDs:', res.matchedIds);
+
+                  var courseId = getCourseIdFromBody();
+                  var pickedNow = collectChecked(root);
+
+                  if (!courseId) {
+                    Str.get_string('notify_nocourseid', 'aiplacement_classifyassist').then(function(msg) {
+                      Notification.addNotification({ type: 'warning', message: msg });
+                    });
+                    resolve(pickedNow);
+                    modal.hide();
+                    return;
+                  }
+
+                  // Add competencies to course
+                  addCompetenciesToCourse(courseId, res.matchedIds).then(function(outcomes) {
+                    var byId = new Map();
+                    matched.forEach(function(m) { if (m.id) { byId.set(m.id, m); } });
+
+                    var added = [], exists = [], failed = [];
+                    outcomes.forEach(function(o) {
+                      if (o.error) { failed.push(o.id); return; }
+                      if (o.result === false) {
+                        exists.push(o.id);
+                      } else if (o.result === true || o.result === 1 || o.result === '1') {
+                        added.push(o.id);
+                      } else {
+                        (o.result ? added : exists).push(o.id);
+                      }
+                    });
+
+                    var nameOf = function(id) {
+                      var m = byId.get(id);
+                      if (!m) { return 'ID ' + id; }
+                      return m.shortname || m.input || ('ID ' + id);
+                    };
+
+                    var addedNames  = added.map(nameOf);
+                    var existsNames = exists.map(nameOf);
+                    var failedNames = failed.map(nameOf).concat(unmatchedLabels);
+
+                    if (added.length) {
+                      Str.get_string('notify_added_heading', 'aiplacement_classifyassist', { count: added.length })
+                        .then(function(heading) {
+                          Notification.addNotification({
+                            type: 'success',
+                            message: '<div>' + esc(heading) + '</div>' + renderList(addedNames)
+                          });
+                        });
+                    }
+
+                    if (exists.length) {
+                      Str.get_string('notify_exists_heading', 'aiplacement_classifyassist', { count: exists.length })
+                        .then(function(heading) {
+                          Notification.addNotification({
+                            type: 'warning',
+                            message: '<div>' + esc(heading) + '</div>' + renderList(existsNames)
+                          });
+                        });
+                    }
+
+                    if (failedNames.length) {
+                      Str.get_string('notify_failed_heading', 'aiplacement_classifyassist', { count: failedNames.length })
+                        .then(function(heading) {
+                          Notification.addNotification({
+                            type: 'error',
+                            message: '<div>' + esc(heading) + '</div>' + renderList(failedNames)
+                          });
+                        });
+                    }
+
+                    resolve(pickedNow);
+                    modal.hide();
+                  }).catch(function(err) {
+                    console.error('Failed to add competencies to course:', err);
+                    Notification.exception(err);
+                    resolve(pickedNow);
+                    modal.hide();
+                  });
+                }).catch(function(err) {
+                  console.error('Failed to list/match competencies:', err);
+                  reject(err);
+                });
+
               } catch (err) {
                 console.error(err);
                 reject(err);

@@ -77,7 +77,7 @@ $string['applytsks_clearall'] = 'Clear all';
 $string['applytsks_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
 $string['applynow'] = 'Apply';
 $string['frameworkshortname'] = 'Framework';
-
-
-
-
+$string['notify_added_heading']  = 'Added {$a->count} competencies to this course';
+$string['notify_exists_heading'] = 'Already in this course (not added): {$a->count}';
+$string['notify_failed_heading'] = 'Failed to add: {$a->count}';
+$string['notify_nocourseid']     = 'Could not detect course id; nothing was added.';
