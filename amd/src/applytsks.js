@@ -12,6 +12,86 @@ define([
   var toArray = function(nl) { return Array.prototype.slice.call(nl || []); };
   var MAP = { tasks: 'tasks', skills: 'skills', knowledge: 'knowledge' };
 
+  var RELOAD_COURSE_KEY ='aiplacement:coursePostReloadNotices';
+  var RELOAD_CM_KEY = 'aiplacement:cmPostReloadNotices';
+
+  // Save the competencies that were added, exists, or failed to be added to the course
+  function stashCourseNotices(added, exists, failed) {
+    try {
+      sessionStorage.setItem(RELOAD_COURSE_KEY, JSON.stringify({
+        added: added || [], exists: exists || [], failed: failed || []
+      }));
+    } catch (e) {}
+  }
+
+    // Save the competencies that were added, exists, or failed to be added to the activity
+  function stashCmNotices(added, exists, failed) {
+    try {
+      sessionStorage.setItem(RELOAD_CM_KEY, JSON.stringify({
+        added: added || [], exists: exists || [], failed: failed || []
+      }));
+    } catch (e) {}
+  }
+
+  // Show notices with added, exists, or failed competencies with green, yellow, and red notifications
+  function showNoticesFrom(key, headings) {
+    var raw = null;
+    try { raw = sessionStorage.getItem(key); } catch (e) {}
+    if (!raw) {
+      return;
+    }
+    try { sessionStorage.removeItem(key); } catch (e) {}
+
+    var data = {};
+    try { data = JSON.parse(raw) || {}; } catch (e) {}
+    var added  = Array.isArray(data.added)  ? data.added  : [];
+    var exists = Array.isArray(data.exists) ? data.exists : [];
+    var failed = Array.isArray(data.failed) ? data.failed : [];
+
+    var jobs = [];
+
+    if (added.length) {
+      jobs.push(
+        Str.get_string(headings.added.key, headings.added.comp, { count: added.length })
+          .catch(function(){ return headings.added.fallback(added.length); })
+          .then(function(h) { Notification.addNotification({ type: 'success', message: '<div>' + esc(h) + '</div>' + renderList(added) }); })
+      );
+    }
+    if (exists.length) {
+      jobs.push(
+        Str.get_string(headings.exists.key, headings.exists.comp, { count: exists.length })
+          .catch(function(){ return headings.exists.fallback(exists.length); })
+          .then(function(h) { Notification.addNotification({ type: 'warning', message: '<div>' + esc(h) + '</div>' + renderList(exists) }); })
+      );
+    }
+    if (failed.length) {
+      jobs.push(
+        Str.get_string(headings.failed.key, headings.failed.comp, { count: failed.length })
+          .catch(function(){ return headings.failed.fallback(failed.length); })
+          .then(function(h) { Notification.addNotification({ type: 'error', message: '<div>' + esc(h) + '</div>' + renderList(failed) }); })
+      );
+    }
+    Promise.allSettled(jobs);
+  }
+
+  // Call these after load to show course notifications once the page refreshes
+  function showPostReloadCourseNoticesIfAny() {
+    showNoticesFrom(RELOAD_COURSE_KEY, {
+      added : { key: 'notify_course_added_heading',  comp:'aiplacement_classifyassist', fallback: c => 'Course competencies added (' + c + ')' },
+      exists: { key: 'notify_course_exists_heading', comp:'aiplacement_classifyassist', fallback: c => 'Already in course (' + c + ')' },
+      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to add to course (' + c + ')' }
+    });
+  }
+
+  // Call these after load to show activity notifications once the page refreshes
+  function showPostReloadCmNoticesIfAny() {
+    showNoticesFrom(RELOAD_CM_KEY, {
+      added : { key: 'notify_cm_added_heading',  comp:'aiplacement_classifyassist', fallback: c => 'Added to activity (' + c + ')' },
+      exists: { key: 'notify_cm_exists_heading', comp:'aiplacement_classifyassist', fallback: c => 'Already linked to activity (' + c + ')' },
+      failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to link to activity (' + c + ')' }
+    });
+  }
+
   var getModalAPI = function() {
     var hasNew = Modal && typeof Modal.create === 'function';
     return {
@@ -23,6 +103,7 @@ define([
     };
   };
 
+  // Get the AI response
   var extractFromResponse = function(root) {
     var out = { tasks: [], skills: [], knowledge: [] };
     if (!root) { return out; }
@@ -43,6 +124,7 @@ define([
     return out;
   };
 
+  // Get the user checked competencies from the modal
   var collectChecked = function(root) {
     var pick = function(section) {
       var sel = '.aiplacement-applytsks-section[data-section="' + section + '"] input[type="checkbox"]:checked';
@@ -55,6 +137,7 @@ define([
     return { tasks: pick('tasks'), skills: pick('skills'), knowledge: pick('knowledge') };
   };
 
+  // Add checkboxes, select all, clear all
   var attachControls = function($root) {
     $root.on('click', '[data-action="selectall"]', function(e) {
       e.preventDefault();
@@ -197,6 +280,19 @@ define([
     });
   };
 
+  // Grab cmid from the URL (activity edit page uses ?update=<cmid>)
+  function getCmidFromUrl() {
+    var qs = new URLSearchParams(window.location.search);
+    return Number(qs.get('update') || 0);
+  }
+
+  function addToModule(cmid, competencyId) {
+    return Ajax.call([{
+      methodname: 'aiplacement_classifyassist_add_cm_competency',
+      args: { cmid: cmid, competencyid: competencyId }
+    }])[0]; // returns a Promise
+  }
+
   // Modal that shows the ai response competencies to the user, here the user will be able to select which should be added to the course
   var openModal = function(values) {
     return Str.get_string('applytsks_title', 'aiplacement_classifyassist').then(function(title) {
@@ -292,38 +388,52 @@ define([
                     var existsNames = exists.map(nameOf);
                     var failedNames = failed.map(nameOf).concat(unmatchedLabels);
 
-                    if (added.length) {
-                      Str.get_string('notify_added_heading', 'aiplacement_classifyassist', { count: added.length })
-                        .then(function(heading) {
-                          Notification.addNotification({
-                            type: 'success',
-                            message: '<div>' + esc(heading) + '</div>' + renderList(addedNames)
-                          });
-                        });
-                    }
+                    stashCourseNotices(addedNames, existsNames, failedNames);
 
-                    if (exists.length) {
-                      Str.get_string('notify_exists_heading', 'aiplacement_classifyassist', { count: exists.length })
-                        .then(function(heading) {
-                          Notification.addNotification({
-                            type: 'warning',
-                            message: '<div>' + esc(heading) + '</div>' + renderList(existsNames)
-                          });
-                        });
-                    }
+                    const cmid = getCmidFromUrl();
+                    const toLink = Array.from(new Set([].concat(added, exists))); // ids to ensure linked at CM level
 
-                    if (failedNames.length) {
-                      Str.get_string('notify_failed_heading', 'aiplacement_classifyassist', { count: failedNames.length })
-                        .then(function(heading) {
-                          Notification.addNotification({
-                            type: 'error',
-                            message: '<div>' + esc(heading) + '</div>' + renderList(failedNames)
-                          });
-                        });
-                    }
+                    var linkPromise = Promise.resolve();
+                    if (cmid > 0 && toLink.length) {
+                      // Build id → display name map for post-reload messages.
+                      var byIdName = new Map();
+                      matched.forEach(function(m) {
+                        if (m && m.id) {
+                          byIdName.set(m.id, m.shortname || m.input || ('ID ' + m.id));
+                        }
+                      });
 
-                    resolve(pickedNow);
-                    modal.hide();
+                      linkPromise = Promise.all(toLink.map(function(id) {
+                        return addToModule(cmid, id)
+                          .then(function(ok) {
+                            return { id: id, status: ok ? 'added' : 'exists' };
+                          })
+                          .catch(function() {
+                            return { id: id, status: 'failed' };
+                          });
+                      })).then(function(results) {
+                        var addedIds = [], existsIds = [], failedIds = [];
+                        results.forEach(function(r) {
+                          if (r.status === 'added') {
+                            addedIds.push(r.id);
+                          } else if (r.status === 'exists') {
+                            existsIds.push(r.id);
+                          } else {
+                            failedIds.push(r.id);
+                          }
+                        });
+
+                        var cmAddedNames  = addedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); });
+                        var cmExistsNames = existsIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); });
+                        var cmFailedNames = failedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); });
+
+                        // Stash ACTIVITY notices (separate bucket)
+                        stashCmNotices(cmAddedNames, cmExistsNames, cmFailedNames);
+                      });
+                    }
+                    linkPromise.then(function(){
+                      window.location.reload();
+                    });
                   }).catch(function(err) {
                     console.error('Failed to add competencies to course:', err);
                     Notification.exception(err);
@@ -334,7 +444,6 @@ define([
                   console.error('Failed to list/match competencies:', err);
                   reject(err);
                 });
-
               } catch (err) {
                 console.error(err);
                 reject(err);
@@ -384,6 +493,10 @@ define([
       handleClick(btn);
     }, { passive: false });
   };
+
+  // Show notices on page reload
+  showPostReloadCourseNoticesIfAny();
+  showPostReloadCmNoticesIfAny();
 
   return { init: init };
 });

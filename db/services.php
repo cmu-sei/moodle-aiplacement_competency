@@ -11,4 +11,12 @@ $functions = [
         'ajax'        => true,
         'capabilities'=> 'aiplacement/classifyassist:classify_text',
     ],
+    'aiplacement_classifyassist_add_cm_competency' => [
+        'classname'   => 'aiplacement_classifyassist\external\add_cm_competency',
+        'methodname'  => 'execute',
+        'description' => 'Add a competency to a course module.',
+        'type'        => 'write',
+        'ajax'        => true,
+        'capabilities'=> 'moodle/competency:coursecompetencyconfigure',
+    ],
 ];
