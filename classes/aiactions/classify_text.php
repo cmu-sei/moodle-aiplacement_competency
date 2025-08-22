@@ -21,6 +21,10 @@ class classify_text extends base {
         parent::__construct($contextid);
     }
 
+    public static function get_basename(): string {
+        return 'classify_text'; // machine key used for storage
+    }
+
     public static function get_name(): string {
         return get_string('aiaction_classify_content_name', 'aiplacement_classifyassist');
     }

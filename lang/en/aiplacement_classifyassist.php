@@ -4,7 +4,8 @@ $string['classify']         = 'AI classify';
 $string['aiclassifyfailed'] = 'AI classification failed: {$a}.';
 $string['privacy:metadata'] = 'The Course Classifier plugin stores no personal data.';
 $string['aiaction_classify_content_name'] = 'Classify Content';
-$string['aiaction_classify_content_desc'] = 'Analyses text and returns role / work-role labels.';
+$string['aiaction_classify_content_desc'] = 'Analyses text and returns competencies labels.';
+$string['action_classify_text'] = 'Classify text';
 $string['action_classify_text_instruction'] = '
 You will receive a course or activity description. Your task is to classify it according to the NICE Cybersecurity Workforce Framework.
 
@@ -62,6 +63,7 @@ $string['classify_tooltips'] = 'Classify content based on competency framework.'
 $string['tryagain'] = 'Try again';
 $string['copy'] = 'Copy';
 $string['classifyassist:classify_text'] = 'Classify Text';
+$string['action_classify_text'] = 'Classify Text';
 $string['tasks'] = 'Tasks';
 $string['skills'] = 'Skills';
 $string['knowledge'] = 'Knowledge';

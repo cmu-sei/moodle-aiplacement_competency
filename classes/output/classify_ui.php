@@ -42,20 +42,43 @@ class classify_ui {
             return false;
         }
 
+        // // Placement plugin itself must be installed & enabled.
+        // $pm = \core_plugin_manager::instance();
+        // $info = $pm->get_plugin_info('aiplacement_classifyassist');
+        // if (!$info || !$info->is_enabled()) {
+        //     return false;
+        // }
+
+        // $actionclass = \aiplacement_classifyassist\aiactions\classify_text::class;
+        // $aimanager = \core\di::get(\core_ai\manager::class);
+
+        // // Check if the action is enabled
+        // if (!$aimanager->is_action_enabled('aiplacement_classifyassist', $actionclass)) {
+        //     return false;
+        // }
+
+        // // Is there at least one configured/enabled provider for this action?
+        // $providers = $aimanager->get_providers_for_actions([$actionclass], true);
+        // if (empty($providers[$actionclass])) {
+        //     return false;
+        // }
+
+        // Capability checks.
         if (!has_capability('moodle/course:update', $PAGE->context)) {
             return false;
         }
-
         if (!has_capability('aiplacement/classifyassist:classify_text', $PAGE->context)) {
             return false;
         }
 
+        // Only on course edit pages.
         $path = $PAGE->url->get_path();
         $iseditform = (
-            preg_match('#/course/(mod)?edit\\.php$#', $path)
-            || preg_match('#/course/edit(section|settings)?\\.php$#', $path)
+            preg_match('#/course/(mod)?edit\.php$#', $path)
+            || preg_match('#/course/edit(section|settings)?\.php$#', $path)
         );
 
         return $iseditform;
     }
+
 }
