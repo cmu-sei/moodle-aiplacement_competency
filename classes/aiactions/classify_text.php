@@ -6,7 +6,7 @@ namespace aiplacement_classifyassist\aiactions;
 use core_ai\aiactions\base;
 use core_ai\aiactions\responses\response_base;
 
-class classify_text extends base {
+class classify_text extends base{
 
     protected int $userid;
     protected string $prompttext;
@@ -22,7 +22,7 @@ class classify_text extends base {
     }
 
     public static function get_basename(): string {
-        return 'classify_text'; // machine key used for storage
+        return 'generate_text';
     }
 
     public static function get_name(): string {
