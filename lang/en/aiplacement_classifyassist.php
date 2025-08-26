@@ -1,36 +1,29 @@
 <?php
 $string['pluginname']       = 'Classify Assist Placement';
-$string['classify']         = 'AI classify';
-$string['aiclassifyfailed'] = 'AI classification failed: {$a}.';
 $string['privacy:metadata'] = 'The Course Classifier plugin stores no personal data.';
-$string['aiaction_classify_content_name'] = 'Generate Text';
-$string['aiaction_classify_content_desc'] = 'Analyses text and returns competencies labels.';
-$string['action_classify_text'] = 'Classify text';
 $string['action_classify_text_instruction'] = '
-You will receive a course or activity description. Your task is to classify it according to the NICE Cybersecurity Workforce Framework.
+You will receive a course or activity description. Classify it using the "{$a->frameworkshortname}" competency framework.
 
 Follow these important instructions:
 
 1. Return only a valid JSON object with the following structure:
 {
-    "tasks": [
-        "<Task code and name">,
-        "<Task code and name">,
-        ...
-    "skills": [
-        "<Skill code and name>",
-        "<Skill code and name>",
-        ...
-    ]
-    "knowledge": [
-        "<Knowledge skill and name>",
-        "<Knowledge skill and name>",
-        ...
-    ]
+  "framework": { "shortname": "{$a->frameworkshortname}" },
+  "tasks": [
+    "Task code and name",
+    "Task code and name"
+  ],
+  "skills": [
+    "Skill code and name",
+    "Skill code and name"
+  ],
+  "knowledge": [
+    "Knowledge code and name",
+    "Knowledge code and name"
+  ]
 }
-
-2. Only use official NICE Framework work roles, task codes/names, and skill codes/names.
-3. If there is no clear match, respond with null for that field.
+2. Use ONLY codes and names that exist in "{$a->frameworkshortname}". Do not echo input text, the framework name, or its id inside tasks/skills/knowledge.
+3. If there is no clear match for a category, return an empty array for that category.
 4. Do not include explanations, reasoning, or commentary.
 5. Output only the JSON. No extra text, markdown, or formatting.
 
@@ -63,7 +56,6 @@ $string['classify_tooltips'] = 'Classify content based on competency framework.'
 $string['tryagain'] = 'Try again';
 $string['copy'] = 'Copy';
 $string['classifyassist:classify_text'] = 'Classify Text';
-$string['action_classify_text'] = 'Classify Text';
 $string['tasks'] = 'Tasks';
 $string['skills'] = 'Skills';
 $string['knowledge'] = 'Knowledge';

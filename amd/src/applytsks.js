@@ -79,7 +79,7 @@ define([
     showNoticesFrom(RELOAD_COURSE_KEY, {
       added : { key: 'notify_course_added_heading',  comp:'aiplacement_classifyassist', fallback: c => 'Course competencies added (' + c + ')' },
       exists: { key: 'notify_course_exists_heading', comp:'aiplacement_classifyassist', fallback: c => 'Already in course (' + c + ')' },
-      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to add to course (' + c + ')' }
+      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to add to course (does not match selected framework) (' + c + ')' }
     });
   }
 
