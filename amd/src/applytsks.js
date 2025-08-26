@@ -321,7 +321,6 @@ define([
                 var picked = collectChecked(root);
                 modal.getRoot().data('selection', picked);
                 sessionStorage.setItem('aiplacement_applytsks:last', JSON.stringify(picked));
-                console.log('Selection saved:', picked);
 
                 var frameworkId = String($('dd[data-frameworkid]').data('frameworkid') || '0');
 
@@ -342,12 +341,6 @@ define([
                   var unmatchedLabels = unmatched
                     .map(function(m){ return (m && m.input) ? String(m.input).trim() : ''; })
                     .filter(Boolean);
-
-
-                  console.log('Competency list:', res.list);
-                  console.log('Matched (with ids):', matched);
-                  console.log('Unmatched (no id):', unmatchedLabels);
-                  console.log('Matched competency IDs:', res.matchedIds);
 
                   var courseId = getCourseIdFromBody();
                   var pickedNow = collectChecked(root);
@@ -435,17 +428,14 @@ define([
                       window.location.reload();
                     });
                   }).catch(function(err) {
-                    console.error('Failed to add competencies to course:', err);
                     Notification.exception(err);
                     resolve(pickedNow);
                     modal.hide();
                   });
                 }).catch(function(err) {
-                  console.error('Failed to list/match competencies:', err);
                   reject(err);
                 });
               } catch (err) {
-                console.error(err);
                 reject(err);
               }
             });

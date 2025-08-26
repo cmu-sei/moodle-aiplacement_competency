@@ -179,7 +179,6 @@ define([
                 });
             }
 
-            console.log(prompt);
             try {
                 const calls = Ajax.call([{
                     methodname: 'aiplacement_classifyassist_classify_text',
@@ -197,8 +196,6 @@ define([
                     this.aiDrawerBodyElement.dataset.cancelled = '0';
                     return;
                 }
-
-                console.log(result);
 
                 const {frameworkid, frameworkshortname, tasks, skills, knowledge } = result;
 
