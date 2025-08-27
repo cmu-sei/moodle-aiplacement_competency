@@ -6,7 +6,7 @@ You will receive a course or activity description. Classify it using the "{$a->f
 
 Follow these important instructions:
 
-1. Return only a valid JSON object with the following structure:
+1. Return only a valid JSON object with the following structure (You should provide the code and name for each):
 {
   "framework": { "shortname": "{$a->frameworkshortname}" },
   "tasks": [
