@@ -17,12 +17,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'aiplacement_classifyassist';
-$plugin->version = 2025086001;
+$plugin->version = 2025086017;
 $plugin->requires = 2025040800;
 $plugin->maturity = MATURITY_ALPHA;
-$plugin->dependencies = [
-    'aiprovider_ollama_classifier' => 2025072900,
-];
 $plugin->core_hooks = [
     'output\before_footer_html_generation',
 ];

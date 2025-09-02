@@ -1,0 +1,100 @@
+<div class="aiplacement-applytsks">
+  <p class="mb-3">{{#str}} applytsks_intro_checklist, aiplacement_classifyassist {{/str}}</p>
+
+  <!-- Tasks -->
+  <div class="mb-3 aiplacement-applytsks-section" data-section="tasks">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <label class="form-label m-0"><strong>{{#str}} tasks, aiplacement_classifyassist {{/str}}</strong></label>
+      <div>
+        <button type="button" class="btn btn-link p-0 me-3" data-action="selectall">
+          {{#str}} applytsks_selectall, aiplacement_classifyassist {{/str}}
+        </button>
+        <button type="button" class="btn btn-link p-0" data-action="clearall">
+          {{#str}} applytsks_clearall, aiplacement_classifyassist {{/str}}
+        </button>
+      </div>
+    </div>
+
+    {{#hastasks}}
+      <div class="list-group">
+        {{#tasks}}
+          <label class="list-group-item d-flex align-items-center">
+            <input type="checkbox" class="form-check-input me-2" checked data-key="tasks">
+            <span>{{.}}</span>
+          </label>
+        {{/tasks}}
+      </div>
+      <div class="form-text">{{#str}} applytsks_clicktotoggle, aiplacement_classifyassist {{/str}}</div>
+    {{/hastasks}}
+    {{^hastasks}}
+      <div class="form-text">{{#str}} none, aiplacement_classifyassist {{/str}}</div>
+    {{/hastasks}}
+  </div>
+
+  <!-- Skills -->
+  <div class="mb-3 aiplacement-applytsks-section" data-section="skills">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <label class="form-label m-0"><strong>{{#str}} skills, aiplacement_classifyassist {{/str}}</strong></label>
+      <div>
+        <button type="button" class="btn btn-link p-0 me-3" data-action="selectall">
+          {{#str}} applytsks_selectall, aiplacement_classifyassist {{/str}}
+        </button>
+        <button type="button" class="btn btn-link p-0" data-action="clearall">
+          {{#str}} applytsks_clearall, aiplacement_classifyassist {{/str}}
+        </button>
+      </div>
+    </div>
+
+    {{#hasskills}}
+      <div class="list-group">
+        {{#skills}}
+          <label class="list-group-item d-flex align-items-center">
+            <input type="checkbox" class="form-check-input me-2" checked data-key="skills">
+            <span>{{.}}</span>
+          </label>
+        {{/skills}}
+      </div>
+      <div class="form-text">{{#str}} applytsks_clicktotoggle, aiplacement_classifyassist {{/str}}</div>
+    {{/hasskills}}
+    {{^hasskills}}
+      <div class="form-text">{{#str}} none, aiplacement_classifyassist {{/str}}</div>
+    {{/hasskills}}
+  </div>
+
+  <!-- Knowledge -->
+  <div class="mb-3 aiplacement-applytsks-section" data-section="knowledge">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <label class="form-label m-0"><strong>{{#str}} knowledge, aiplacement_classifyassist {{/str}}</strong></label>
+      <div>
+        <button type="button" class="btn btn-link p-0 me-3" data-action="selectall">
+          {{#str}} applytsks_selectall, aiplacement_classifyassist {{/str}}
+        </button>
+        <button type="button" class="btn btn-link p-0" data-action="clearall">
+          {{#str}} applytsks_clearall, aiplacement_classifyassist {{/str}}
+        </button>
+      </div>
+    </div>
+
+    {{#hasknowledge}}
+      <div class="list-group">
+        {{#knowledge}}
+          <label class="list-group-item d-flex align-items-center">
+            <input type="checkbox" class="form-check-input me-2" checked data-key="knowledge">
+            <span>{{.}}</span>
+          </label>
+        {{/knowledge}}
+      </div>
+      <div class="form-text">{{#str}} applytsks_clicktotoggle, aiplacement_classifyassist {{/str}}</div>
+    {{/hasknowledge}}
+    {{^hasknowledge}}
+      <div class="form-text">{{#str}} none, aiplacement_classifyassist {{/str}}</div>
+    {{/hasknowledge}}
+  </div>
+
+  <!-- Apply button -->
+  <div id="applytsks-apply" class="d-flex justify-content-end mt-3">
+    <button type="button" class="btn btn-primary" data-action="apply-inline">
+      {{#str}} applynow, aiplacement_classifyassist {{/str}}
+    </button>
+  </div>
+</div>

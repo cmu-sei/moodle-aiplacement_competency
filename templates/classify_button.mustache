@@ -1,13 +1,40 @@
-<button
-    type="button"
-    class="dropdown-item ai-action"
-    data-action="classify"
-    data-bs-placement="right"
-    aria-controls="ai-drawer"
-    data-input-type="action"
-    data-bs-delay="200"
-    title="{{#str}}classify_tooltips,aiplacement_classifyassist{{/str}}"
-    data-bs-toggle="tooltip"
->
-    {{#str}}classifybutton,aiplacement_classifyassist{{/str}}
-</button>
+<div class="mb-3 row fitem">
+  <div class="col-md-3 col-form-label d-flex align-items-center pb-0 pe-md-0">
+    <label class="m-0 me-1">
+      {{#str}}aiclassificationlabel,aiplacement_classifyassist{{/str}}
+    </label>
+    <div class="form-label-addon d-flex align-items-center">
+      <a class="btn btn-link p-0"
+         role="button"
+         data-bs-container="body"
+         data-bs-toggle="popover"
+         data-bs-placement="right"
+         data-bs-content="<div class='no-overflow'><p>{{#str}}aiclassification_help,aiplacement_classifyassist{{/str}}</p></div>"
+         data-bs-html="true"
+         tabindex="0"
+         data-bs-trigger="focus"
+         aria-label="{{#str}}help,aiplacement_classifyassist{{/str}}">
+        <i class="icon fa fa-circle-question text-info fa-fw"
+           title="{{#str}}help,aiplacement_classifyassist{{/str}}"
+           role="img"
+           aria-label="{{#str}}help,aiplacement_classifyassist{{/str}}"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-9 d-flex align-items-center gap-2 felement">
+    <button
+      type="button"
+      class="btn btn-primary ai-action"
+      data-action="classify"
+      data-input-type="action"
+      data-bs-toggle="tooltip"
+      data-bs-placement="right"
+      title="{{#str}}classify_tooltips,aiplacement_classifyassist{{/str}}">
+      <span class="ai-course-assist-sparkles-icon">
+        {{#pix}} sparkles-white, aiplacement_classifyassist {{/pix}}
+      </span>
+      {{#str}}classifybutton,aiplacement_classifyassist{{/str}}
+    </button>
+  </div>
+</div>

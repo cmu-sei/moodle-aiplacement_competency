@@ -5,32 +5,53 @@ namespace aiplacement_classifyassist;
 
 use core\di;
 use context;
+use aiplacement_classifyassist\local\utils;
 
 class placement extends \core_ai\placement {
     public static function get_action_list(): array {
-        return [\aiplacement_classifyassist\aiactions\classify_text::class];
+        return [\core_ai\aiactions\generate_text::class];
     }
 
-    public function classify(context $context, string $prompttext): string {
+    public function classify(
+        context $context,
+        string $prompttext,
+        int $selectedframeworkid = 0,
+        string $selectedframeworkshortname = ''
+    ): string {
         global $USER;
 
-        $action = new \aiplacement_classifyassist\aiactions\classify_text(
+        // Builds system instruction with course description
+        $instruction = utils::build_instruction($selectedframeworkid, $selectedframeworkshortname);
+        $finalprompt = $instruction . "\n\nTEXT TO CLASSIFY:\n" . $prompttext;
+
+        $action = new \core_ai\aiactions\generate_text(
             $context->id,
-            (int) $USER->id,
-            $prompttext
+            (int)$USER->id,
+            $finalprompt
         );
+
+        if (method_exists($action, 'set_meta')) {
+            $action->set_meta([
+                'frameworkid'        => $selectedframeworkid,
+                'frameworkshortname' => $selectedframeworkshortname,
+            ]);
+        }
 
         $manager  = di::get(\core_ai\manager::class);
         $response = $manager->process_action($action);
 
-        if ($response->is_error()) {
-            throw new \moodle_exception('aiclassifyfailed', 'aiplacement_classifyassist',
-                '', null, $response->get_error());
+        $success = method_exists($response, 'get_success')
+            ? (bool)$response->get_success()
+            : true;
+
+        if (!$success) {
+            $msg = method_exists($response, 'get_errormessage')
+                ? (string)($response->get_errormessage() ?? '')
+                : 'Unknown AI error';
+            throw new \moodle_exception('aiclassifyfailed', 'aiplacement_classifyassist', '', null, $msg);
         }
 
-        $raw = $response->get_response_data()['response'] ?? '{}';
-
-        return $raw;
+        $rawdata = $response->get_response_data();
+        return json_encode($rawdata, JSON_UNESCAPED_UNICODE);
     }
-
 }

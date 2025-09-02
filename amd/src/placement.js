@@ -1,19 +1,31 @@
 define([
-    'aiplacement_courseassist/placement', // Parent class
+    'aiplacement_courseassist/placement',
     'core/templates',
     'core/ajax',
     'core/notification',
-    'core/str',
-    'core/copy_to_clipboard'
+    'core/str'
 ], function(Base, Templates, Ajax, Notification, Str) {
 
-    const SELECTOR_CLASSIFY = '[data-action="classify"]';
+    const SELECTOR_CLASSIFY   = '[data-action="classify"]';
+    const SELECTOR_CANCEL     = '[data-action="cancel"]';
+    const SELECTOR_CONTINUE   = '[data-action="continue"]';
+    const SELECTOR_PRESELECT  = '#classify-preselect';
+    const ID_CLOSE_BTN        = '#ai-classify-drawer-close';
 
     return class ClassifyPlacement extends Base {
         constructor(userId, contextId) {
             super(userId, contextId);
+
             this.aiDrawerElement     = document.querySelector('#ai-classify-drawer');
             this.aiDrawerBodyElement = this.aiDrawerElement.querySelector('.ai-drawer-body');
+            this.aiDrawerCloseElement = this.aiDrawerElement.querySelector(ID_CLOSE_BTN);
+            if (this.aiDrawerCloseElement) {
+                this.aiDrawerCloseElement.addEventListener('click', e => {
+                    e.preventDefault();
+                    this.closeAIDrawer();
+                });
+            }
+
             this.registerExtraListener();
         }
 
@@ -39,8 +51,112 @@ define([
                     return;
                 }
 
-                this.sendClassification(prompt);
+                await this.showSelectFramework(prompt);
             });
+        }
+
+        // Function that shows dropdown with competency framework options
+        async showSelectFramework(prompt) {
+            this.aiDrawerBodyElement.dataset.cancelled = '0';
+
+            const prestepHtml = await Templates.render('aiplacement_classifyassist/framework_select', {});
+            this.aiDrawerBodyElement.innerHTML = prestepHtml;
+
+            const select = this.aiDrawerBodyElement.querySelector(SELECTOR_PRESELECT);
+            if (select) {
+                select.innerHTML = '<option value="" disabled selected>Loading…</option>';
+            }
+
+            try {
+                const calls = Ajax.call([{
+                    methodname: 'core_competency_list_competency_frameworks',
+                    args: {
+                        sort: 'shortname',
+                        order: 'ASC',
+                        skip: 0,
+                        context: {
+                            contextid: 1,
+                            instanceid: 0
+                        },
+                    }
+                }]);
+
+                const res = await calls[0];
+                const frameworks = Array.isArray(res?.frameworks) ? res.frameworks
+                                : Array.isArray(res) ? res
+                                : [];
+
+                if (select) {
+                    select.innerHTML = '';
+
+                    if (!frameworks.length) {
+                        select.innerHTML = '<option value="" disabled selected>No frameworks found</option>';
+                    } else {
+                        const ph = document.createElement('option');
+                        ph.value = '';
+                        ph.disabled = true;
+                        ph.selected = true;
+                        ph.textContent = 'Select Competency Framework...';
+                        select.appendChild(ph);
+
+                        frameworks.forEach(fw => {
+                            const opt = document.createElement('option');
+                            opt.value = String(fw.id);
+                            opt.textContent = fw.shortname || fw.name || fw.idnumber || `Framework #${fw.id}`;
+                            opt.dataset.shortname = fw.shortname || '';
+                            opt.dataset.idnumber  = fw.idnumber || '';
+                            select.appendChild(opt);
+                        });
+                    }
+                }
+            } catch (error) {
+                if (select) {
+                    select.innerHTML = '<option value="" disabled selected>Failed to load frameworks</option>';
+                }
+                Notification.exception(error);
+            }
+
+            const continueBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CONTINUE);
+            const sel = this.aiDrawerBodyElement.querySelector(SELECTOR_PRESELECT);
+
+            if (continueBtn) {
+                continueBtn.disabled = true;
+
+                const updateContinueState = () => {
+                    const hasValue = !!(sel && sel.value && !sel.options[sel.selectedIndex]?.disabled);
+                    continueBtn.disabled = !hasValue;
+                };
+
+                if (sel) {
+                    sel.addEventListener('change', updateContinueState);
+                }
+
+                updateContinueState();
+
+                continueBtn.addEventListener('click', e => {
+                    e.preventDefault();
+                    if (continueBtn.disabled) {
+                        return;
+                    }
+
+                    this._selectedFrameworkId        = sel && sel.value ? Number(sel.value) : null;
+                    this._selectedFrameworkShortname = sel && sel.selectedOptions[0]
+                        ? (sel.selectedOptions[0].dataset.shortname || sel.selectedOptions[0].textContent.trim())
+                        : null;
+
+                    this.sendClassification(prompt);
+                });
+            }
+
+            const cancelBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CANCEL);
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', e => {
+                    e.preventDefault();
+                    this.setRequestCancelled();
+                    this.toggleAIDrawer();
+                    this.aiDrawerBodyElement.innerHTML = '';
+                });
+            }
         }
 
         async sendClassification(prompt) {
@@ -48,35 +164,49 @@ define([
                 return Notification.error('No prompt provided.');
             }
 
-            const loadingHtml = await Templates.render(
-                'aiplacement_classifyassist/loading', {}
-            );
+            this.aiDrawerBodyElement.dataset.cancelled = '0';
+
+            const loadingHtml = await Templates.render('aiplacement_classifyassist/loading', {});
             this.aiDrawerBodyElement.innerHTML = loadingHtml;
+
+            const cancelBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CANCEL);
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', e => {
+                    e.preventDefault();
+                    this.setRequestCancelled();
+                    this.toggleAIDrawer();
+                    this.aiDrawerBodyElement.innerHTML = '';
+                });
+            }
 
             try {
                 const calls = Ajax.call([{
                     methodname: 'aiplacement_classifyassist_classify_text',
                     args: {
                         contextid: this.contextId,
-                        prompttext: prompt
+                        prompttext: prompt,
+                        selectedframeworkid: this._selectedFrameworkId || 0,
+                        selectedframeworkshortname: this._selectedFrameworkShortname || ''
                     }
                 }]);
 
                 const result = await calls[0];
-                const { role, work_role } = result;
 
-                const uniqid = 'resp-' + Math.random().toString(36).substr(2, 9);
+                if (this.isRequestCancelled()) {
+                    this.aiDrawerBodyElement.dataset.cancelled = '0';
+                    return;
+                }
+
+                const {frameworkid, frameworkshortname, tasks, skills, knowledge } = result;
+
+                const uniqid  = 'resp-' + Math.random().toString(36).substr(2, 9);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_classifyassist');
+
                 const responseHtml = await Templates.render(
                     'aiplacement_classifyassist/response',
-                    {
-                        heading,
-                        action: heading,
-                        uniqid,
-                        role,
-                        work_role
-                    }
+                    { heading, action: heading, uniqid, frameworkid, frameworkshortname, tasks, skills, knowledge }
                 );
+
                 this.aiDrawerBodyElement.innerHTML = responseHtml;
 
                 const regen = this.aiDrawerBodyElement.querySelector('[data-action="regenerate"]');
@@ -86,12 +216,15 @@ define([
                         this.sendClassification(prompt);
                     });
                 }
+
             } catch (error) {
-                const errorHtml = await Templates.render(
-                    'aiplacement_classifyassist/error', {}
-                );
-                this.aiDrawerBodyElement.innerHTML = errorHtml;
-                Notification.exception(error);
+                if (!this.isRequestCancelled()) {
+                    const errorHtml = await Templates.render('aiplacement_classifyassist/error', {});
+                    this.aiDrawerBodyElement.innerHTML = errorHtml;
+                    Notification.exception(error);
+                }
+            } finally {
+                this.aiDrawerBodyElement.dataset.cancelled = '0';
             }
         }
     };

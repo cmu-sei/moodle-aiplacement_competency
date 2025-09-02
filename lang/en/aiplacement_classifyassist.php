@@ -1,38 +1,79 @@
 <?php
-$string['pluginname']       = 'Classify Assist';
-$string['classify']         = 'AI classify';
-$string['aiclassifyfailed'] = 'AI classification failed: {$a}.';
+$string['pluginname']       = 'Classify Assist Placement';
 $string['privacy:metadata'] = 'The Course Classifier plugin stores no personal data.';
-$string['aiaction_classify_content_name'] = 'Classify Content';
-$string['aiaction_classify_content_desc'] = 'Analyses text and returns role / work-role labels.';
 $string['action_classify_text_instruction'] = '
-You will receive a course or activity description. Your task is to classify it according to the NICE Cybersecurity Workforce Framework. Follow these important instructions:
-1. Return only a valid JSON object with the following structure:
+You will receive a course or activity description. Classify it using the "{$a->frameworkshortname}" competency framework.
+
+Follow these important instructions:
+
+1. Return only a valid JSON object with the following structure (You should provide the code and name for each):
 {
-  "role": "attack" | "defend" | "neutral",
-  "work_role": one of [
-    "Cyber Defense Analyst",
-    "Penetration Tester",
-    "Cyber Crime Investigator",
-    "Cyber Defense Forensics Analyst",
-    "Risk Manager",
-    "Incident Responder",
-    "Security Architect",
-    null
+  "framework": { "shortname": "{$a->frameworkshortname}" },
+  "tasks": [
+    "Task code and name",
+    "Task code and name"
   ],
-  "sources_required": true | false
+  "skills": [
+    "Skill code and name",
+    "Skill code and name"
+  ],
+  "knowledge": [
+    "Knowledge code and name",
+    "Knowledge code and name"
+  ]
 }
-2. Only use job roles from the list above. Respond with null for work_role if none match.
-3. Do not include explanations, reasoning, or commentary.
-4. Output only the JSON. No extra text, markdown, or formatting.';
-$string['classifybutton'] = 'Classify';
+2. Use ONLY codes and names that exist in "{$a->frameworkshortname}". Do not echo input text, the framework name, or its id inside tasks/skills/knowledge.
+3. If there is no clear match for a category, return an empty array for that category.
+4. Do not include explanations, reasoning, or commentary.
+5. Output only the JSON. No extra text, markdown, or formatting.
+
+Example:
+
+{
+    "tasks": [
+        "T1112 - Validate network alerts",
+        "T1119 - Recommend vulnerability remediation strategies",
+        "T1241 - Document cybersecurity incidents"
+    ]
+    "skills": [
+        "S0385 - Skill in communicating complex concepts",
+        "S0186 - Skill in applying crisis planning procedures",
+        "S0415 - Skill in evaluating regulations"
+    ]
+    "knowledge": [
+        "K0674 - Knowledge of computer networking protocols",
+        "K0676 - Knowledge of cybersecurity laws and regulations",
+        "K0677 - Knowledge of cybersecurity policies and procedures"
+    ]
+}
+';
+$string['classifybutton'] = 'Classify Text';
 $string['classifyheading'] = 'AI Classification Result';
-$string['role']            = 'Role';
-$string['workrole']        = 'Work role';
 $string['generatefailtitle'] = 'Something went wrong';
 $string['generating'] = 'Generating your response';
 $string['regenerate'] = 'Regenerate';
-$string['classify_tooltips'] = 'Classify content based on work roles.';
+$string['classify_tooltips'] = 'Classify content based on competency framework.';
 $string['tryagain'] = 'Try again';
 $string['copy'] = 'Copy';
-
+$string['classifyassist:classify_text'] = 'Classify Text';
+$string['tasks'] = 'Tasks';
+$string['skills'] = 'Skills';
+$string['knowledge'] = 'Knowledge';
+$string['none'] = 'None';
+$string['aiclassificationlabel'] = 'AI Classification';
+$string['aiclassification_help'] = 'Uses AI to classify course context according to the NICE Framework Competencies.';
+$string['help'] = 'Help';
+$string['applytsks'] = 'Apply TSKs';
+$string['applytsks_title'] = 'Apply classification';
+$string['applytsks_intro_checklist'] = 'Select the competencies you want to apply. You can uncheck any you don’t need.';
+$string['applytsks_selectall'] = 'Select all';
+$string['applytsks_clearall'] = 'Clear all';
+$string['applytsks_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
+$string['applynow'] = 'Apply';
+$string['frameworkshortname'] = 'Framework';
+$string['notify_course_added_heading']  = 'Added {$a->count} competencies to this course';
+$string['notify_course_exists_heading'] = 'Already in this course (not added): {$a->count}';
+$string['notify_course_failed_heading'] = 'Failed to add to course: {$a->count}';
+$string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
+$string['notify_cm_exists_heading'] = 'Already linked to this activity (not added): {$a->count}';
+$string['notify_cm_failed_heading'] = 'Failed to link to activity: {$a->count}';
