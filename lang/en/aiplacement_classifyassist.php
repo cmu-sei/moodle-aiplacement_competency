@@ -93,12 +93,12 @@ $string['none'] = 'None';
 $string['aiclassificationlabel'] = 'AI Classification';
 $string['aiclassification_help'] = 'Uses AI to classify course context according to the NICE Framework Competencies.';
 $string['help'] = 'Help';
-$string['applytsks'] = 'Apply TSKs';
-$string['applytsks_title'] = 'Apply classification';
-$string['applytsks_intro_checklist'] = 'Select the competencies you want to apply. You can uncheck any you don’t need.';
-$string['applytsks_selectall'] = 'Select all';
-$string['applytsks_clearall'] = 'Clear all';
-$string['applytsks_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
+$string['applycmps'] = 'Apply CMPs';
+$string['applycmps_title'] = 'Apply classification';
+$string['applycmps_intro_checklist'] = 'Select the competencies you want to apply. You can uncheck any you don’t need.';
+$string['applycmps_selectall'] = 'Select all';
+$string['applycmps_clearall'] = 'Clear all';
+$string['applycmps_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
 $string['applynow'] = 'Apply';
 $string['frameworkshortname'] = 'Framework';
 $string['notify_course_added_heading']  = 'Added {$a->count} competencies to this course';
@@ -116,4 +116,7 @@ $string['frameworkselection_placeholder'] = 'Please choose a framework…';
 $string['domains'] = 'Domains';
 $string['competencies'] = 'Competencies';
 $string['applycompetencies'] = 'Apply';
+$string['classify_note_newactivity'] = 'Once this activity has been saved, the Competency Classification tool will be enabled.';
+$string['notify_empty_description'] = 'Please add a description before using the Competency Classification tool.';
+
 

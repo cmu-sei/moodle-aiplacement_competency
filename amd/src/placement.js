@@ -13,6 +13,7 @@ define([
     const SELECTOR_PRESELECT   = '#classify-preselect';
     const SELECTOR_DOMAINS  = 'input[name="classify-domains"]';
     const ID_CLOSE_BTN         = '#ai-classify-drawer-close';
+    const SELECTOR_RETRY      = '[data-action="retry"]';
 
     return class ClassifyPlacement extends Base {
         constructor(userId, contextId) {
@@ -34,18 +35,54 @@ define([
 
         registerExtraListener() {
             document.addEventListener('click', async e => {
+                // 1) Retry inside the drawer
+                const retryBtn = e.target.closest(SELECTOR_RETRY);
+                if (retryBtn && this.aiDrawerElement.contains(retryBtn)) {
+                    e.preventDefault();
+                    retryBtn.disabled = true;
+                    try {
+                        // Read activity description
+                        const ta = document.querySelector('#id_introeditor') || document.querySelector('[name="intro[text]"]');
+                        const ce = document.querySelector('[id^="id_introeditor"][contenteditable="true"]');
+                        const prompt =
+                            (ta && typeof ta.value === 'string' ? ta.value.trim() : '') ||
+                            (ce && ce.textContent ? ce.textContent.trim() : '');
+
+                        if (!prompt) {
+                            const errorHtml = await Templates.render('aiplacement_classifyassist/error', {});
+                            this.aiDrawerBodyElement.innerHTML = errorHtml;
+                            return;
+                        }
+                        await this.showSelectFramework(prompt);
+                    } finally {
+                        retryBtn.disabled = false;
+                    }
+                    return;
+                }
+
+                // 2) Classify button
                 const btn = e.target.closest(SELECTOR_CLASSIFY);
-                if (!btn) return;
+                if (!btn) {
+                    return;
+                }
 
                 e.preventDefault();
                 this.openAIDrawer();
 
-                let prompt = '';
-                const tex = document.querySelector('#id_introeditor');
-                prompt = tex ? tex.value.trim() : this.getTextContent().trim();
+                // If you want to require description here too, use the same strict read:
+                const ta = document.querySelector('#id_introeditor') || document.querySelector('[name="intro[text]"]');
+                const ce = document.querySelector('[id^="id_introeditor"][contenteditable="true"]');
+                const prompt =
+                    (ta && typeof ta.value === 'string' ? ta.value.trim() : '') ||
+                    (ce && ce.textContent ? ce.textContent.trim() : '');
 
                 if (!prompt) {
-                    Notification.error('No content found to classify.');
+                    Str.get_string('notify_empty_description', 'aiplacement_classifyassist')
+                        .catch(() => 'No content found to classify.')
+                        .then(msg => Notification.addNotification({ type: 'error', message: msg }));
+
+                    const errorHtml = await Templates.render('aiplacement_classifyassist/error', {});
+                    this.aiDrawerBodyElement.innerHTML = errorHtml;
                     return;
                 }
 
@@ -123,12 +160,17 @@ define([
                     const hasValue = !!(sel && sel.value && !sel.options[sel.selectedIndex]?.disabled);
                     continueBtn.disabled = !hasValue;
                 };
-                if (sel) sel.addEventListener('change', updateContinueState);
+                if (sel) {
+                    sel.addEventListener('change', updateContinueState);
+                }
+
                 updateContinueState();
 
                 continueBtn.addEventListener('click', e => {
                     e.preventDefault();
-                    if (continueBtn.disabled) return;
+                    if (continueBtn.disabled) {
+                        return;
+                    }
 
                     const opt = sel && sel.selectedOptions ? sel.selectedOptions[0] : null;
 
@@ -242,7 +284,9 @@ define([
 
             const updateContinue = () => {
                 const anyChecked = Array.from(boxes).some(b => b.checked);
-                if (continueBtn) continueBtn.disabled = !anyChecked;
+                if (continueBtn) {
+                    continueBtn.disabled = !anyChecked;
+                }
             };
             boxes.forEach(b => b.addEventListener('change', updateContinue));
             updateContinue();
@@ -250,7 +294,9 @@ define([
             if (continueBtn) {
                 continueBtn.addEventListener('click', e => {
                     e.preventDefault();
-                    if (continueBtn.disabled) return;
+                    if (continueBtn.disabled) {
+                        return;
+                    }
 
                     const selectedDomains = Array.from(boxes)
                         .filter(b => b.checked)
@@ -281,7 +327,6 @@ define([
 
         // === Final: send classification ===
         async sendClassification(prompt, framework, domains) {
-            if (!prompt) return Notification.error('No prompt provided.');
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const loadingHtml = await Templates.render('aiplacement_classifyassist/loading', {});
@@ -302,10 +347,18 @@ define([
                     id: this._selectedFrameworkId,
                     shortname: this._selectedFrameworkShortname,
                 };
-                const selectedDomains =
-                    (Array.isArray(domains) && domains.length) ? domains :
-                    (Array.isArray(this._selectedDomains) && this._selectedDomains.length) ? this._selectedDomains :
-                    [];
+
+                const rawSelectedDomains =
+                (Array.isArray(domains) && domains.length) ? domains :
+                (Array.isArray(this._selectedDomains) && this._selectedDomains.length) ? this._selectedDomains :
+                [];
+
+                const selectedDomains = [...new Set(
+                rawSelectedDomains
+                    .map(s => String(s).trim().replace(/\s+/g, ' '))
+                    .filter(Boolean)
+                    .map(s => s.toLowerCase())
+                )];
 
                 const calls = Ajax.call([{
                     methodname: 'aiplacement_classifyassist_classify_text',
@@ -323,7 +376,6 @@ define([
                     this.aiDrawerBodyElement.dataset.cancelled = '0';
                     return;
                 }
-                console.log(result);
 
                 const {frameworkid, frameworkshortname, useddomains = [], competencies = []} = result;
                 const uniqid  = 'resp-' + Math.random().toString(36).substr(2, 9);

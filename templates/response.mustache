@@ -26,7 +26,7 @@
           <dd class="col-sm-8">
             <ul class="list-unstyled mb-0 pl-0">
               {{#useddomains}}
-                <li>{{.}}</li>
+                <li class="text-capitalize">{{.}}</li>
               {{/useddomains}}
               {{^useddomains}}
                 <li class="text-muted">{{#str}} none, aiplacement_classifyassist {{/str}}</li>
@@ -36,7 +36,7 @@
 
           <!-- Competencies -->
           <dt class="col-sm-4 text-nowrap">{{#str}} competencies, aiplacement_classifyassist {{/str}}</dt>
-          <dd class="col-sm-8">
+          <dd class="col-sm-8" data-section="competencies">
             <ul class="list-unstyled mb-0 pl-0">
               {{#competencies}}
                 <li>{{.}}</li>
@@ -72,7 +72,7 @@
         </button>
 
         <!-- Keep or rename based on your JS handler -->
-        <button class="btn btn-sm btn-outline-secondary" data-action="applytsks">
+        <button class="btn btn-sm btn-outline-secondary" data-action="applycmps">
           {{#str}} applycompetencies, aiplacement_classifyassist {{/str}}
         </button>
       </div>
