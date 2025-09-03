@@ -4,33 +4,55 @@ declare(strict_types=1);
 namespace aiplacement_classifyassist\local;
 
 class utils {
-    // Send system instruction with selected competency framework
-    public static function build_instruction(int $frameworkid, string $shortname): string {
-        $a = (object)['frameworkid' => $frameworkid, 'frameworkshortname' => $shortname];
+
+    /**
+     * Build the instruction text for the model.
+     */
+    public static function build_instruction(int $frameworkid, string $shortname, array $domains): string {
+        $seen = [];
+        $normdomains = [];
+        foreach ($domains as $d) {
+            if (!is_string($d)) { continue; }
+            $t = trim($d);
+            if ($t === '') { continue; }
+            $k = mb_strtolower($t);
+            if (isset($seen[$k])) { continue; }
+            $seen[$k] = true;
+            $normdomains[] = $t;
+        }
+
+        $a = (object)[
+            'frameworkid'        => $frameworkid,
+            'frameworkshortname' => $shortname,
+            'domains'            => implode(', ', $normdomains),
+        ];
+
         return get_string('action_classify_text_instruction', 'aiplacement_classifyassist', $a);
     }
 
-    // Extract TSK
+    /**
+     * Extract model output assuming the provider returns raw JSON (no code fences, no prose).
+     */
     public static function extract_classification(array $raw): array {
-        $payload = $raw['generatedcontent']
-            ?? ($raw['response'] ?? null);
-
-        $inner = [];
+        $payload = $raw['generatedcontent'] ?? ($raw['response'] ?? null);
 
         if (is_string($payload)) {
-            $inner = self::decode_json_maybe($payload) ?? [];
-        } elseif (is_array($payload)) {
+            $inner = json_decode($payload, true) ?: [];
+        } else if (is_array($payload)) {
             $inner = $payload;
+        } else {
+            $inner = [];
         }
 
-        if (isset($inner['response']) && is_string($inner['response'])) {
-            $maybe = self::decode_json_maybe($inner['response']);
-            if (is_array($maybe)) {
-                $inner = $maybe;
+        if (isset($inner['response'])) {
+            if (is_string($inner['response'])) {
+                $inner = json_decode($inner['response'], true) ?: $inner;
+            } else if (is_array($inner['response'])) {
+                $inner = $inner['response'];
             }
         }
 
-        $norm = function($rawval) {
+        $normStrings = function($rawval): array {
             $arr = is_array($rawval) ? $rawval : (is_string($rawval) ? [$rawval] : []);
             $out = [];
             foreach ($arr as $v) {
@@ -38,37 +60,29 @@ class utils {
                 $clean = clean_param(trim($v), PARAM_TEXT);
                 if ($clean !== '') { $out[] = $clean; }
             }
-            return array_values(array_unique($out));
+            $seen = [];
+            $uniq = [];
+            foreach ($out as $v) {
+                $k = mb_strtolower($v);
+                if (isset($seen[$k])) { continue; }
+                $seen[$k] = true;
+                $uniq[] = $v;
+            }
+            return $uniq;
         };
 
+        $frameworkshortname = '';
+        if (!empty($inner['framework']) && is_array($inner['framework'])) {
+            $frameworkshortname = clean_param(trim((string)($inner['framework']['shortname'] ?? '')), PARAM_TEXT);
+        }
+
+        $domains       = $normStrings($inner['domains'] ?? []);
+        $competencies  = $normStrings($inner['competencies'] ?? []);
+
         return [
-            'tasks'     => $norm($inner['tasks'] ?? []),
-            'skills'    => $norm($inner['skills'] ?? []),
-            'knowledge' => $norm($inner['knowledge'] ?? []),
+            'frameworkshortname' => $frameworkshortname,
+            'domains'            => $domains,
+            'competencies'       => $competencies,
         ];
-    }
-
-    // Decode JSON Response
-    private static function decode_json_maybe(string $s): ?array {
-        $s = trim($s);
-
-        if (preg_match('/^```[a-zA-Z]*\s*(.*?)\s*```$/s', $s, $m)) {
-            $s = $m[1];
-        }
-
-        $decoded = json_decode($s, true);
-        if (is_array($decoded)) {
-            return $decoded;
-        }
-
-        $p1 = strpos($s, '{'); $p2 = strrpos($s, '}');
-        if ($p1 !== false && $p2 !== false && $p2 > $p1) {
-            $slice = substr($s, $p1, $p2 - $p1 + 1);
-            $decoded = json_decode($slice, true);
-            if (is_array($decoded)) {
-                return $decoded;
-            }
-        }
-        return null;
     }
 }

@@ -2,49 +2,79 @@
 $string['pluginname']       = 'Classify Assist Placement';
 $string['privacy:metadata'] = 'The Course Classifier plugin stores no personal data.';
 $string['action_classify_text_instruction'] = '
-You will receive a course or activity description. Classify it using the "{$a->frameworkshortname}" competency framework.
+You will receive:
+- A course/activity description (free text).
+- A competency framework shortname: "{$a->frameworkshortname}".
+- A list of selected domains (top level within that framework): {$a->domains}
 
-Follow these important instructions:
+Task
+Classify the description using ONLY competencies that belong to "{$a->frameworkshortname}" and fall within the listed domains. If you are not certain a competency exists in the specified framework/domain, DO NOT include it.
 
-1. Return only a valid JSON object with the following structure (You should provide the code and name for each):
+Output format
+Return JSON only, with these keys:
 {
   "framework": { "shortname": "{$a->frameworkshortname}" },
-  "tasks": [
-    "Task code and name",
-    "Task code and name"
-  ],
-  "skills": [
-    "Skill code and name",
-    "Skill code and name"
-  ],
-  "knowledge": [
-    "Knowledge code and name",
-    "Knowledge code and name"
+  "domains": {$a->domains},
+  "competencies": [
+    "CODE - Name"  // If the framework has canonical codes (e.g., NICE K/S/T/A codes). Otherwise just "Name".
   ]
 }
-2. Use ONLY codes and names that exist in "{$a->frameworkshortname}". Do not echo input text, the framework name, or its id inside tasks/skills/knowledge.
-3. If there is no clear match for a category, return an empty array for that category.
-4. Do not include explanations, reasoning, or commentary.
-5. Output only the JSON. No extra text, markdown, or formatting.
 
-Example:
+Rules
+1) Do not invent codes or names. If unsure, leave "competencies": [].
+2) Do not add extra keys, explanations, or markdown — JSON only.
+
+Examples (illustrative; not exhaustive)
+
+Example A — single domain
+{
+  "framework": { "shortname": "NICE-1.0.0" },
+  "domains": ["Oversight and Governance"],
+  "competencies": [
+    "T1119 - Recommend vulnerability remediation strategies",
+    "S0415 - Skill in evaluating regulations",
+    "K0676 - Knowledge of cybersecurity laws and regulations"
+  ]
+}
 
 {
-    "tasks": [
-        "T1112 - Validate network alerts",
-        "T1119 - Recommend vulnerability remediation strategies",
-        "T1241 - Document cybersecurity incidents"
-    ]
-    "skills": [
-        "S0385 - Skill in communicating complex concepts",
-        "S0186 - Skill in applying crisis planning procedures",
-        "S0415 - Skill in evaluating regulations"
-    ]
-    "knowledge": [
-        "K0674 - Knowledge of computer networking protocols",
-        "K0676 - Knowledge of cybersecurity laws and regulations",
-        "K0677 - Knowledge of cybersecurity policies and procedures"
-    ]
+  "framework": { "shortname": "MITRE D3FEND" },
+  "domains": ["Harden", "Detect"],
+  "competencies": [
+    "Credential Hardening",
+    "Network Segmentation",
+    "Application Isolation and Sandboxing",
+    "Email Content Filtering",
+    "File Analysis"
+  ]
+}
+
+{
+  "framework": { "shortname": "MITRE ATT&CK (Enterprise)" },
+  "domains": ["Initial Access", "Execution"],
+  "competencies": [
+    "T1566 - Phishing",
+    "T1059 - Command and Scripting Interpreter",
+    "T1204 - User Execution"
+  ]
+}
+
+Example B — multiple domains
+{
+  "framework": { "shortname": "NICE-1.0.0" },
+  "domains": ["Protect and Defend", "Investigate"],
+  "competencies": [
+    "T1241 - Document cybersecurity incidents",
+    "S0385 - Skill in communicating complex concepts",
+    "K0674 - Knowledge of computer networking protocols"
+  ]
+}
+
+Example C — no clear matches
+{
+  "framework": { "shortname": "NICE-1.0.0" },
+  "domains": ["Analyze"],
+  "competencies": []
 }
 ';
 $string['classifybutton'] = 'Classify Text';
@@ -77,3 +107,13 @@ $string['notify_course_failed_heading'] = 'Failed to add to course: {$a->count}'
 $string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
 $string['notify_cm_exists_heading'] = 'Already linked to this activity (not added): {$a->count}';
 $string['notify_cm_failed_heading'] = 'Failed to link to activity: {$a->count}';
+$string['domainsselection'] = 'Domain Selection';
+$string['domainsselection_help'] = 'Select the classification levels (domains) you want the AI model to use when classifying your content.';
+$string['frameworkselection'] = 'Competency Framework Selection';
+$string['frameworkselection_help'] = 'Choose the competency framework that the AI model should use to classify your content.';
+$string['frameworkselection_label'] = 'Available competency frameworks:';
+$string['frameworkselection_placeholder'] = 'Please choose a framework…';
+$string['domains'] = 'Domains';
+$string['competencies'] = 'Competencies';
+$string['applycompetencies'] = 'Apply';
+
