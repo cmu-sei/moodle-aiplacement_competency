@@ -8,23 +8,23 @@ class utils {
     /**
      * Build the instruction text for the model.
      */
-    public static function build_instruction(int $frameworkid, string $shortname, array $domains): string {
+    public static function build_instruction(int $frameworkid, string $shortname, array $levels): string {
         $seen = [];
-        $normdomains = [];
-        foreach ($domains as $d) {
+        $normlevels = [];
+        foreach ($levels as $d) {
             if (!is_string($d)) { continue; }
             $t = trim($d);
             if ($t === '') { continue; }
             $k = mb_strtolower($t);
             if (isset($seen[$k])) { continue; }
             $seen[$k] = true;
-            $normdomains[] = $t;
+            $normlevels[] = $t;
         }
 
         $a = (object)[
             'frameworkid'        => $frameworkid,
             'frameworkshortname' => $shortname,
-            'domains'            => implode(', ', $normdomains),
+            'levels'            => implode(', ', $normlevels),
         ];
 
         return get_string('action_classify_text_instruction', 'aiplacement_classifyassist', $a);
@@ -76,12 +76,12 @@ class utils {
             $frameworkshortname = clean_param(trim((string)($inner['framework']['shortname'] ?? '')), PARAM_TEXT);
         }
 
-        $domains       = $normStrings($inner['domains'] ?? []);
+        $levels       = $normStrings($inner['levels'] ?? []);
         $competencies  = $normStrings($inner['competencies'] ?? []);
 
         return [
             'frameworkshortname' => $frameworkshortname,
-            'domains'            => $domains,
+            'levels'            => $levels,
             'competencies'       => $competencies,
         ];
     }

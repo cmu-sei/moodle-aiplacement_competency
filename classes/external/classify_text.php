@@ -19,9 +19,9 @@ class classify_text extends external_api {
             'prompttext' => new external_value(PARAM_RAW, 'Visible page text'),
             'selectedframeworkid' => new external_value(PARAM_INT,  'Framework id', VALUE_DEFAULT, 0),
             'selectedframeworkshortname' => new external_value(PARAM_TEXT, 'Framework shortname', VALUE_DEFAULT, ''),
-            'domains' => new external_multiple_structure(
-                new external_value(PARAM_TEXT, 'Selected domain name'),
-                'Selected domain names',
+            'levels' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Selected level name'),
+                'Selected level names',
                 VALUE_DEFAULT,
                 []
             ),
@@ -33,7 +33,7 @@ class classify_text extends external_api {
         string $prompttext,
         int $selectedframeworkid = 0,
         string $selectedframeworkshortname = '',
-        array $domains = []
+        array $levels = []
     ): array {
 
         $params = self::validate_parameters(self::execute_parameters(), [
@@ -41,21 +41,21 @@ class classify_text extends external_api {
             'prompttext' => $prompttext,
             'selectedframeworkid' => $selectedframeworkid,
             'selectedframeworkshortname' => $selectedframeworkshortname,
-            'domains' => $domains,
+            'levels' => $levels,
         ]);
 
         $context = \context::instance_by_id($params['contextid']);
         self::validate_context($context);
         require_capability('aiplacement/classifyassist:classify_text', $context);
 
-        $selecteddomains = array_values(array_unique(array_filter(array_map(
+        $selectedlevels = array_values(array_unique(array_filter(array_map(
             static function($s) {
                 $s = (string)$s;
                 $s = trim($s);
                 $s = preg_replace('/\s+/u', ' ', $s);
                 return $s;
             },
-            $params['domains'] ?? []
+            $params['levels'] ?? []
         ))));
 
         $placement = new \aiplacement_classifyassist\placement();
@@ -64,7 +64,7 @@ class classify_text extends external_api {
             $params['prompttext'],
             (int)$params['selectedframeworkid'],
             (string)$params['selectedframeworkshortname'],
-            $selecteddomains
+            $selectedlevels
         );
 
         $outer = json_decode($rawjson, true);
@@ -100,18 +100,18 @@ class classify_text extends external_api {
 
         $fwshort = (string)($inner['framework']['shortname'] ?? $params['selectedframeworkshortname']);
 
-        $useddomains = [];
-        if (!empty($inner['domains']) && is_array($inner['domains'])) {
-            $useddomains = array_values(array_unique(array_filter(array_map(
+        $usedlevels = [];
+        if (!empty($inner['levels']) && is_array($inner['levels'])) {
+            $usedlevels = array_values(array_unique(array_filter(array_map(
                 static function($s) {
                     $s = trim((string)$s);
                     return $s === '' ? null : preg_replace('/\s+/u', ' ', $s);
                 },
-                $inner['domains']
+                $inner['levels']
             ))));
         }
-        if (!$useddomains) {
-            $useddomains = $selecteddomains;
+        if (!$usedlevels) {
+            $usedlevels = $selectedlevels;
         }
 
         $competencies = [];
@@ -128,7 +128,7 @@ class classify_text extends external_api {
         return [
             'frameworkid'        => (int)$params['selectedframeworkid'],
             'frameworkshortname' => $fwshort,
-            'useddomains'        => $useddomains,
+            'usedlevels'        => $usedlevels,
             'competencies'       => $competencies,
         ];
 
@@ -138,9 +138,9 @@ class classify_text extends external_api {
         return new external_single_structure([
             'frameworkid'        => new external_value(PARAM_INT,  'ID of the competency framework used to classify'),
             'frameworkshortname' => new external_value(PARAM_TEXT, 'Short name of the competency framework used to classify'),
-            'useddomains'        => new external_multiple_structure(
-                new external_value(PARAM_TEXT, 'Domain name used'),
-                'Domains actually used for classification',
+            'usedlevels'        => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Level name used'),
+                'Levels actually used for classification',
                 VALUE_DEFAULT,
                 []
             ),

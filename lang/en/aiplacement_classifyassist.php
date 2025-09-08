@@ -5,16 +5,16 @@ $string['action_classify_text_instruction'] = '
 You will receive:
 - A course/activity description (free text).
 - A competency framework shortname: "{$a->frameworkshortname}".
-- A list of selected domains (top level within that framework): {$a->domains}
+- A list of selected levels (top level within that framework): {$a->levels}
 
 Task
-Classify the description using ONLY competencies that belong to "{$a->frameworkshortname}" and fall within the listed domains. If you are not certain a competency exists in the specified framework/domain, DO NOT include it.
+Classify the description using ONLY competencies that belong to "{$a->frameworkshortname}" and fall within the listed levels. If you are not certain a competency exists in the specified framework/level, DO NOT include it.
 
 Output format
 Return JSON only, with these keys:
 {
   "framework": { "shortname": "{$a->frameworkshortname}" },
-  "domains": {$a->domains},
+  "levels": {$a->levels},
   "competencies": [
     "CODE - Name"  // If the framework has canonical codes (e.g., NICE K/S/T/A codes). Otherwise just "Name".
   ]
@@ -26,10 +26,10 @@ Rules
 
 Examples (illustrative; not exhaustive)
 
-Example A — single domain
+Example A — single level
 {
   "framework": { "shortname": "NICE-1.0.0" },
-  "domains": ["Oversight and Governance"],
+  "levels": ["Oversight and Governance"],
   "competencies": [
     "T1119 - Recommend vulnerability remediation strategies",
     "S0415 - Skill in evaluating regulations",
@@ -39,7 +39,7 @@ Example A — single domain
 
 {
   "framework": { "shortname": "MITRE D3FEND" },
-  "domains": ["Harden", "Detect"],
+  "levels": ["Harden", "Detect"],
   "competencies": [
     "Credential Hardening",
     "Network Segmentation",
@@ -51,7 +51,7 @@ Example A — single domain
 
 {
   "framework": { "shortname": "MITRE ATT&CK (Enterprise)" },
-  "domains": ["Initial Access", "Execution"],
+  "levels": ["Initial Access", "Execution"],
   "competencies": [
     "T1566 - Phishing",
     "T1059 - Command and Scripting Interpreter",
@@ -59,10 +59,10 @@ Example A — single domain
   ]
 }
 
-Example B — multiple domains
+Example B — multiple levels
 {
   "framework": { "shortname": "NICE-1.0.0" },
-  "domains": ["Protect and Defend", "Investigate"],
+  "levels": ["Protect and Defend", "Investigate"],
   "competencies": [
     "T1241 - Document cybersecurity incidents",
     "S0385 - Skill in communicating complex concepts",
@@ -73,7 +73,7 @@ Example B — multiple domains
 Example C — no clear matches
 {
   "framework": { "shortname": "NICE-1.0.0" },
-  "domains": ["Analyze"],
+  "levels": ["Analyze"],
   "competencies": []
 }
 ';
@@ -107,13 +107,13 @@ $string['notify_course_failed_heading'] = 'Failed to add to course: {$a->count}'
 $string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
 $string['notify_cm_exists_heading'] = 'Already linked to this activity (not added): {$a->count}';
 $string['notify_cm_failed_heading'] = 'Failed to link to activity: {$a->count}';
-$string['domainsselection'] = 'Competency Selection';
-$string['domainsselection_help'] = 'Select the competency levels (taxonomies) you want the AI model to use when classifying your content.';
+$string['levelsselection'] = 'Competency Selection';
+$string['levelsselection_help'] = 'Select the competency levels (taxonomies) you want the AI model to use when classifying your content.';
 $string['frameworkselection'] = 'Competency Framework Selection';
 $string['frameworkselection_help'] = 'Choose the competency framework that the AI model should use to classify your content.';
 $string['frameworkselection_label'] = 'Available competency frameworks:';
 $string['frameworkselection_placeholder'] = 'Please choose a framework…';
-$string['domains'] = 'Competency Levels';
+$string['levels'] = 'Competency Levels';
 $string['competencies'] = 'Competencies';
 $string['applycompetencies'] = 'Apply';
 $string['classify_note_newactivity'] = 'Once this activity has been saved, the Competency Classification tool will be enabled.';

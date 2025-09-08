@@ -17,12 +17,12 @@ class placement extends \core_ai\placement {
         string $prompttext,
         int $selectedframeworkid = 0,
         string $selectedframeworkshortname = '',
-        array $domains = []
+        array $levels = []
     ): string {
         global $USER;
 
         // Builds system instruction with course description
-        $instruction = utils::build_instruction($selectedframeworkid, $selectedframeworkshortname, $domains);
+        $instruction = utils::build_instruction($selectedframeworkid, $selectedframeworkshortname, $levels);
         $finalprompt = $instruction . "\n\nTEXT TO CLASSIFY:\n" . $prompttext;
 
         $action = new \core_ai\aiactions\generate_text(
@@ -35,7 +35,7 @@ class placement extends \core_ai\placement {
             $action->set_meta([
                 'frameworkid'        => $selectedframeworkid,
                 'frameworkshortname' => $selectedframeworkshortname,
-                'domains'            => $domains
+                'levels'            => $levels
             ]);
         }
 

@@ -21,19 +21,19 @@
             {{/frameworkshortname}}
           </dd>
 
-          <!-- Domains -->
+          <!-- Levels -->
           <dt class="col-12 col-sm-4 fw-semibold"
               style="white-space:normal; word-break:normal !important; overflow-wrap:normal !important; hyphens:none;">
-            {{#str}} domains, aiplacement_classifyassist {{/str}}
+            {{#str}} levels, aiplacement_classifyassist {{/str}}
           </dt>
           <dd class="col-sm-8">
             <ul class="list-unstyled mb-0 pl-0">
-              {{#useddomains}}
+              {{#usedlevels}}
                 <li class="text-capitalize">{{.}}</li>
-              {{/useddomains}}
-              {{^useddomains}}
+              {{/usedlevels}}
+              {{^usedlevels}}
                 <li class="text-muted">{{#str}} none, aiplacement_classifyassist {{/str}}</li>
-              {{/useddomains}}
+              {{/usedlevels}}
             </ul>
           </dd>
 

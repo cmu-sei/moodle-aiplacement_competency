@@ -11,7 +11,7 @@ define([
     const SELECTOR_CONTINUE    = '[data-action="continue"]';
     const SELECTOR_BACK        = '[data-action="back"]';
     const SELECTOR_PRESELECT   = '#classify-preselect';
-    const SELECTOR_DOMAINS  = 'input[name="classify-domains"]';
+    const SELECTOR_LEVELS  = 'input[name="classify-levels"]';
     const ID_CLOSE_BTN         = '#ai-classify-drawer-close';
     const SELECTOR_RETRY      = '[data-action="retry"]';
 
@@ -29,7 +29,7 @@ define([
                 });
             }
 
-            this._domains = [];
+            this._levels = [];
             this.registerExtraListener();
         }
 
@@ -185,7 +185,7 @@ define([
                     };
                     this._selectedFramework = selectedFramework;
 
-                    this.showDomains(prompt, selectedFramework);
+                    this.showLevels(prompt, selectedFramework);
                 });
 
             }
@@ -208,11 +208,11 @@ define([
             }
         }
 
-        // === STEP 2: Select domains (checkboxes) ===
-        async showDomains(prompt, framework) {
+        // === STEP 2: Select levels (checkboxes) ===
+        async showLevels(prompt, framework) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
-            const html = await Templates.render('aiplacement_classifyassist/domains', { options: [] });
+            const html = await Templates.render('aiplacement_classifyassist/levels', { options: [] });
             this.aiDrawerBodyElement.innerHTML = html;
 
             let competencies = [];
@@ -245,7 +245,7 @@ define([
             } catch (error) {
             this.aiDrawerBodyElement.querySelector('.ai-prestep')?.insertAdjacentHTML(
                 'afterbegin',
-                '<div class="alert alert-danger mb-3">Failed to load domains.</div>'
+                '<div class="alert alert-danger mb-3">Failed to load levels.</div>'
             );
             Notification.exception(error);
             competencies = [];
@@ -263,22 +263,22 @@ define([
                 .replace(/\b[A-Z]{4,}\b/g, w => w.charAt(0) + w.slice(1).toLowerCase());
 
             return {
-                id: `domain-${c.shortname}`,
+                id: `level-${c.shortname}`,
                 value: String(c.shortname),
                 label,
             };
             });
 
-            const finalHtml = await Templates.render('aiplacement_classifyassist/domains', { options });
+            const finalHtml = await Templates.render('aiplacement_classifyassist/levels', { options });
             this.aiDrawerBodyElement.innerHTML = finalHtml;
 
             const cancelBtn   = this.aiDrawerBodyElement.querySelector(SELECTOR_CANCEL);
             const backBtn     = this.aiDrawerBodyElement.querySelector(SELECTOR_BACK);
             const continueBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CONTINUE);
-            const boxes       = this.aiDrawerBodyElement.querySelectorAll(SELECTOR_DOMAINS);
+            const boxes       = this.aiDrawerBodyElement.querySelectorAll(SELECTOR_LEVELS);
 
-            if (Array.isArray(this._selectedDomains) && this._selectedDomains.length) {
-                const set = new Set(this._selectedDomains.map(String));
+            if (Array.isArray(this._selectedLevels) && this._selectedLevels.length) {
+                const set = new Set(this._selectedLevels.map(String));
                 boxes.forEach(b => { b.checked = set.has(b.value); });
             }
 
@@ -298,13 +298,13 @@ define([
                         return;
                     }
 
-                    const selectedDomains = Array.from(boxes)
+                    const selectedLevels = Array.from(boxes)
                         .filter(b => b.checked)
                         .map(b => b.value);
 
-                    this._selectedDomains = selectedDomains;
+                    this._selectedLevels = selectedLevels;
 
-                    this.sendClassification(prompt, framework, selectedDomains);
+                    this.sendClassification(prompt, framework, selectedLevels);
                 });
             }
 
@@ -326,7 +326,7 @@ define([
         }
 
         // === Final: send classification ===
-        async sendClassification(prompt, framework, domains) {
+        async sendClassification(prompt, framework, levels) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const loadingHtml = await Templates.render('aiplacement_classifyassist/loading', {});
@@ -348,13 +348,13 @@ define([
                     shortname: this._selectedFrameworkShortname,
                 };
 
-                const rawSelectedDomains =
-                (Array.isArray(domains) && domains.length) ? domains :
-                (Array.isArray(this._selectedDomains) && this._selectedDomains.length) ? this._selectedDomains :
+                const rawSelectedLevels =
+                (Array.isArray(levels) && levels.length) ? levels :
+                (Array.isArray(this._selectedLevels) && this._selectedLevels.length) ? this._selectedLevels :
                 [];
 
-                const selectedDomains = [...new Set(
-                rawSelectedDomains
+                const selectedLevels = [...new Set(
+                rawSelectedLevels
                     .map(s => String(s).trim().replace(/\s+/g, ' '))
                     .filter(Boolean)
                     .map(s => s.toLowerCase())
@@ -367,7 +367,7 @@ define([
                         prompttext: prompt,
                         selectedframeworkid: fw?.id || 0,
                         selectedframeworkshortname: fw?.shortname || '',
-                        domains: selectedDomains,
+                        levels: selectedLevels,
                     }
                 }]);
 
@@ -377,7 +377,7 @@ define([
                     return;
                 }
 
-                const {frameworkid, frameworkshortname, useddomains = [], competencies = []} = result;
+                const {frameworkid, frameworkshortname, usedlevels = [], competencies = []} = result;
                 const uniqid  = 'resp-' + Math.random().toString(36).substr(2, 9);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_classifyassist');
 
@@ -389,7 +389,7 @@ define([
                         uniqid,
                         frameworkid,
                         frameworkshortname,
-                        useddomains,
+                        usedlevels,
                         competencies,
                     }
                 );
@@ -400,7 +400,7 @@ define([
                 if (regen) {
                     regen.addEventListener('click', e => {
                         e.preventDefault();
-                        this.sendClassification(prompt, fw, selectedDomains);
+                        this.sendClassification(prompt, fw, selectedLevels);
                     });
                 }
             } catch (error) {
