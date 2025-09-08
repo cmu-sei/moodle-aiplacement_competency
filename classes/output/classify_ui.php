@@ -2,7 +2,6 @@
 namespace aiplacement_classifyassist\output;
 
 use core\hook\output\before_footer_html_generation;
-use html_writer;
 
 /**
  * Decides *when* to show the “Classify” button and renders it.

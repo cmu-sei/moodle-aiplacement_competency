@@ -17,7 +17,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'aiplacement_classifyassist';
-$plugin->version = 2025090300;
+$plugin->version = 2025090401;
 $plugin->requires = 2025040800;
 $plugin->maturity = MATURITY_ALPHA;
 $plugin->core_hooks = [
