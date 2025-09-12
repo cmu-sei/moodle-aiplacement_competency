@@ -1,10 +1,19 @@
 <div class="ai-prestep">
-    <h3 class="h5">Competency Framework</h3>
+    <h3 class="h5">
+        {{#str}} frameworkselection, aiplacement_classifyassist {{/str}}
+    </h3>
+    <p class="text-muted">
+        {{#str}} frameworkselection_help, aiplacement_classifyassist {{/str}}
+    </p>
 
     <div class="form-group">
-        <label for="classify-preselect">Select the Competency Framework:</label>
+        <label for="classify-preselect">
+            {{#str}} frameworkselection_label, aiplacement_classifyassist {{/str}}
+        </label>
         <select id="classify-preselect" class="custom-select">
-            <option value="" selected disabled>Loading…</option>
+            <option value="" selected disabled>
+                {{#str}} frameworkselection_placeholder, aiplacement_classifyassist {{/str}}
+            </option>
         </select>
     </div>
 

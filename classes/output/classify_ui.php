@@ -2,7 +2,6 @@
 namespace aiplacement_classifyassist\output;
 
 use core\hook\output\before_footer_html_generation;
-use html_writer;
 
 /**
  * Decides *when* to show the “Classify” button and renders it.
@@ -11,6 +10,15 @@ class classify_ui {
 
     public static function load_classify_ui(\core\hook\output\before_footer_html_generation $hook): void {
         global $PAGE, $OUTPUT, $USER;
+
+        $params = $PAGE->url->params();
+        $isnew = !empty($params['add']) && empty($params['update']);
+
+        if ($isnew) {
+            $msg = get_string('classify_note_newactivity', 'aiplacement_classifyassist');
+            $PAGE->requires->js_call_amd('aiplacement_classifyassist/newactivity_notice', 'init', [$msg]);
+            return;
+        }
 
         if (!self::preflight_checks()) {
             return;
@@ -29,7 +37,7 @@ class classify_ui {
         );
 
         $PAGE->requires->js_call_amd(
-            'aiplacement_classifyassist/applytsks',
+            'aiplacement_classifyassist/applycmps',
             'init',
             [$PAGE->context->id]
         );

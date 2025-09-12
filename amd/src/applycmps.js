@@ -10,10 +10,9 @@ define([
 ], function(Modal, ModalFactory, ModalEvents, Templates, Str, Ajax, $, Notification) {
 
   var toArray = function(nl) { return Array.prototype.slice.call(nl || []); };
-  var MAP = { tasks: 'tasks', skills: 'skills', knowledge: 'knowledge' };
 
-  var RELOAD_COURSE_KEY ='aiplacement:coursePostReloadNotices';
-  var RELOAD_CM_KEY = 'aiplacement:cmPostReloadNotices';
+  var RELOAD_COURSE_KEY = 'aiplacement:coursePostReloadNotices';
+  var RELOAD_CM_KEY     = 'aiplacement:cmPostReloadNotices';
 
   // Save the competencies that were added, exists, or failed to be added to the course
   function stashCourseNotices(added, exists, failed) {
@@ -23,8 +22,7 @@ define([
       }));
     } catch (e) {}
   }
-
-    // Save the competencies that were added, exists, or failed to be added to the activity
+  // Save the competencies that were added, exists, or failed to be added to the activity
   function stashCmNotices(added, exists, failed) {
     try {
       sessionStorage.setItem(RELOAD_CM_KEY, JSON.stringify({
@@ -49,6 +47,15 @@ define([
     var failed = Array.isArray(data.failed) ? data.failed : [];
 
     var jobs = [];
+    var esc = function (s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    };
+    var renderList = function (items) {
+      return '<ul class="mb-0 mt-1">' +
+        items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+      '</ul>';
+    };
 
     if (added.length) {
       jobs.push(
@@ -105,107 +112,59 @@ define([
 
   // Get the AI response
   var extractFromResponse = function(root) {
-    var out = { tasks: [], skills: [], knowledge: [] };
-    if (!root) { return out; }
-    var dl = root.querySelector('dl');
-    if (!dl) { return out; }
+    var out = { competencies: [] };
+    if (!root) {
+      return out;
+    }
 
-    toArray(dl.querySelectorAll('dt')).forEach(function(dt) {
-      var key = MAP[(dt.textContent || '').trim().toLowerCase()];
-      if (!key) { return; }
-      var dd = dt.nextElementSibling;
-      if (!dd || dd.tagName.toLowerCase() !== 'dd') { return; }
+    var dd = root.querySelector('dd[data-section="competencies"]');
+    if (!dd) {
+      return out;
+    }
 
-      out[key] = toArray(dd.querySelectorAll('li'))
-        .map(function(li) { return (li.innerText || '').trim(); })
-        .filter(Boolean)
-        .filter(function(s) { return s.toLowerCase() !== 'none'; });
-    });
+    out.competencies = toArray(dd.querySelectorAll('li'))
+      .map(function(li) { return (li.innerText || '').trim(); })
+      .filter(Boolean)
+      .filter(function(s) { return s.toLowerCase() !== 'none'; });
+
     return out;
   };
 
   // Get the user checked competencies from the modal
   var collectChecked = function(root) {
-    var pick = function(section) {
-      var sel = '.aiplacement-applytsks-section[data-section="' + section + '"] input[type="checkbox"]:checked';
-      return toArray(root.querySelectorAll(sel)).map(function(cb) {
-        var row = cb.closest('label');
-        var span = row && row.querySelector('span');
-        return span ? span.textContent.trim() : null;
-      }).filter(Boolean);
-    };
-    return { tasks: pick('tasks'), skills: pick('skills'), knowledge: pick('knowledge') };
+    var sel = '.aiplacement-applycmps-section[data-section="competencies"] input[type="checkbox"]:checked';
+    var arr = toArray(root.querySelectorAll(sel)).map(function(cb) {
+      var row = cb.closest('label');
+      var span = row && row.querySelector('span');
+      return span ? span.textContent.trim() : null;
+    }).filter(Boolean);
+    return { competencies: arr };
   };
 
   // Add checkboxes, select all, clear all
   var attachControls = function($root) {
     $root.on('click', '[data-action="selectall"]', function(e) {
       e.preventDefault();
-      var sec = e.currentTarget.closest('.aiplacement-applytsks-section');
+      var sec = e.currentTarget.closest('.aiplacement-applycmps-section');
       if (sec) {
-        toArray(sec.querySelectorAll('input[type="checkbox"]')).forEach(function(cb) { cb.checked = true; });
+        toArray(sec.querySelectorAll('input[type="checkbox"]')).forEach(function(cb){ cb.checked = true; });
       }
     });
     $root.on('click', '[data-action="clearall"]', function(e) {
       e.preventDefault();
-      var sec = e.currentTarget.closest('.aiplacement-applytsks-section');
+      var sec = e.currentTarget.closest('.aiplacement-applycmps-section');
       if (sec) {
-        toArray(sec.querySelectorAll('input[type="checkbox"]')).forEach(function(cb) { cb.checked = false; });
+        toArray(sec.querySelectorAll('input[type="checkbox"]')).forEach(function(cb){ cb.checked = false; });
       }
     });
-
     $root.on('click', '[data-action="apply-inline"]', function(e) {
       e.preventDefault();
       $root.trigger(ModalEvents.save);
     });
   };
 
-  // Get course id from activity body
-  var getCourseIdFromBody = function() {
-    var cls = (document.body && document.body.className) || '';
-    var m = cls.match(/(?:^|\s)course-(\d+)(?:\s|$)/);
-    return m ? parseInt(m[1], 10) : null;
-  };
-
-  // Add user selected competencies from the modal to the course
-  var addCompetenciesToCourse = function(courseId, competencyIds) {
-    if (!courseId || !Array.isArray(competencyIds) || competencyIds.length === 0) {
-      return Promise.resolve([]);
-    }
-
-    var calls = competencyIds.map(function(id) {
-      return {
-        methodname: 'core_competency_add_competency_to_course',
-        args: { courseid: courseId, competencyid: id }
-      };
-    });
-
-    var reqs = Ajax.call(calls);
-
-    return Promise.all(reqs.map(function(p, idx) {
-      return Promise.resolve(p)
-        .then(function(res) { return { id: competencyIds[idx], result: res }; })
-        .catch(function(err) { return { id: competencyIds[idx], error: err }; });
-    }));
-  };
-
-  // Escape text for safe HTML output
-  var esc = function (s) {
-    return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  };
-
-  // Render a bullet list from an array of strings.
-  var renderList = function (items) {
-    return '<ul class="mb-0 mt-1">' +
-      items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
-    '</ul>';
-  };
-
   var norm = function(s) {
-    return (s === null || s === undefined ? '' : String(s)).toLowerCase().trim();
+    return (s === null ? '' : String(s)).toLowerCase().trim();
   };
 
   // Matches the competencies selected from the modal with the system's competencies
@@ -214,13 +173,8 @@ define([
       var calls = Ajax.call([{
         methodname: 'core_competency_list_competencies',
         args: {
-          filters: [
-            { column: 'competencyframeworkid', value: String(frameworkId) }
-          ],
-          sort: 'shortname',
-          order: 'ASC',
-          skip: 0,
-          limit: 0
+          filters: [{ column: 'competencyframeworkid', value: String(frameworkId) }],
+          sort: 'shortname', order: 'ASC', skip: 0, limit: 0
         }
       }]);
 
@@ -230,16 +184,16 @@ define([
         var byShortExact = new Map();
         list.forEach(function(c) {
           var idn = norm(c.idnumber);
-          var sn = norm(c.shortname);
-          if (idn) { byIdnumber.set(idn, c); }
-          if (sn) { byShortExact.set(sn, c); }
+          var sn  = norm(c.shortname);
+          if (idn) {
+            byIdnumber.set(idn, c);
+          }
+          if (sn)  {
+            byShortExact.set(sn, c);
+          }
         });
 
-        var inputs = []
-          .concat(picked.tasks || [])
-          .concat(picked.skills || [])
-          .concat(picked.knowledge || []);
-
+        var inputs = [].concat(picked.competencies || []);
         var matches = inputs.map(function(str) {
           var original = str || '';
           var parts = original.split(' - ');
@@ -247,38 +201,40 @@ define([
           var name = norm(parts.slice(1).join(' - '));
           var comp = null;
 
-          // Get idnumber
           if (code && byIdnumber.has(code)) {
             comp = byIdnumber.get(code);
           }
-          // Get shortname
+
           if (!comp && name && byShortExact.has(name)) {
             comp = byShortExact.get(name);
           }
-          // Get name and description
+
           if (!comp && name) {
-            comp = list.find(function(c) { return norm(c.description).includes(name); });
-          }
-          // Get name and shortname
-          if (!comp && name) {
-            comp = list.find(function(c) { return norm(c.shortname).includes(name); });
+            comp = list.find(function(c) {
+              return norm(c.description).includes(name);
+            });
           }
 
-          return comp ?
+          if (!comp && name) {
+            comp = list.find(function(c) {
+              return norm(c.shortname).includes(name);
+            });
+          }
+                    return comp ?
             { input: original, id: comp.id, idnumber: comp.idnumber, shortname: comp.shortname } :
             { input: original, id: null };
         });
 
-        var matchedIds = matches
-          .filter(function(m) { return m.id !== null && m.id !== undefined; })
-          .map(function(m) { return m.id; });
-
+        var matchedIds = matches.filter(function(m){ return m.id !== null; }).map(function(m){ return m.id; });
         resolve({ matches: matches, matchedIds: matchedIds, list: list });
-      }).fail(function(err) {
-        reject(err);
-      });
+      }).fail(reject);
     });
   };
+  function getCourseIdFromBody() {
+    var cls = (document.body && document.body.className) || '';
+    var m = cls.match(/(?:^|\s)course-(\d+)(?:\s|$)/);
+    return m ? parseInt(m[1], 10) : null;
+  }
 
   // Grab cmid from the URL (activity edit page uses ?update=<cmid>)
   function getCmidFromUrl() {
@@ -290,28 +246,30 @@ define([
     return Ajax.call([{
       methodname: 'aiplacement_classifyassist_add_cm_competency',
       args: { cmid: cmid, competencyid: competencyId }
-    }])[0]; // returns a Promise
+    }])[0];
   }
 
   // Modal that shows the ai response competencies to the user, here the user will be able to select which should be added to the course
   var openModal = function(values) {
-    return Str.get_string('applytsks_title', 'aiplacement_classifyassist').then(function(title) {
-      return Templates.render('aiplacement_classifyassist/applytsks_modal', {
-        tasks: values.tasks || [],
-        skills: values.skills || [],
-        knowledge: values.knowledge || [],
-        hastasks: !!(values.tasks && values.tasks.length),
-        hasskills: !!(values.skills && values.skills.length),
-        hasknowledge: !!(values.knowledge && values.knowledge.length)
+    return Str.get_string('applycmps_title', 'aiplacement_classifyassist').then(function(title) {
+      return Templates.render('aiplacement_classifyassist/applycmps_modal', {
+        competencies: values.competencies || [],
+        hascompetencies: !!(values.competencies && values.competencies.length)
       }).then(function(html, js) {
         var api = getModalAPI();
-        if (!api.create) { throw new Error('No modal API available'); }
+        if (!api.create) {
+          throw new Error('No modal API available');
+        }
 
         var opts = { title: title, body: html, large: true };
-        if (api.types && api.types.SAVE_CANCEL) { opts.type = api.types.SAVE_CANCEL; }
+        if (api.types && api.types.SAVE_CANCEL) {
+          opts.type = api.types.SAVE_CANCEL;
+        }
 
         return api.create(opts).then(function(modal) {
-          if (js) { Templates.runTemplateJS(js); }
+          if (js) {
+            Templates.runTemplateJS(js);
+          }
           attachControls(modal.getRoot());
 
           return new Promise(function(resolve, reject) {
@@ -320,7 +278,7 @@ define([
                 var root = modal.getRoot()[0];
                 var picked = collectChecked(root);
                 modal.getRoot().data('selection', picked);
-                sessionStorage.setItem('aiplacement_applytsks:last', JSON.stringify(picked));
+                sessionStorage.setItem('aiplacement_applycmps:last', JSON.stringify(picked));
 
                 var frameworkId = String($('dd[data-frameworkid]').data('frameworkid') || '0');
 
@@ -329,39 +287,43 @@ define([
                   sel.matchedCompetencyIds = res.matchedIds;
                   modal.getRoot().data('selection', sel);
 
-                  // Split into matched vs unmatched.
                   var all = Array.isArray(res.matches) ? res.matches : [];
-                  var matched = all.filter(function (m) {
-                    return m && m.id !== null && m.id !== undefined;
-                  });
-                  var unmatched = all.filter(function (m) {
-                    return !m || m.id === null || m.id === undefined;
-                  });
-
-                  var unmatchedLabels = unmatched
-                    .map(function(m){ return (m && m.input) ? String(m.input).trim() : ''; })
-                    .filter(Boolean);
+                  var matched   = all.filter(function(m){ return m && m.id !== null; });
+                  var unmatched = all.filter(function(m){ return !m || m.id === null; });
+                  var unmatchedLabels = unmatched.map(function(m){ return (m && m.input) ? String(m.input).trim() : ''; }).filter(Boolean);
 
                   var courseId = getCourseIdFromBody();
-                  var pickedNow = collectChecked(root);
-
                   if (!courseId) {
                     Str.get_string('notify_nocourseid', 'aiplacement_classifyassist').then(function(msg) {
                       Notification.addNotification({ type: 'warning', message: msg });
                     });
-                    resolve(pickedNow);
+                    resolve(picked);
                     modal.hide();
                     return;
                   }
 
-                  // Add competencies to course
-                  addCompetenciesToCourse(courseId, res.matchedIds).then(function(outcomes) {
+                  // Add to course
+                  var calls = res.matchedIds.map(function(id) {
+                    return { methodname: 'core_competency_add_competency_to_course', args: { courseid: courseId, competencyid: id } };
+                  });
+                  var reqs = Ajax.call(calls);
+                  Promise.all(reqs.map(function(p, idx) {
+                    return Promise.resolve(p).then(function(r){ return { id: res.matchedIds[idx], result: r }; })
+                      .catch(function(e){ return { id: res.matchedIds[idx], error: e }; });
+                  })).then(function(outcomes){
                     var byId = new Map();
-                    matched.forEach(function(m) { if (m.id) { byId.set(m.id, m); } });
+                    matched.forEach(function(m) {
+                      if (m.id) {
+                        byId.set(m.id, m);
+                      }
+                    });
+                    var added=[], exists=[], failed=[];
+                    outcomes.forEach(function(o){
+                     if (o.error) {
+                        failed.push(o.id);
+                        return;
+                      }
 
-                    var added = [], exists = [], failed = [];
-                    outcomes.forEach(function(o) {
-                      if (o.error) { failed.push(o.id); return; }
                       if (o.result === false) {
                         exists.push(o.id);
                       } else if (o.result === true || o.result === 1 || o.result === '1') {
@@ -369,44 +331,29 @@ define([
                       } else {
                         (o.result ? added : exists).push(o.id);
                       }
+
                     });
 
-                    var nameOf = function(id) {
-                      var m = byId.get(id);
-                      if (!m) { return 'ID ' + id; }
-                      return m.shortname || m.input || ('ID ' + id);
-                    };
+                    var nameOf = function(id){ var m = byId.get(id); return m ? (m.shortname || m.input || ('ID ' + id)) : ('ID ' + id); };
+                    stashCourseNotices(added.map(nameOf), exists.map(nameOf), failed.map(nameOf).concat(unmatchedLabels));
 
-                    var addedNames  = added.map(nameOf);
-                    var existsNames = exists.map(nameOf);
-                    var failedNames = failed.map(nameOf).concat(unmatchedLabels);
-
-                    stashCourseNotices(addedNames, existsNames, failedNames);
-
-                    const cmid = getCmidFromUrl();
-                    const toLink = Array.from(new Set([].concat(added, exists))); // ids to ensure linked at CM level
-
+                    // Also link to CM if we're editing a module
+                    var cmid = getCmidFromUrl();
+                    var toLink = Array.from(new Set([].concat(added, exists)));
                     var linkPromise = Promise.resolve();
                     if (cmid > 0 && toLink.length) {
-                      // Build id → display name map for post-reload messages.
                       var byIdName = new Map();
-                      matched.forEach(function(m) {
+                      matched.forEach(function(m){
                         if (m && m.id) {
                           byIdName.set(m.id, m.shortname || m.input || ('ID ' + m.id));
                         }
                       });
-
-                      linkPromise = Promise.all(toLink.map(function(id) {
-                        return addToModule(cmid, id)
-                          .then(function(ok) {
-                            return { id: id, status: ok ? 'added' : 'exists' };
-                          })
-                          .catch(function() {
-                            return { id: id, status: 'failed' };
-                          });
-                      })).then(function(results) {
-                        var addedIds = [], existsIds = [], failedIds = [];
-                        results.forEach(function(r) {
+                      linkPromise = Promise.all(toLink.map(function(id){
+                        return addToModule(cmid, id).then(function(ok){ return { id:id, status: ok ? 'added' : 'exists' }; })
+                          .catch(function(){ return { id:id, status:'failed' }; });
+                      })).then(function(results){
+                        var addedIds=[], existsIds=[], failedIds=[];
+                        results.forEach(function(r){
                           if (r.status === 'added') {
                             addedIds.push(r.id);
                           } else if (r.status === 'exists') {
@@ -415,26 +362,20 @@ define([
                             failedIds.push(r.id);
                           }
                         });
-
-                        var cmAddedNames  = addedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); });
-                        var cmExistsNames = existsIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); });
-                        var cmFailedNames = failedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); });
-
-                        // Stash ACTIVITY notices (separate bucket)
-                        stashCmNotices(cmAddedNames, cmExistsNames, cmFailedNames);
+                        stashCmNotices(
+                          addedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }),
+                          existsIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }),
+                          failedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); })
+                        );
                       });
                     }
-                    linkPromise.then(function(){
-                      window.location.reload();
-                    });
-                  }).catch(function(err) {
+                    linkPromise.then(function(){ window.location.reload(); });
+                  }).catch(function(err){
                     Notification.exception(err);
-                    resolve(pickedNow);
+                    resolve(picked);
                     modal.hide();
                   });
-                }).catch(function(err) {
-                  reject(err);
-                });
+                }).catch(reject);
               } catch (err) {
                 reject(err);
               }
@@ -459,32 +400,33 @@ define([
 
   var handleClick = function(btn) {
     var card = btn.closest('.card-text.content');
-    if (!card) { return; }
+    if (!card) {
+      return;
+    }
     var content = card.querySelector('.course-assist-response-content');
-    var values = extractFromResponse(content);
-
+    var values = extractFromResponse(content); // { competencies: [...] }
     openModal(values).then(function(edited) {
-      if (!edited) { return; }
+      if (!edited) {
+        return;
+      }
       var contentEl = card.querySelector('[id^="course-assist-response-content-"]');
       var uniqid = contentEl ? contentEl.id : null;
-
-      dispatchApply(
-        { uniqid: uniqid, action: 'applytsks', values: edited },
-        contentEl || document
-      );
+      dispatchApply({ uniqid: uniqid, action: 'applycmps', values: edited }, contentEl || document);
     });
   };
 
   var init = function() {
     document.addEventListener('click', function(e) {
-      var btn = e.target.closest('button[data-action="applytsks"]');
-      if (!btn) { return; }
+      var btn = e.target.closest('button[data-action="applycmps"]');
+      if (!btn) {
+        return;
+      }
       e.preventDefault();
       handleClick(btn);
     }, { passive: false });
   };
 
-  // Show notices on page reload
+  // Show notices after reloads
   showPostReloadCourseNoticesIfAny();
   showPostReloadCmNoticesIfAny();
 

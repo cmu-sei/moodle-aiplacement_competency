@@ -17,8 +17,14 @@ class classify_text extends external_api {
         return new external_function_parameters([
             'contextid' => new external_value(PARAM_INT,  'Context ID'),
             'prompttext' => new external_value(PARAM_RAW, 'Visible page text'),
-            'selectedframeworkid' => new external_value(PARAM_INT,  'Framework id',        VALUE_DEFAULT, 0),
+            'selectedframeworkid' => new external_value(PARAM_INT,  'Framework id', VALUE_DEFAULT, 0),
             'selectedframeworkshortname' => new external_value(PARAM_TEXT, 'Framework shortname', VALUE_DEFAULT, ''),
+            'levels' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Selected level name'),
+                'Selected level names',
+                VALUE_DEFAULT,
+                []
+            ),
         ]);
     }
 
@@ -26,7 +32,8 @@ class classify_text extends external_api {
         int $contextid,
         string $prompttext,
         int $selectedframeworkid = 0,
-        string $selectedframeworkshortname = ''
+        string $selectedframeworkshortname = '',
+        array $levels = []
     ): array {
 
         $params = self::validate_parameters(self::execute_parameters(), [
@@ -34,48 +41,114 @@ class classify_text extends external_api {
             'prompttext' => $prompttext,
             'selectedframeworkid' => $selectedframeworkid,
             'selectedframeworkshortname' => $selectedframeworkshortname,
+            'levels' => $levels,
         ]);
 
         $context = \context::instance_by_id($params['contextid']);
         self::validate_context($context);
         require_capability('aiplacement/classifyassist:classify_text', $context);
 
+        $selectedlevels = array_values(array_unique(array_filter(array_map(
+            static function($s) {
+                $s = (string)$s;
+                $s = trim($s);
+                $s = preg_replace('/\s+/u', ' ', $s);
+                return $s;
+            },
+            $params['levels'] ?? []
+        ))));
+
         $placement = new \aiplacement_classifyassist\placement();
         $rawjson = $placement->classify(
             $context,
             $params['prompttext'],
             (int)$params['selectedframeworkid'],
-            (string)$params['selectedframeworkshortname']
+            (string)$params['selectedframeworkshortname'],
+            $selectedlevels
         );
 
-        // Parse information received from ai
-        $raw = json_decode($rawjson, true) ?: [];
-        $parsed = utils::extract_classification($raw);
+        $outer = json_decode($rawjson, true);
+        $inner = [];
+
+        $decode_json_maybe = static function(string $s): ?array {
+            $s = trim($s);
+            if (preg_match('/^```[a-zA-Z]*\s*(.*?)\s*```$/s', $s, $m)) {
+                $s = $m[1];
+            }
+            $decoded = json_decode($s, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+            $p1 = strpos($s, '{'); $p2 = strrpos($s, '}');
+            if ($p1 !== false && $p2 !== false && $p2 > $p1) {
+                $slice = substr($s, $p1, $p2 - $p1 + 1);
+                $decoded = json_decode($slice, true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
+            return null;
+        };
+
+        if (is_array($outer) && array_key_exists('generatedcontent', $outer)) {
+            $inner = is_string($outer['generatedcontent'])
+                ? ($decode_json_maybe($outer['generatedcontent']) ?? [])
+                : (is_array($outer['generatedcontent']) ? $outer['generatedcontent'] : []);
+        } else {
+            $inner = is_array($outer) ? $outer : ($decode_json_maybe((string)$rawjson) ?? []);
+        }
+
+        $fwshort = (string)($inner['framework']['shortname'] ?? $params['selectedframeworkshortname']);
+
+        $usedlevels = [];
+        if (!empty($inner['levels']) && is_array($inner['levels'])) {
+            $usedlevels = array_values(array_unique(array_filter(array_map(
+                static function($s) {
+                    $s = trim((string)$s);
+                    return $s === '' ? null : preg_replace('/\s+/u', ' ', $s);
+                },
+                $inner['levels']
+            ))));
+        }
+        if (!$usedlevels) {
+            $usedlevels = $selectedlevels;
+        }
+
+        $competencies = [];
+        if (!empty($inner['competencies']) && is_array($inner['competencies'])) {
+            $competencies = array_values(array_unique(array_filter(array_map(
+                static function($s) {
+                    $s = trim((string)$s);
+                    return $s === '' ? null : $s;
+                },
+                $inner['competencies']
+            ))));
+        }
 
         return [
             'frameworkid'        => (int)$params['selectedframeworkid'],
-            'frameworkshortname' => (string)$params['selectedframeworkshortname'],
-            'tasks'              => $parsed['tasks'],
-            'skills'             => $parsed['skills'],
-            'knowledge'          => $parsed['knowledge'],
+            'frameworkshortname' => $fwshort,
+            'usedlevels'        => $usedlevels,
+            'competencies'       => $competencies,
         ];
+
     }
 
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
             'frameworkid'        => new external_value(PARAM_INT,  'ID of the competency framework used to classify'),
             'frameworkshortname' => new external_value(PARAM_TEXT, 'Short name of the competency framework used to classify'),
-            'tasks'              => new external_multiple_structure(
-                new external_value(PARAM_TEXT, 'Task code and name'),
-                'List of related tasks'
+            'usedlevels'        => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Level name used'),
+                'Levels actually used for classification',
+                VALUE_DEFAULT,
+                []
             ),
-            'skills'             => new external_multiple_structure(
-                new external_value(PARAM_TEXT, 'Skill code and name'),
-                'List of related skills'
-            ),
-            'knowledge'          => new external_multiple_structure(
-                new external_value(PARAM_TEXT, 'Knowledge code and name'),
-                'List of related knowledge'
+            'competencies' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Competency "CODE - Name"'),
+                'Classified competencies',
+                VALUE_DEFAULT,
+                []
             ),
         ]);
     }
