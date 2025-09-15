@@ -1,5 +1,5 @@
 <?php
-$string['pluginname']       = 'Classify Assist Placement';
+$string['pluginname'] = 'Classify Assist';
 $string['privacy:metadata'] = 'The Course Classifier plugin stores no personal data.';
 $string['action_classify_text_instruction'] = '
 You will receive:
