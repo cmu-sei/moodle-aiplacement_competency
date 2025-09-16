@@ -5,7 +5,6 @@ defined('MOODLE_INTERNAL') || die();
 
 final class capabilities_test extends \basic_testcase {
 
-    /** @var array $capabilities */
     private $capabilities;
 
     protected function setUp(): void {

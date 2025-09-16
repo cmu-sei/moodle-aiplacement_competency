@@ -27,7 +27,6 @@ final class template_render_test extends \advanced_testcase {
         $this->assertNotSame('', trim($html), "Rendered HTML is empty for {$templatename}");
     }
 
-    /** List all templates and their minimal render contexts. */
     public static function templateProvider(): array {
         $c = self::COMPONENT;
 

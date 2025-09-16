@@ -15,7 +15,6 @@ defined('MOODLE_INTERNAL') || die();
                 return json_encode([
                     'generatedcontent' => json_encode([
                         'framework'    => ['shortname' => $selectedframeworkshortname ?: 'NICE-1.0.0'],
-                        // no 'levels' key → external should fall back to $selectedlevels
                         'competencies' => [
                             'T1119 - Recommend vulnerability remediation strategies',
                             'T1119 - Recommend vulnerability remediation strategies',
@@ -25,7 +24,6 @@ defined('MOODLE_INTERNAL') || die();
                 ]);
             }
 
-            // Default: include duplicates to exercise de-dupe in external.
             return json_encode([
                 'generatedcontent' => json_encode([
                     'framework'    => ['shortname' => 'NICE-1.0.0'],
