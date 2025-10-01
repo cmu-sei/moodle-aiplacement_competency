@@ -14,17 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace aiplacement_courseassist\privacy;
+namespace aiplacement_classifyassist\privacy;
 
 use core_privacy\local\metadata\null_provider;
 
 /**
- * Privacy Subsystem for course assistance placement implementing null_provider.
+ * Privacy Subsystem provider for aiplacement_classifyassist.
  *
- * @package    aiplacement_courseassist
- * @copyright  2024 Matt Porritt <matt.porritt@moodle.com>
+ * Indicates that this plugin does not store any personal data.
+ *
+ * @package    aiplacement_classifyassist
+ * @category   privacy
+ * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @codeCoverageIgnore
  */
 class provider implements null_provider {
 

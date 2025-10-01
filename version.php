@@ -14,12 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Plugin version details for the AI Placement Classify Assist plugin.
+ *
+ * @package    aiplacement_classifyassist
+ * @category   admin
+ * @copyright  2025 Nuria Pacheco
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'aiplacement_classifyassist';
-$plugin->version = 2025091600;
-$plugin->requires = 2025040800;
-$plugin->maturity = MATURITY_ALPHA;
+$plugin->version   = 2025091600;
+$plugin->requires  = 2025040800;
+$plugin->maturity  = MATURITY_ALPHA;
 $plugin->core_hooks = [
     'output\before_footer_html_generation',
 ];

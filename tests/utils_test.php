@@ -1,12 +1,38 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-defined('MOODLE_INTERNAL') || die();
+declare(strict_types=1);
+
+namespace aiplacement_classifyassist;
 
 use aiplacement_classifyassist\local\utils;
 
-class aiplacement_classifyassist_utils_test extends advanced_testcase {
+/**
+ * Unit tests for the utils helper class in the AI Placement Classify Assist plugin.
+ *
+ * @package    aiplacement_classifyassist
+ * @category   test
+ * @covers     \aiplacement_classifyassist\local\utils
+ * @copyright  2025 Nuria Pacheco
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+final class utils_test extends \advanced_testcase {
 
     protected function setUp(): void {
+        parent::setUp();
         $this->resetAfterTest();
     }
 
@@ -23,8 +49,8 @@ class aiplacement_classifyassist_utils_test extends advanced_testcase {
             $list = $m[1];
 
             $tokens = array_filter(array_map('trim', explode(',', $list)), fn($s) => $s !== '');
-
             $norm = array_map(fn($s) => mb_strtolower($s), $tokens);
+
             $this->assertSame(['analyze', 'detect'], array_values(array_unique($norm)),
                 'Levels list should be deduped and normalized (order Analyze, Detect).');
             $this->assertGreaterThanOrEqual(1, substr_count($list, 'Analyze'));
@@ -39,7 +65,8 @@ class aiplacement_classifyassist_utils_test extends advanced_testcase {
         $payload = json_encode([
             'framework' => ['shortname' => 'NICE-1.0.0'],
             'levels' => ['Analyze', 'Detect'],
-            'competencies' => ['T1119 - Recommend vulnerability remediation strategies', '  ', null, 'T1119 - Recommend vulnerability remediation strategies'],
+            'competencies' => ['T1119 - Recommend vulnerability remediation strategies', '  ',
+                                null, 'T1119 - Recommend vulnerability remediation strategies'],
         ]);
 
         $out = utils::extract_classification(['generatedcontent' => $payload]);
@@ -84,7 +111,7 @@ class aiplacement_classifyassist_utils_test extends advanced_testcase {
                 'framework' => ['shortname' => 'ATT&CK'],
                 'levels' => ['Initial Access', 'Execution', 'Execution'],
                 'competencies' => ['T1566 - Phishing', 'T1059 - Command and Scripting Interpreter'],
-            ]
+            ],
         ];
         $out = utils::extract_classification($raw);
         $this->assertSame('ATT&CK', $out['frameworkshortname']);

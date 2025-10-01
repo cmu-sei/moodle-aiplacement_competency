@@ -1,6 +1,28 @@
 <?php
-$string['pluginname'] = 'Classify Assist';
-$string['privacy:metadata'] = 'The Course Classifier plugin stores no personal data.';
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Language strings for the AI Placement Classify Assist plugin.
+ *
+ * @package    aiplacement_classifyassist
+ * @category   string
+ * @copyright  2025 Nuria Pacheco
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 $string['action_classify_text_instruction'] = '
 You will receive:
 - A course/activity description (free text).
@@ -77,46 +99,46 @@ Example C — no clear matches
   "competencies": []
 }
 ';
-$string['classifybutton'] = 'Classify Text';
-$string['classifyheading'] = 'AI Classification Result';
-$string['generatefailtitle'] = 'Something went wrong';
-$string['generating'] = 'Generating your response';
-$string['regenerate'] = 'Regenerate';
-$string['classify_tooltips'] = 'Classify content based on competency framework.';
-$string['tryagain'] = 'Try again';
-$string['copy'] = 'Copy';
-$string['classifyassist:classify_text'] = 'Classify Text';
-$string['tasks'] = 'Tasks';
-$string['skills'] = 'Skills';
-$string['knowledge'] = 'Knowledge';
-$string['none'] = 'None';
-$string['aiclassificationlabel'] = 'AI Classification';
 $string['aiclassification_help'] = 'Uses AI to classify course context according to the NICE Framework Competencies.';
-$string['help'] = 'Help';
+$string['aiclassificationlabel'] = 'AI Classification';
 $string['applycmps'] = 'Apply CMPs';
-$string['applycmps_title'] = 'Apply classification';
-$string['applycmps_intro_checklist'] = 'Select the competencies you want to apply. You can uncheck any you don’t need.';
-$string['applycmps_selectall'] = 'Select all';
 $string['applycmps_clearall'] = 'Clear all';
 $string['applycmps_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
+$string['applycmps_intro_checklist'] = 'Select the competencies you want to apply. You can uncheck any you don’t need.';
+$string['applycmps_selectall'] = 'Select all';
+$string['applycmps_title'] = 'Apply classification';
+$string['applycompetencies'] = 'Apply';
 $string['applynow'] = 'Apply';
-$string['frameworkshortname'] = 'Framework';
-$string['notify_course_added_heading']  = 'Added {$a->count} competencies to this course';
-$string['notify_course_exists_heading'] = 'Already in this course (not added): {$a->count}';
-$string['notify_course_failed_heading'] = 'Failed to add to course: {$a->count}';
-$string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
-$string['notify_cm_exists_heading'] = 'Already linked to this activity (not added): {$a->count}';
-$string['notify_cm_failed_heading'] = 'Failed to link to activity: {$a->count}';
-$string['levelsselection'] = 'Competency Selection';
-$string['levelsselection_help'] = 'Select the competency levels (taxonomies) you want the AI model to use when classifying your content.';
+$string['classify_note_newactivity'] = 'Once this activity has been saved, the Competency Classification tool will be enabled.';
+$string['classify_tooltips'] = 'Classify content based on competency framework.';
+$string['classifyassist:classify_text'] = 'Classify Text';
+$string['classifybutton'] = 'Classify Text';
+$string['classifyheading'] = 'AI Classification Result';
+$string['competencies'] = 'Competencies';
+$string['copy'] = 'Copy';
 $string['frameworkselection'] = 'Competency Framework Selection';
 $string['frameworkselection_help'] = 'Choose the competency framework that the AI model should use to classify your content.';
 $string['frameworkselection_label'] = 'Available competency frameworks:';
 $string['frameworkselection_placeholder'] = 'Please choose a framework…';
+$string['frameworkshortname'] = 'Framework';
+$string['generatefailtitle'] = 'Something went wrong';
+$string['generating'] = 'Generating your response';
+$string['help'] = 'Help';
+$string['knowledge'] = 'Knowledge';
 $string['levels'] = 'Competency Levels';
-$string['competencies'] = 'Competencies';
-$string['applycompetencies'] = 'Apply';
-$string['classify_note_newactivity'] = 'Once this activity has been saved, the Competency Classification tool will be enabled.';
+$string['levelsselection'] = 'Competency Selection';
+$string['levelsselection_help'] = 'Select the competency levels (taxonomies) you want the AI model to use when classifying your content.';
+$string['none'] = 'None';
+$string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
+$string['notify_cm_exists_heading'] = 'Already linked to this activity (not added): {$a->count}';
+$string['notify_cm_failed_heading'] = 'Failed to link to activity: {$a->count}';
+$string['notify_course_added_heading']  = 'Added {$a->count} competencies to this course';
+$string['notify_course_exists_heading'] = 'Already in this course (not added): {$a->count}';
+$string['notify_course_failed_heading'] = 'Failed to add to course: {$a->count}';
 $string['notify_empty_description'] = 'Please add a description before using the Competency Classification tool.';
-
-
+$string['pluginname'] = 'Classify Assist';
+$string['privacy:metadata'] = 'The Classify Assist plugin stores no personal data.';
+$string['regenerate'] = 'Regenerate';
+$string['skills'] = 'Skills';
+$string['tasks'] = 'Tasks';
+$string['tryagain'] = 'Try again';

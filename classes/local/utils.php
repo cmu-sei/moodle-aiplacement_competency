@@ -1,8 +1,33 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 declare(strict_types=1);
 
 namespace aiplacement_classifyassist\local;
 
+/**
+ * Utility methods for AI Placement Classify Assist plugin.
+ *
+ * Provides helper functions for building model prompts and
+ * extracting classification data from provider responses.
+ *
+ * @package    aiplacement_classifyassist
+ * @copyright  2025 Nuria Pacheco
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class utils {
 
     /**
@@ -12,11 +37,17 @@ class utils {
         $seen = [];
         $normlevels = [];
         foreach ($levels as $d) {
-            if (!is_string($d)) { continue; }
+            if (!is_string($d)) {
+                continue;
+            }
             $t = trim($d);
-            if ($t === '') { continue; }
+            if ($t === '') {
+                continue;
+            }
             $k = mb_strtolower($t);
-            if (isset($seen[$k])) { continue; }
+            if (isset($seen[$k])) {
+                continue;
+            }
             $seen[$k] = true;
             $normlevels[] = $t;
         }
@@ -52,19 +83,25 @@ class utils {
             }
         }
 
-        $normStrings = function($rawval): array {
+        $normstrings = function($rawval): array {
             $arr = is_array($rawval) ? $rawval : (is_string($rawval) ? [$rawval] : []);
             $out = [];
             foreach ($arr as $v) {
-                if (!is_string($v)) { continue; }
+                if (!is_string($v)) {
+                    continue;
+                }
                 $clean = clean_param(trim($v), PARAM_TEXT);
-                if ($clean !== '') { $out[] = $clean; }
+                if ($clean !== '') {
+                    $out[] = $clean;
+                }
             }
             $seen = [];
             $uniq = [];
             foreach ($out as $v) {
                 $k = mb_strtolower($v);
-                if (isset($seen[$k])) { continue; }
+                if (isset($seen[$k])) {
+                    continue;
+                }
                 $seen[$k] = true;
                 $uniq[] = $v;
             }
@@ -76,8 +113,8 @@ class utils {
             $frameworkshortname = clean_param(trim((string)($inner['framework']['shortname'] ?? '')), PARAM_TEXT);
         }
 
-        $levels       = $normStrings($inner['levels'] ?? []);
-        $competencies  = $normStrings($inner['competencies'] ?? []);
+        $levels       = $normstrings($inner['levels'] ?? []);
+        $competencies  = $normstrings($inner['competencies'] ?? []);
 
         return [
             'frameworkshortname' => $frameworkshortname,
