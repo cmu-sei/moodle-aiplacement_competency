@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin version details for the AI Placement Classify Assist plugin.
+ * Plugin version details for the AI Placement Competency plugin.
  *
  * @package    aiplacement_classifyassist
  * @category   admin
@@ -26,7 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'aiplacement_competency';
-$plugin->version   = 2025091600;
+$plugin->version   = 2026010800;
 $plugin->requires  = 2025040800;
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->core_hooks = [
