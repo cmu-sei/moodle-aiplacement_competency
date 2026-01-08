@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace aiplacement_classifyassist\output;
+namespace aiplacement_competency\output;
 
 use core\hook\output\before_footer_html_generation;
 
@@ -24,7 +24,7 @@ use core\hook\output\before_footer_html_generation;
  * Provides the output logic for injecting the classify drawer
  * and action buttons into course editing pages.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   output
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -44,8 +44,8 @@ class classify_ui {
         $isnew = !empty($params['add']) && empty($params['update']);
 
         if ($isnew) {
-            $msg = get_string('classify_note_newactivity', 'aiplacement_classifyassist');
-            $PAGE->requires->js_call_amd('aiplacement_classifyassist/newactivity_notice', 'init', [$msg]);
+            $msg = get_string('classify_note_newactivity', 'aiplacement_competency');
+            $PAGE->requires->js_call_amd('aiplacement_competency/newactivity_notice', 'init', [$msg]);
             return;
         }
 
@@ -54,19 +54,19 @@ class classify_ui {
         }
 
         $html = $OUTPUT->render_from_template(
-            'aiplacement_classifyassist/drawer',
+            'aiplacement_competency/drawer',
             ['userid' => $USER->id, 'contextid' => $PAGE->context->id]
         );
         $hook->add_html($html);
 
         $PAGE->requires->js_call_amd(
-            'aiplacement_classifyassist/classify_button',
+            'aiplacement_competency/classify_button',
             'init',
             [$PAGE->context->id]
         );
 
         $PAGE->requires->js_call_amd(
-            'aiplacement_classifyassist/applycmps',
+            'aiplacement_competency/applycmps',
             'init',
             [$PAGE->context->id]
         );
@@ -80,13 +80,13 @@ class classify_ui {
     private static function preflight_checks(): bool {
         global $PAGE;
 
-        if (during_initial_install() || !get_config('aiplacement_classifyassist', 'version')) {
+        if (during_initial_install() || !get_config('aiplacement_competency', 'version')) {
             return false;
         }
 
         // Placement plugin itself must be installed & enabled.
         $pm = \core_plugin_manager::instance();
-        $info = $pm->get_plugin_info('aiplacement_classifyassist');
+        $info = $pm->get_plugin_info('aiplacement_competency');
         if (!$info || !$info->is_enabled()) {
             return false;
         }
@@ -95,7 +95,7 @@ class classify_ui {
         $aimanager = \core\di::get(\core_ai\manager::class);
 
         // Check if the action is enabled.
-        if (!$aimanager->is_action_enabled('aiplacement_classifyassist', $actionclass)) {
+        if (!$aimanager->is_action_enabled('aiplacement_competency', $actionclass)) {
             return false;
         }
 
@@ -109,7 +109,7 @@ class classify_ui {
         if (!has_capability('moodle/course:update', $PAGE->context)) {
             return false;
         }
-        if (!has_capability('aiplacement/classifyassist:classify_text', $PAGE->context)) {
+        if (!has_capability('aiplacement/competency:classify_text', $PAGE->context)) {
             return false;
         }
 

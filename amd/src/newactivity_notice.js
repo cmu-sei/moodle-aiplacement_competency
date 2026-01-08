@@ -12,7 +12,7 @@ define(['core/templates', 'jquery', 'core/notification'], function(Templates, $,
                 $container.data('newactivity-notice-initialised', true);
 
                 // Render our simple notice template and inject it at the top of the section.
-                Templates.renderForPromise('aiplacement_classifyassist/newactivity_notice', { message })
+                Templates.renderForPromise('aiplacement_competency/newactivity_notice', { message })
                     .then(function(result) {
                         const html = result.html;
                         const js = result.js;

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace aiplacement_classifyassist\external;
+namespace aiplacement_competency\external;
 
 use core_external\external_api;
 use core_external\external_function_parameters;
@@ -27,7 +27,7 @@ use core_external\external_value;
  * This class exposes a web service function that links a competency
  * to a given course module via the core_competency API.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   external
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

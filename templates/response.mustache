@@ -2,7 +2,7 @@
   <div class="card-body p-3">
     <h3 class="course-assist-response-header h5 card-title d-inline">
       <span class="ai-course-assist-sparkles-icon">
-        {{#pix}} sparkles, aiplacement_classifyassist {{/pix}}
+        {{#pix}} sparkles, aiplacement_competency {{/pix}}
       </span>
       {{heading}}
     </h3>
@@ -11,20 +11,20 @@
       <div id="course-assist-response-content-{{uniqid}}" class="course-assist-response-content mb-3">
         <dl class="row">
           <!-- Framework -->
-          <dt class="col-sm-4">{{#str}} frameworkshortname, aiplacement_classifyassist {{/str}}</dt>
+          <dt class="col-sm-4">{{#str}} frameworkshortname, aiplacement_competency {{/str}}</dt>
           <dd class="col-sm-8" data-frameworkid="{{frameworkid}}">
             {{#frameworkshortname}}
               {{frameworkshortname}}
             {{/frameworkshortname}}
             {{^frameworkshortname}}
-              <span class="text-muted">{{#str}} none, aiplacement_classifyassist {{/str}}</span>
+              <span class="text-muted">{{#str}} none, aiplacement_competency {{/str}}</span>
             {{/frameworkshortname}}
           </dd>
 
           <!-- Levels -->
           <dt class="col-12 col-sm-4 fw-semibold"
               style="white-space:normal; word-break:normal !important; overflow-wrap:normal !important; hyphens:none;">
-            {{#str}} levels, aiplacement_classifyassist {{/str}}
+            {{#str}} levels, aiplacement_competency {{/str}}
           </dt>
           <dd class="col-sm-8">
             <ul class="list-unstyled mb-0 pl-0">
@@ -32,20 +32,20 @@
                 <li class="text-capitalize">{{.}}</li>
               {{/usedlevels}}
               {{^usedlevels}}
-                <li class="text-muted">{{#str}} none, aiplacement_classifyassist {{/str}}</li>
+                <li class="text-muted">{{#str}} none, aiplacement_competency {{/str}}</li>
               {{/usedlevels}}
             </ul>
           </dd>
 
           <!-- Competencies -->
-          <dt class="col-sm-4 text-nowrap">{{#str}} competencies, aiplacement_classifyassist {{/str}}</dt>
+          <dt class="col-sm-4 text-nowrap">{{#str}} competencies, aiplacement_competency {{/str}}</dt>
           <dd class="col-sm-8" data-section="competencies">
             <ul class="list-unstyled mb-0 pl-0">
               {{#competencies}}
                 <li>{{.}}</li>
               {{/competencies}}
               {{^competencies}}
-                <li class="text-muted">{{#str}} none, aiplacement_classifyassist {{/str}}</li>
+                <li class="text-muted">{{#str}} none, aiplacement_competency {{/str}}</li>
               {{/competencies}}
             </ul>
           </dd>
@@ -55,7 +55,7 @@
       <div class="course-assist-response-watermark">
         <small class="text-muted">
           <span class="ai-course-assist-sparkles-icon">
-            {{#pix}} sparkles, aiplacement_classifyassist {{/pix}}
+            {{#pix}} sparkles, aiplacement_competency {{/pix}}
           </span>
           {{#str}} contentwatermark, core_ai {{/str}}
         </small>
@@ -64,19 +64,19 @@
       <div class="course-assist-controls d-flex gap-2 pt-3">
         <button class="btn btn-sm btn-outline-secondary" data-action="regenerate">
           {{#pix}} a/refresh, core {{/pix}}
-          {{#str}} regenerate, aiplacement_classifyassist {{/str}}
+          {{#str}} regenerate, aiplacement_competency {{/str}}
         </button>
 
         <button class="btn btn-sm btn-outline-secondary"
                 data-action="copytoclipboard"
                 data-clipboard-target="#course-assist-response-content-{{uniqid}}">
           {{#pix}} e/copy, core {{/pix}}
-          {{#str}} copy, aiplacement_classifyassist {{/str}}
+          {{#str}} copy, aiplacement_competency {{/str}}
         </button>
 
         <!-- Keep or rename based on your JS handler -->
         <button class="btn btn-sm btn-outline-secondary" data-action="applycmps">
-          {{#str}} applycompetencies, aiplacement_classifyassist {{/str}}
+          {{#str}} applycompetencies, aiplacement_competency {{/str}}
         </button>
       </div>
     </div>

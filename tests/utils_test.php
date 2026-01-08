@@ -16,16 +16,16 @@
 
 declare(strict_types=1);
 
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
-use aiplacement_classifyassist\local\utils;
+use aiplacement_competency\local\utils;
 
 /**
- * Unit tests for the utils helper class in the AI Placement Classify Assist plugin.
+ * Unit tests for the utils helper class in the AI Placement Competency plugin.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
- * @covers     \aiplacement_classifyassist\local\utils
+ * @covers     \aiplacement_competency\local\utils
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

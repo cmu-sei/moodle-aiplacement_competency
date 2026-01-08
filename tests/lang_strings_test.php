@@ -16,12 +16,12 @@
 
 declare(strict_types=1);
 
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
 /**
- * PHPUnit test for language strings of the Classify Assist plugin.
+ * PHPUnit test for language strings of the AI Placement Competency plugin.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
  * @coversNothing
  * @copyright  2025 Nuria Pacheco
@@ -29,7 +29,7 @@ namespace aiplacement_classifyassist;
  */
 final class lang_strings_test extends \basic_testcase {
     public function test_pluginname_string_exists(): void {
-        $component = 'aiplacement_classifyassist';
+        $component = 'aiplacement_competency';
 
         $this->assertTrue(get_string_manager()->string_exists('pluginname', $component));
 

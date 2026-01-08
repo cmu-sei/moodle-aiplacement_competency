@@ -1,16 +1,16 @@
 <div class="aiplacement-applycmps">
-  <p class="mb-3">{{#str}} applycmps_intro_checklist, aiplacement_classifyassist {{/str}}</p>
+  <p class="mb-3">{{#str}} applycmps_intro_checklist, aiplacement_competency {{/str}}</p>
 
   <!-- Competencies (single bucket) -->
   <div class="mb-3 aiplacement-applycmps-section" data-section="competencies">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <label class="form-label m-0"><strong>{{#str}} competencies, aiplacement_classifyassist {{/str}}</strong></label>
+      <label class="form-label m-0"><strong>{{#str}} competencies, aiplacement_competency {{/str}}</strong></label>
       <div>
         <button type="button" class="btn btn-link p-0 me-3" data-action="selectall">
-          {{#str}} applycmps_selectall, aiplacement_classifyassist {{/str}}
+          {{#str}} applycmps_selectall, aiplacement_competency {{/str}}
         </button>
         <button type="button" class="btn btn-link p-0" data-action="clearall">
-          {{#str}} applycmps_clearall, aiplacement_classifyassist {{/str}}
+          {{#str}} applycmps_clearall, aiplacement_competency {{/str}}
         </button>
       </div>
     </div>
@@ -24,16 +24,16 @@
           </label>
         {{/competencies}}
       </div>
-      <div class="form-text">{{#str}} applycmps_clicktotoggle, aiplacement_classifyassist {{/str}}</div>
+      <div class="form-text">{{#str}} applycmps_clicktotoggle, aiplacement_competency {{/str}}</div>
     {{/hascompetencies}}
     {{^hascompetencies}}
-      <div class="form-text">{{#str}} none, aiplacement_classifyassist {{/str}}</div>
+      <div class="form-text">{{#str}} none, aiplacement_competency {{/str}}</div>
     {{/hascompetencies}}
   </div>
 
   <div id="applycmps-apply" class="d-flex justify-content-end mt-3">
     <button type="button" class="btn btn-primary" data-action="apply-inline">
-      {{#str}} applynow, aiplacement_classifyassist {{/str}}
+      {{#str}} applynow, aiplacement_competency {{/str}}
     </button>
   </div>
 </div>

@@ -16,15 +16,15 @@
 
 declare(strict_types=1);
 
-namespace aiplacement_classifyassist\local;
+namespace aiplacement_competency\local;
 
 /**
- * Utility methods for AI Placement Classify Assist plugin.
+ * Utility methods for AI Placement Competency plugin.
  *
  * Provides helper functions for building model prompts and
  * extracting classification data from provider responses.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -58,7 +58,7 @@ class utils {
             'levels'            => implode(', ', $normlevels),
         ];
 
-        return get_string('action_classify_text_instruction', 'aiplacement_classifyassist', $a);
+        return get_string('action_classify_text_instruction', 'aiplacement_competency', $a);
     }
 
     /**

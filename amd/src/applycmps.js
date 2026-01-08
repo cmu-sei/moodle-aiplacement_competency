@@ -84,18 +84,18 @@ define([
   // Call these after load to show course notifications once the page refreshes
   function showPostReloadCourseNoticesIfAny() {
     showNoticesFrom(RELOAD_COURSE_KEY, {
-      added : { key: 'notify_course_added_heading',  comp:'aiplacement_classifyassist', fallback: c => 'Course competencies added (' + c + ')' },
-      exists: { key: 'notify_course_exists_heading', comp:'aiplacement_classifyassist', fallback: c => 'Already in course (' + c + ')' },
-      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to add to course (does not match selected framework) (' + c + ')' }
+      added : { key: 'notify_course_added_heading',  comp:'aiplacement_competency', fallback: c => 'Course competencies added (' + c + ')' },
+      exists: { key: 'notify_course_exists_heading', comp:'aiplacement_competency', fallback: c => 'Already in course (' + c + ')' },
+      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_competency', fallback: c => 'Failed to add to course (does not match selected framework) (' + c + ')' }
     });
   }
 
   // Call these after load to show activity notifications once the page refreshes
   function showPostReloadCmNoticesIfAny() {
     showNoticesFrom(RELOAD_CM_KEY, {
-      added : { key: 'notify_cm_added_heading',  comp:'aiplacement_classifyassist', fallback: c => 'Added to activity (' + c + ')' },
-      exists: { key: 'notify_cm_exists_heading', comp:'aiplacement_classifyassist', fallback: c => 'Already linked to activity (' + c + ')' },
-      failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to link to activity (' + c + ')' }
+      added : { key: 'notify_cm_added_heading',  comp:'aiplacement_competency', fallback: c => 'Added to activity (' + c + ')' },
+      exists: { key: 'notify_cm_exists_heading', comp:'aiplacement_competency', fallback: c => 'Already linked to activity (' + c + ')' },
+      failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_competency', fallback: c => 'Failed to link to activity (' + c + ')' }
     });
   }
 
@@ -244,15 +244,15 @@ define([
 
   function addToModule(cmid, competencyId) {
     return Ajax.call([{
-      methodname: 'aiplacement_classifyassist_add_cm_competency',
+      methodname: 'aiplacement_competency_add_cm_competency',
       args: { cmid: cmid, competencyid: competencyId }
     }])[0];
   }
 
   // Modal that shows the ai response competencies to the user, here the user will be able to select which should be added to the course
   var openModal = function(values) {
-    return Str.get_string('applycmps_title', 'aiplacement_classifyassist').then(function(title) {
-      return Templates.render('aiplacement_classifyassist/applycmps_modal', {
+    return Str.get_string('applycmps_title', 'aiplacement_competency').then(function(title) {
+      return Templates.render('aiplacement_competency/applycmps_modal', {
         competencies: values.competencies || [],
         hascompetencies: !!(values.competencies && values.competencies.length)
       }).then(function(html, js) {
@@ -294,7 +294,7 @@ define([
 
                   var courseId = getCourseIdFromBody();
                   if (!courseId) {
-                    Str.get_string('notify_nocourseid', 'aiplacement_classifyassist').then(function(msg) {
+                    Str.get_string('notify_nocourseid', 'aiplacement_competency').then(function(msg) {
                       Notification.addNotification({ type: 'warning', message: msg });
                     });
                     resolve(picked);
@@ -390,10 +390,10 @@ define([
   var dispatchApply = function(payload, context) {
     var ev;
     try {
-      ev = new CustomEvent('aiplacement_classifyassist:apply', { detail: payload, bubbles: true });
+      ev = new CustomEvent('aiplacement_competency:apply', { detail: payload, bubbles: true });
     } catch (e) {
       ev = document.createEvent('CustomEvent');
-      ev.initCustomEvent('aiplacement_classifyassist:apply', true, false, payload);
+      ev.initCustomEvent('aiplacement_competency:apply', true, false, payload);
     }
     (context || document).dispatchEvent(ev);
   };

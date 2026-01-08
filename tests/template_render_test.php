@@ -16,16 +16,16 @@
 
 declare(strict_types=1);
 
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Tests template rendering for the Classify Assist plugin.
+ * Tests template rendering for the AI Placement Competency plugin.
  *
  * Ensures all templates render without exceptions and produce valid HTML.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
  * @coversNothing
  * @copyright  2025 Nuria Pacheco
@@ -37,7 +37,7 @@ final class template_render_test extends \advanced_testcase {
      *
      * @var string
      */
-    private const COMPONENT = 'aiplacement_classifyassist';
+    private const COMPONENT = 'aiplacement_competency';
 
 
     protected function setUp(): void {

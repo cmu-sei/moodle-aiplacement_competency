@@ -16,26 +16,26 @@
 
 /**
  * Unit tests for the classify_text external function in the
- * AI Placement Classify Assist plugin.
+ * AI Placement Competency plugin.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
- * @covers     \aiplacement_classifyassist\external\classify_text
+ * @covers     \aiplacement_competency\external\classify_text
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 declare(strict_types=1);
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
 defined('MOODLE_INTERNAL') || die();
 
-use aiplacement_classifyassist\external\classify_text;
+use aiplacement_competency\external\classify_text;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
  * Fake placement stub for testing.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
  */
 class fake_placement {
@@ -86,9 +86,9 @@ class fake_placement {
 /**
  * Unit tests for the classify_text external function.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
- * @covers     \aiplacement_classifyassist\external\classify_text
+ * @covers     \aiplacement_competency\external\classify_text
  */
 final class classifytext_test extends \advanced_testcase {
 

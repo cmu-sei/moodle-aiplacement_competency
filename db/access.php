@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Capability definitions for the AI Placement Classify Assist plugin.
+ * Capability definitions for the AI Placement Competency plugin.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $capabilities = [
-    'aiplacement/classifyassist:classify_text' => [
+    'aiplacement/competency:classify_text' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => [

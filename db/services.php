@@ -15,11 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Web service function definitions for the AI Placement Classify Assist plugin.
+ * Web service function definitions for the AI Placement Competency plugin.
  *
  * Declares external functions available via Moodle’s web services API.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -27,17 +27,17 @@
 defined('MOODLE_INTERNAL') || die();
 
 $functions = [
-    'aiplacement_classifyassist_classify_text' => [
-        'classname'   => 'aiplacement_classifyassist\\external\\classify_text',
+    'aiplacement_competency_classify_text' => [
+        'classname'   => 'aiplacement_competency\\external\\classify_text',
         'methodname'  => 'execute',
         'classpath'   => '',
         'description' => 'Classify arbitrary text using the configured AI provider.',
         'type'        => 'write',
         'ajax'        => true,
-        'capabilities' => 'aiplacement/classifyassist:classify_text',
+        'capabilities' => 'aiplacement/competency:classify_text',
     ],
-    'aiplacement_classifyassist_add_cm_competency' => [
-        'classname'   => 'aiplacement_classifyassist\external\add_cm_competency',
+    'aiplacement_competency_add_cm_competency' => [
+        'classname'   => 'aiplacement_competency\external\add_cm_competency',
         'methodname'  => 'execute',
         'description' => 'Add a competency to a course module.',
         'type'        => 'write',

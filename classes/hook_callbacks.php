@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
 use core\hook\output\before_footer_html_generation;
 
 /**
- * Hook callbacks for the AI Placement Classify Assist plugin.
+ * Hook callbacks for the AI Placement Competency plugin.
  *
  * Registers output injected via Moodle’s hook API.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   hook
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -38,6 +38,6 @@ class hook_callbacks {
     public static function before_footer_html_generation(
         before_footer_html_generation $hook
     ): void {
-        \aiplacement_classifyassist\output\classify_ui::load_classify_ui($hook);
+        \aiplacement_competency\output\classify_ui::load_classify_ui($hook);
     }
 }

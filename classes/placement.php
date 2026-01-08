@@ -16,11 +16,11 @@
 
 declare(strict_types=1);
 
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
 use core\di;
 use context;
-use aiplacement_classifyassist\local\utils;
+use aiplacement_competency\local\utils;
 
 /**
  * Placement class for AI-based text classification.
@@ -28,7 +28,7 @@ use aiplacement_classifyassist\local\utils;
  * Provides integration with Moodle’s AI manager to classify text
  * against competency frameworks, using AI-generated responses.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -91,7 +91,7 @@ class placement extends \core_ai\placement {
             $msg = method_exists($response, 'get_errormessage')
                 ? (string)($response->get_errormessage() ?? '')
                 : 'Unknown AI error';
-            throw new \moodle_exception('aiclassifyfailed', 'aiplacement_classifyassist', '', null, $msg);
+            throw new \moodle_exception('aiclassifyfailed', 'aiplacement_competency', '', null, $msg);
         }
 
         $rawdata = $response->get_response_data();

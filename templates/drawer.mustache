@@ -1,8 +1,3 @@
-{{!
-  Drawer shell for Classify Assist.
-  Keeps the same CSS hooks Moodle core and courseassist already use
-  so we inherit their styling and JS helpers.
-}}
 <div class="ai-drawer" id="ai-classify-drawer" tabindex="-1">
     <div class="ai-drawer-header">
         <button id="ai-classify-drawer-close" class="btn ai-drawer-button" type="button">
@@ -15,7 +10,7 @@
 </div>
 
 {{#js}}
-    require(['aiplacement_classifyassist/placement'], function(Cls) {
+    require(['aiplacement_competency/placement'], function(Cls) {
         new Cls({{userid}}, {{contextid}});
     });
 {{/js}}

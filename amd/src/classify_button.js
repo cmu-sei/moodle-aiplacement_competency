@@ -11,7 +11,7 @@ define(['core/templates', 'jquery', 'core/notification'], function(Templates, $,
                 }
                 $container.data('classify-btn-initialised', true);
 
-                Templates.renderForPromise('aiplacement_classifyassist/classify_button', {})
+                Templates.renderForPromise('aiplacement_competency/classify_button', {})
                     .then(function(result) {
                         var html = result.html;
                         var js = result.js;

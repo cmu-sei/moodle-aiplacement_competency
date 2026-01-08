@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
 /**
- * PHPUnit tests for plugininfo of the Classify Assist plugin.
+ * PHPUnit tests for plugininfo of the AI Placement Competency plugin.
  *
  * Ensures the plugin is registered in the plugin manager and
  * that its version number is properly set.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
  * @coversNothing
  * @copyright  2025 Nuria Pacheco
@@ -31,7 +31,7 @@ namespace aiplacement_classifyassist;
 final class plugininfo_test extends \basic_testcase {
     public function test_plugin_is_registered_and_version_is_int(): void {
         $pm = \core_plugin_manager::instance();
-        $info = $pm->get_plugin_info('aiplacement_classifyassist');
+        $info = $pm->get_plugin_info('aiplacement_competency');
         $this->assertNotNull($info);
         $this->assertIsInt((int)$info->versiondb);
     }

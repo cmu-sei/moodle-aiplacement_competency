@@ -15,11 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Hook callbacks registration for the AI Placement Classify Assist plugin.
+ * Hook callbacks registration for the AI Placement Competency plugin.
  *
  * This file registers plugin callbacks for Moodle’s hook API.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -29,7 +29,7 @@ defined('MOODLE_INTERNAL') || die();
 $callbacks = [
     [
         'hook' => \core\hook\output\before_footer_html_generation::class,
-        'callback' => \aiplacement_classifyassist\hook_callbacks::class . '::before_footer_html_generation',
+        'callback' => \aiplacement_competency\hook_callbacks::class . '::before_footer_html_generation',
         'priority' => 0,
     ],
 ];
