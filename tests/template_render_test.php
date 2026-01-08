@@ -1,16 +1,47 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 declare(strict_types=1);
 
 namespace aiplacement_classifyassist;
 
-defined('MOODLE_INTERNAL') || die();
-
 use PHPUnit\Framework\Attributes\DataProvider;
 
+/**
+ * Tests template rendering for the Classify Assist plugin.
+ *
+ * Ensures all templates render without exceptions and produce valid HTML.
+ *
+ * @package    aiplacement_classifyassist
+ * @category   test
+ * @coversNothing
+ * @copyright  2025 Nuria Pacheco
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 final class template_render_test extends \advanced_testcase {
+    /**
+     * The plugin component name used in template references.
+     *
+     * @var string
+     */
     private const COMPONENT = 'aiplacement_classifyassist';
 
+
     protected function setUp(): void {
+        parent::setUp();
         $this->resetAfterTest(true);
     }
 
@@ -27,7 +58,12 @@ final class template_render_test extends \advanced_testcase {
         $this->assertNotSame('', trim($html), "Rendered HTML is empty for {$templatename}");
     }
 
-    public static function templateProvider(): array {
+    /**
+     * Provides template names and contexts for testing.
+     *
+     * @return array[] List of [templatename, context] pairs
+     */
+    public static function template_provider(): array {
         $c = self::COMPONENT;
 
         return [

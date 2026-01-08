@@ -1,8 +1,22 @@
 <?php
-declare(strict_types=1);
-namespace aiplacement_classifyassist\external;
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-defined('MOODLE_INTERNAL') || die();
+declare(strict_types=1);
+
+namespace aiplacement_classifyassist\external;
 
 use core_external\external_api;
 use core_external\external_function_parameters;
@@ -11,13 +25,29 @@ use core_external\external_value;
 use core_external\external_multiple_structure;
 use aiplacement_classifyassist\local\utils;
 
+/**
+ * External function to classify text against a competency framework.
+ *
+ * This service allows text content to be classified into competencies
+ * and levels using the AI Placement Classify Assist plugin.
+ *
+ * @package    aiplacement_classifyassist
+ * @category   external
+ * @copyright  2025 Nuria Pacheco
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class classify_text extends external_api {
 
+    /**
+     * Describes the parameters accepted by the classify_text function.
+     *
+     * @return external_function_parameters Parameter definitions.
+     */
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
-            'contextid' => new external_value(PARAM_INT,  'Context ID'),
+            'contextid' => new external_value(PARAM_INT, 'Context ID'),
             'prompttext' => new external_value(PARAM_RAW, 'Visible page text'),
-            'selectedframeworkid' => new external_value(PARAM_INT,  'Framework id', VALUE_DEFAULT, 0),
+            'selectedframeworkid' => new external_value(PARAM_INT, 'Framework id', VALUE_DEFAULT, 0),
             'selectedframeworkshortname' => new external_value(PARAM_TEXT, 'Framework shortname', VALUE_DEFAULT, ''),
             'levels' => new external_multiple_structure(
                 new external_value(PARAM_TEXT, 'Selected level name'),
@@ -28,6 +58,17 @@ class classify_text extends external_api {
         ]);
     }
 
+    /**
+     * Executes the classification of text into competencies and levels.
+     *
+     * @param int $contextid The context ID.
+     * @param string $prompttext The visible text to classify.
+     * @param int $selectedframeworkid Framework ID (optional).
+     * @param string $selectedframeworkshortname Framework shortname (optional).
+     * @param array $levels Selected level names (optional).
+     * @return array The classification result containing framework info,
+     *               levels used, and matched competencies.
+     */
     public static function execute(
         int $contextid,
         string $prompttext,
@@ -70,9 +111,9 @@ class classify_text extends external_api {
         $outer = json_decode($rawjson, true);
         $inner = [];
 
-        $decode_json_maybe = static function(string $s): ?array {
+        $decodejsonmaybe = static function(string $s): ?array {
             $s = trim($s);
-            if (preg_match('/^```[a-zA-Z]*\s*(.*?)\s*```$/s', $s, $m)) {
+            if (preg_match('/^\x60{3}[a-zA-Z]*\s*(.*?)\s*\x60{3}$/s', $s, $m)) {
                 $s = $m[1];
             }
             $decoded = json_decode($s, true);
@@ -92,10 +133,10 @@ class classify_text extends external_api {
 
         if (is_array($outer) && array_key_exists('generatedcontent', $outer)) {
             $inner = is_string($outer['generatedcontent'])
-                ? ($decode_json_maybe($outer['generatedcontent']) ?? [])
+                ? ($decodejsonmaybe($outer['generatedcontent']) ?? [])
                 : (is_array($outer['generatedcontent']) ? $outer['generatedcontent'] : []);
         } else {
-            $inner = is_array($outer) ? $outer : ($decode_json_maybe((string)$rawjson) ?? []);
+            $inner = is_array($outer) ? $outer : ($decodejsonmaybe((string)$rawjson) ?? []);
         }
 
         $fwshort = (string)($inner['framework']['shortname'] ?? $params['selectedframeworkshortname']);
@@ -128,17 +169,27 @@ class classify_text extends external_api {
         return [
             'frameworkid'        => (int)$params['selectedframeworkid'],
             'frameworkshortname' => $fwshort,
-            'usedlevels'        => $usedlevels,
+            'usedlevels'         => $usedlevels,
             'competencies'       => $competencies,
         ];
-
     }
 
+    /**
+     * Describes the return structure of the classify_text function.
+     *
+     * @return external_single_structure Structure of the returned data.
+     */
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
-            'frameworkid'        => new external_value(PARAM_INT,  'ID of the competency framework used to classify'),
-            'frameworkshortname' => new external_value(PARAM_TEXT, 'Short name of the competency framework used to classify'),
-            'usedlevels'        => new external_multiple_structure(
+            'frameworkid' => new external_value(
+                PARAM_INT,
+                'ID of the competency framework used to classify'
+            ),
+            'frameworkshortname' => new external_value(
+                PARAM_TEXT,
+                'Short name of the competency framework used to classify'
+            ),
+            'usedlevels' => new external_multiple_structure(
                 new external_value(PARAM_TEXT, 'Level name used'),
                 'Levels actually used for classification',
                 VALUE_DEFAULT,

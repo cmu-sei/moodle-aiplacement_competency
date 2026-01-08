@@ -1,13 +1,42 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 namespace aiplacement_classifyassist\output;
 
 use core\hook\output\before_footer_html_generation;
 
 /**
- * Decides *when* to show the “Classify” button and renders it.
+ * Decides when to show the “Classify” button and renders it.
+ *
+ * Provides the output logic for injecting the classify drawer
+ * and action buttons into course editing pages.
+ *
+ * @package    aiplacement_classifyassist
+ * @category   output
+ * @copyright  2025 Nuria Pacheco
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class classify_ui {
 
+    /**
+     * Load and inject the classify UI into the footer.
+     *
+     * @param before_footer_html_generation $hook Hook object for footer HTML injection.
+     * @return void
+     */
     public static function load_classify_ui(\core\hook\output\before_footer_html_generation $hook): void {
         global $PAGE, $OUTPUT, $USER;
 
@@ -43,6 +72,11 @@ class classify_ui {
         );
     }
 
+    /**
+     * Run environment and capability checks before showing the UI.
+     *
+     * @return bool True if UI may be displayed, false otherwise.
+     */
     private static function preflight_checks(): bool {
         global $PAGE;
 
@@ -60,7 +94,7 @@ class classify_ui {
         $actionclass = \core_ai\aiactions\generate_text::class;
         $aimanager = \core\di::get(\core_ai\manager::class);
 
-        // // Check if the action is enabled
+        // Check if the action is enabled.
         if (!$aimanager->is_action_enabled('aiplacement_classifyassist', $actionclass)) {
             return false;
         }
