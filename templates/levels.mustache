@@ -1,3 +1,75 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+    AI Placement Plugin for Moodle Competencies
+
+    Copyright 2026 Carnegie Mellon University.
+
+    NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+    CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+    WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+    CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+    Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+    [DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+    This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+    DM26-0017
+}}
+
+{{!
+    @template aiplacement_competency/levels
+
+    Renders the “level selection” step in the AI classification drawer workflow.
+    After a competency framework is chosen, this view lets the user pick one or more
+    framework “levels” (taxonomy buckets) to constrain the classification.
+
+    The template includes:
+    - A heading and helper text (lang strings)
+    - A checkbox list of available levels (options)
+    - Continue / Back / Cancel controls
+
+    Expected context (json):
+    {
+        "options": [
+            {
+                "value": "levelid_or_key",
+                "label": "Level name",
+                "help": "Optional helper text shown under the level"
+            }
+        ]
+    }
+
+    Context fields:
+    - options (array): list of selectable levels
+        - value (string): value for the checkbox (typically an id or key used by JS)
+        - label (string): label shown next to the checkbox
+        - help (string, optional): small helper text shown under the item
+
+    JS hooks:
+    - input[name="classify-levels"]: checkboxes read to determine selected levels
+    - [data-action="continue"]: proceeds to the next step (initially disabled)
+    - [data-action="back"]: returns to the previous step (framework selection)
+    - [data-action="cancel"]: cancels/closes the workflow
+
+    Notes:
+    - The “Continue” button starts disabled and should be enabled by JS when at least one
+      level is selected (or when the workflow permits continuing without a selection).
+    - When no options are provided, an empty-state message is shown.
+}}
+
 <div class="ai-prestep">
   <h3 class="h5">{{#str}} levelsselection, aiplacement_competency {{/str}}</h3>
   <p class="text-muted">{{#str}} levelsselection_help, aiplacement_competency {{/str}}</p>
