@@ -14,10 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/*
+AI Placement Plugin for Moodle Competencies
+
+Copyright 2026 Carnegie Mellon University.
+
+NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+[DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+DM26-0017
+*/
+
 /**
- * Language strings for the AI Placement Classify Assist plugin.
+ * Language strings for the AI Placement Competency plugin.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   string
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -111,7 +129,7 @@ $string['applycompetencies'] = 'Apply';
 $string['applynow'] = 'Apply';
 $string['classify_note_newactivity'] = 'Once this activity has been saved, the Competency Classification tool will be enabled.';
 $string['classify_tooltips'] = 'Classify content based on competency framework.';
-$string['classifyassist:classify_text'] = 'Classify Text';
+$string['competency:classify_text'] = 'Classify Text';
 $string['classifybutton'] = 'Classify Text';
 $string['classifyheading'] = 'AI Classification Result';
 $string['competencies'] = 'Competencies';
@@ -136,8 +154,8 @@ $string['notify_course_added_heading']  = 'Added {$a->count} competencies to thi
 $string['notify_course_exists_heading'] = 'Already in this course (not added): {$a->count}';
 $string['notify_course_failed_heading'] = 'Failed to add to course: {$a->count}';
 $string['notify_empty_description'] = 'Please add a description before using the Competency Classification tool.';
-$string['pluginname'] = 'Classify Assist';
-$string['privacy:metadata'] = 'The Classify Assist plugin stores no personal data.';
+$string['pluginname'] = 'Competency';
+$string['privacy:metadata'] = 'The AI Placement Competency plugin stores no personal data.';
 $string['regenerate'] = 'Regenerate';
 $string['skills'] = 'Skills';
 $string['tasks'] = 'Tasks';

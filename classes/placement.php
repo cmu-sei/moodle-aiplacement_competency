@@ -14,13 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/*
+AI Placement Plugin for Moodle Competencies
+
+Copyright 2026 Carnegie Mellon University.
+
+NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+[DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+DM26-0017
+*/
+
 declare(strict_types=1);
 
-namespace aiplacement_classifyassist;
+namespace aiplacement_competency;
 
 use core\di;
 use context;
-use aiplacement_classifyassist\local\utils;
+use aiplacement_competency\local\utils;
 
 /**
  * Placement class for AI-based text classification.
@@ -28,7 +46,7 @@ use aiplacement_classifyassist\local\utils;
  * Provides integration with Moodle’s AI manager to classify text
  * against competency frameworks, using AI-generated responses.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -91,7 +109,7 @@ class placement extends \core_ai\placement {
             $msg = method_exists($response, 'get_errormessage')
                 ? (string)($response->get_errormessage() ?? '')
                 : 'Unknown AI error';
-            throw new \moodle_exception('aiclassifyfailed', 'aiplacement_classifyassist', '', null, $msg);
+            throw new \moodle_exception('aiclassifyfailed', 'aiplacement_competency', '', null, $msg);
         }
 
         $rawdata = $response->get_response_data();

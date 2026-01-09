@@ -1,7 +1,67 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+    AI Placement Plugin for Moodle Competencies
+
+    Copyright 2026 Carnegie Mellon University.
+
+    NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+    CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+    WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+    CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+    Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+    [DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+    This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+    DM26-0017
+}}
+
+{{!
+    @template aiplacement_competency/classify_button
+
+    Renders a Moodle form row containing the AI classification action button.
+    This is typically injected into a course or activity editing form, and provides:
+    - A label for the AI classification control
+    - A popover help icon describing what the feature does
+    - A primary "Classify" button (with sparkles icon) that triggers the AI workflow
+
+    This template intentionally contains the JS hook attributes used by the plugin:
+    - data-action="classify"
+    - data-input-type="action"
+
+    Strings used:
+    - aiclassificationlabel
+    - aiclassification_help
+    - classify_tooltips
+    - classifybutton
+    - help
+
+    Expected context:
+    - No custom context variables are required.
+      All text is provided by lang strings and the icon is provided via {{#pix}}.
+
+    Notes:
+    - The popover uses Bootstrap attributes (data-bs-*) and expects Bootstrap JS to be available.
+    - Plugin JS should attach a click handler to `.ai-action[data-action="classify"]`.
+}}
+
 <div class="mb-3 row fitem">
   <div class="col-md-3 col-form-label d-flex align-items-center pb-0 pe-md-0">
     <label class="m-0 me-1">
-      {{#str}}aiclassificationlabel,aiplacement_classifyassist{{/str}}
+      {{#str}}aiclassificationlabel,aiplacement_competency{{/str}}
     </label>
     <div class="form-label-addon d-flex align-items-center">
       <a class="btn btn-link p-0"
@@ -9,15 +69,15 @@
          data-bs-container="body"
          data-bs-toggle="popover"
          data-bs-placement="right"
-         data-bs-content="<div class='no-overflow'><p>{{#str}}aiclassification_help,aiplacement_classifyassist{{/str}}</p></div>"
+         data-bs-content="<div class='no-overflow'><p>{{#str}}aiclassification_help,aiplacement_competency{{/str}}</p></div>"
          data-bs-html="true"
          tabindex="0"
          data-bs-trigger="focus"
-         aria-label="{{#str}}help,aiplacement_classifyassist{{/str}}">
+         aria-label="{{#str}}help,aiplacement_competency{{/str}}">
         <i class="icon fa fa-circle-question text-info fa-fw"
-           title="{{#str}}help,aiplacement_classifyassist{{/str}}"
+           title="{{#str}}help,aiplacement_competency{{/str}}"
            role="img"
-           aria-label="{{#str}}help,aiplacement_classifyassist{{/str}}"></i>
+           aria-label="{{#str}}help,aiplacement_competency{{/str}}"></i>
       </a>
     </div>
   </div>
@@ -30,11 +90,11 @@
       data-input-type="action"
       data-bs-toggle="tooltip"
       data-bs-placement="right"
-      title="{{#str}}classify_tooltips,aiplacement_classifyassist{{/str}}">
+      title="{{#str}}classify_tooltips,aiplacement_competency{{/str}}">
       <span class="ai-course-assist-sparkles-icon">
-        {{#pix}} sparkles-white, aiplacement_classifyassist {{/pix}}
+        {{#pix}} sparkles-white, aiplacement_competency {{/pix}}
       </span>
-      {{#str}}classifybutton,aiplacement_classifyassist{{/str}}
+      {{#str}}classifybutton,aiplacement_competency{{/str}}
     </button>
   </div>
 </div>

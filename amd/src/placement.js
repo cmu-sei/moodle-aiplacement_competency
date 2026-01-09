@@ -1,3 +1,20 @@
+/*
+AI Placement Plugin for Moodle Competencies
+
+Copyright 2026 Carnegie Mellon University.
+
+NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+[DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+DM26-0017
+*/
 define([
     'aiplacement_courseassist/placement',
     'core/templates',
@@ -49,7 +66,7 @@ define([
                             (ce && ce.textContent ? ce.textContent.trim() : '');
 
                         if (!prompt) {
-                            const errorHtml = await Templates.render('aiplacement_classifyassist/error', {});
+                            const errorHtml = await Templates.render('aiplacement_competency/error', {});
                             this.aiDrawerBodyElement.innerHTML = errorHtml;
                             return;
                         }
@@ -77,11 +94,11 @@ define([
                     (ce && ce.textContent ? ce.textContent.trim() : '');
 
                 if (!prompt) {
-                    Str.get_string('notify_empty_description', 'aiplacement_classifyassist')
+                    Str.get_string('notify_empty_description', 'aiplacement_competency')
                         .catch(() => 'No content found to classify.')
                         .then(msg => Notification.addNotification({ type: 'error', message: msg }));
 
-                    const errorHtml = await Templates.render('aiplacement_classifyassist/error', {});
+                    const errorHtml = await Templates.render('aiplacement_competency/error', {});
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
                     return;
                 }
@@ -94,7 +111,7 @@ define([
         async showSelectFramework(prompt) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
-            const prestepHtml = await Templates.render('aiplacement_classifyassist/framework_select', {});
+            const prestepHtml = await Templates.render('aiplacement_competency/framework_select', {});
             this.aiDrawerBodyElement.innerHTML = prestepHtml;
 
             const select = this.aiDrawerBodyElement.querySelector(SELECTOR_PRESELECT);
@@ -212,7 +229,7 @@ define([
         async showLevels(prompt, framework) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
-            const html = await Templates.render('aiplacement_classifyassist/levels', { options: [] });
+            const html = await Templates.render('aiplacement_competency/levels', { options: [] });
             this.aiDrawerBodyElement.innerHTML = html;
 
             let competencies = [];
@@ -269,7 +286,7 @@ define([
             };
             });
 
-            const finalHtml = await Templates.render('aiplacement_classifyassist/levels', { options });
+            const finalHtml = await Templates.render('aiplacement_competency/levels', { options });
             this.aiDrawerBodyElement.innerHTML = finalHtml;
 
             const cancelBtn   = this.aiDrawerBodyElement.querySelector(SELECTOR_CANCEL);
@@ -329,7 +346,7 @@ define([
         async sendClassification(prompt, framework, levels) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
-            const loadingHtml = await Templates.render('aiplacement_classifyassist/loading', {});
+            const loadingHtml = await Templates.render('aiplacement_competency/loading', {});
             this.aiDrawerBodyElement.innerHTML = loadingHtml;
 
             const cancelBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CANCEL);
@@ -361,7 +378,7 @@ define([
                 )];
 
                 const calls = Ajax.call([{
-                    methodname: 'aiplacement_classifyassist_classify_text',
+                    methodname: 'aiplacement_competency_classify_text',
                     args: {
                         contextid: this.contextId,
                         prompttext: prompt,
@@ -379,10 +396,10 @@ define([
 
                 const {frameworkid, frameworkshortname, usedlevels = [], competencies = []} = result;
                 const uniqid  = 'resp-' + Math.random().toString(36).substr(2, 9);
-                const heading = await Str.get_string('classifyheading', 'aiplacement_classifyassist');
+                const heading = await Str.get_string('classifyheading', 'aiplacement_competency');
 
                 const responseHtml = await Templates.render(
-                    'aiplacement_classifyassist/response',
+                    'aiplacement_competency/response',
                     {
                         heading,
                         action: heading,
@@ -405,7 +422,7 @@ define([
                 }
             } catch (error) {
                 if (!this.isRequestCancelled()) {
-                    const errorHtml = await Templates.render('aiplacement_classifyassist/error', {});
+                    const errorHtml = await Templates.render('aiplacement_competency/error', {});
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
                     Notification.exception(error);
                 }

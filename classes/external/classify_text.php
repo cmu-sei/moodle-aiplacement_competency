@@ -14,24 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/*
+AI Placement Plugin for Moodle Competencies
+
+Copyright 2026 Carnegie Mellon University.
+
+NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+[DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+DM26-0017
+*/
+
 declare(strict_types=1);
 
-namespace aiplacement_classifyassist\external;
+namespace aiplacement_competency\external;
 
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_multiple_structure;
-use aiplacement_classifyassist\local\utils;
+use aiplacement_competency\local\utils;
 
 /**
  * External function to classify text against a competency framework.
  *
  * This service allows text content to be classified into competencies
- * and levels using the AI Placement Classify Assist plugin.
+ * and levels using the AI Placement Competency plugin.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   external
  * @copyright  2025 Nuria Pacheco
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -87,7 +105,7 @@ class classify_text extends external_api {
 
         $context = \context::instance_by_id($params['contextid']);
         self::validate_context($context);
-        require_capability('aiplacement/classifyassist:classify_text', $context);
+        require_capability('aiplacement/competency:classify_text', $context);
 
         $selectedlevels = array_values(array_unique(array_filter(array_map(
             static function($s) {
@@ -99,7 +117,7 @@ class classify_text extends external_api {
             $params['levels'] ?? []
         ))));
 
-        $placement = new \aiplacement_classifyassist\placement();
+        $placement = new \aiplacement_competency\placement();
         $rawjson = $placement->classify(
             $context,
             $params['prompttext'],

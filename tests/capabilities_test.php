@@ -14,12 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace aiplacement_classifyassist;
+/*
+AI Placement Plugin for Moodle Competencies
+
+Copyright 2026 Carnegie Mellon University.
+
+NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+[DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+DM26-0017
+*/
+
+namespace aiplacement_competency;
 
 /**
- * Unit tests for capabilities in the AI Placement Classify Assist plugin.
+ * Unit tests for capabilities in the AI Placement Competency plugin.
  *
- * @package    aiplacement_classifyassist
+ * @package    aiplacement_competency
  * @category   test
  * @coversNothing
  * @copyright  2025 Nuria Pacheco
@@ -38,16 +56,16 @@ final class capabilities_test extends \basic_testcase {
         parent::setUp();
 
         global $CFG;
-        require($CFG->dirroot . '/ai/placement/classifyassist/db/access.php');
+        require($CFG->dirroot . '/ai/placement/competency/db/access.php');
         $this->capabilities = $capabilities;
     }
 
     public function test_capability_is_declared(): void {
-        $this->assertArrayHasKey('aiplacement/classifyassist:classify_text', $this->capabilities);
+        $this->assertArrayHasKey('aiplacement/competency:classify_text', $this->capabilities);
     }
 
     public function test_capability_has_expected_structure(): void {
-        $c = $this->capabilities['aiplacement/classifyassist:classify_text'];
+        $c = $this->capabilities['aiplacement/competency:classify_text'];
 
         $this->assertSame('write', $c['captype']);
         $this->assertSame(CONTEXT_MODULE, $c['contextlevel']);
@@ -59,7 +77,7 @@ final class capabilities_test extends \basic_testcase {
     }
 
     public function test_archetypes_allow_correct_roles(): void {
-        $archetypes = $this->capabilities['aiplacement/classifyassist:classify_text']['archetypes'];
+        $archetypes = $this->capabilities['aiplacement/competency:classify_text']['archetypes'];
 
         $this->assertSame(CAP_ALLOW, $archetypes['manager']);
         $this->assertSame(CAP_ALLOW, $archetypes['editingteacher']);

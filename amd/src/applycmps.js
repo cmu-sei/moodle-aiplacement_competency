@@ -1,3 +1,20 @@
+/*
+AI Placement Plugin for Moodle Competencies
+
+Copyright 2026 Carnegie Mellon University.
+
+NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. 
+CARNEGIE MELLON UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, 
+WARRANTY OF FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF THE MATERIAL. 
+CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style license, please see license.txt or contact permission@sei.cmu.edu for full terms.
+
+[DISTRIBUTION STATEMENT A] This material has been approved for public release and unlimited distribution. Please see Copyright notice for non-US Government use and distribution.
+
+This Software includes and/or makes use of Third-Party Software each subject to its own license.
+
+DM26-0017
+*/
 define([
   'core/modal',
   'core/modal_factory',
@@ -84,18 +101,18 @@ define([
   // Call these after load to show course notifications once the page refreshes
   function showPostReloadCourseNoticesIfAny() {
     showNoticesFrom(RELOAD_COURSE_KEY, {
-      added : { key: 'notify_course_added_heading',  comp:'aiplacement_classifyassist', fallback: c => 'Course competencies added (' + c + ')' },
-      exists: { key: 'notify_course_exists_heading', comp:'aiplacement_classifyassist', fallback: c => 'Already in course (' + c + ')' },
-      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to add to course (does not match selected framework) (' + c + ')' }
+      added : { key: 'notify_course_added_heading',  comp:'aiplacement_competency', fallback: c => 'Course competencies added (' + c + ')' },
+      exists: { key: 'notify_course_exists_heading', comp:'aiplacement_competency', fallback: c => 'Already in course (' + c + ')' },
+      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_competency', fallback: c => 'Failed to add to course (does not match selected framework) (' + c + ')' }
     });
   }
 
   // Call these after load to show activity notifications once the page refreshes
   function showPostReloadCmNoticesIfAny() {
     showNoticesFrom(RELOAD_CM_KEY, {
-      added : { key: 'notify_cm_added_heading',  comp:'aiplacement_classifyassist', fallback: c => 'Added to activity (' + c + ')' },
-      exists: { key: 'notify_cm_exists_heading', comp:'aiplacement_classifyassist', fallback: c => 'Already linked to activity (' + c + ')' },
-      failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_classifyassist', fallback: c => 'Failed to link to activity (' + c + ')' }
+      added : { key: 'notify_cm_added_heading',  comp:'aiplacement_competency', fallback: c => 'Added to activity (' + c + ')' },
+      exists: { key: 'notify_cm_exists_heading', comp:'aiplacement_competency', fallback: c => 'Already linked to activity (' + c + ')' },
+      failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_competency', fallback: c => 'Failed to link to activity (' + c + ')' }
     });
   }
 
@@ -244,15 +261,15 @@ define([
 
   function addToModule(cmid, competencyId) {
     return Ajax.call([{
-      methodname: 'aiplacement_classifyassist_add_cm_competency',
+      methodname: 'aiplacement_competency_add_cm_competency',
       args: { cmid: cmid, competencyid: competencyId }
     }])[0];
   }
 
   // Modal that shows the ai response competencies to the user, here the user will be able to select which should be added to the course
   var openModal = function(values) {
-    return Str.get_string('applycmps_title', 'aiplacement_classifyassist').then(function(title) {
-      return Templates.render('aiplacement_classifyassist/applycmps_modal', {
+    return Str.get_string('applycmps_title', 'aiplacement_competency').then(function(title) {
+      return Templates.render('aiplacement_competency/applycmps_modal', {
         competencies: values.competencies || [],
         hascompetencies: !!(values.competencies && values.competencies.length)
       }).then(function(html, js) {
@@ -294,7 +311,7 @@ define([
 
                   var courseId = getCourseIdFromBody();
                   if (!courseId) {
-                    Str.get_string('notify_nocourseid', 'aiplacement_classifyassist').then(function(msg) {
+                    Str.get_string('notify_nocourseid', 'aiplacement_competency').then(function(msg) {
                       Notification.addNotification({ type: 'warning', message: msg });
                     });
                     resolve(picked);
@@ -390,10 +407,10 @@ define([
   var dispatchApply = function(payload, context) {
     var ev;
     try {
-      ev = new CustomEvent('aiplacement_classifyassist:apply', { detail: payload, bubbles: true });
+      ev = new CustomEvent('aiplacement_competency:apply', { detail: payload, bubbles: true });
     } catch (e) {
       ev = document.createEvent('CustomEvent');
-      ev.initCustomEvent('aiplacement_classifyassist:apply', true, false, payload);
+      ev.initCustomEvent('aiplacement_competency:apply', true, false, payload);
     }
     (context || document).dispatchEvent(ev);
   };
