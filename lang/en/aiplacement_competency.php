@@ -36,7 +36,7 @@ DM26-0017
  *
  * @package    aiplacement_competency
  * @category   string
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

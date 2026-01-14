@@ -37,7 +37,7 @@ DM26-0017
  * This file registers plugin callbacks for Moodle’s hook API.
  *
  * @package    aiplacement_competency
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

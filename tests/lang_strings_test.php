@@ -41,7 +41,7 @@ namespace aiplacement_competency;
  * @package    aiplacement_competency
  * @category   test
  * @coversNothing
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class lang_strings_test extends \basic_testcase {

@@ -37,7 +37,7 @@ DM26-0017
  * Declares external functions available via Moodle’s web services API.
  *
  * @package    aiplacement_competency
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

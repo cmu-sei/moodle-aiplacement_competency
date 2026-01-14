@@ -46,7 +46,7 @@ use core_external\external_value;
  *
  * @package    aiplacement_competency
  * @category   external
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class add_cm_competency extends external_api {

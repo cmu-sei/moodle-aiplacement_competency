@@ -46,7 +46,7 @@ use aiplacement_competency\local\utils;
  * against competency frameworks, using AI-generated responses.
  *
  * @package    aiplacement_competency
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class placement extends \core_ai\placement {

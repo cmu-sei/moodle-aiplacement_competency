@@ -43,7 +43,7 @@ use aiplacement_competency\local\utils;
  * @package    aiplacement_competency
  * @category   test
  * @covers     \aiplacement_competency\local\utils
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class utils_test extends \advanced_testcase {

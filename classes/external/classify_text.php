@@ -50,7 +50,7 @@ use aiplacement_competency\local\utils;
  *
  * @package    aiplacement_competency
  * @category   external
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class classify_text extends external_api {

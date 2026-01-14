@@ -42,7 +42,7 @@ use core_privacy\local\metadata\null_provider;
  *
  * @package    aiplacement_competency
  * @category   privacy
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements null_provider {

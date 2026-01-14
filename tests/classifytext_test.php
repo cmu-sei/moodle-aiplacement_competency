@@ -38,7 +38,7 @@ DM26-0017
  * @package    aiplacement_competency
  * @category   test
  * @covers     \aiplacement_competency\external\classify_text
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 declare(strict_types=1);

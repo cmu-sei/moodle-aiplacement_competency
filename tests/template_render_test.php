@@ -45,7 +45,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * @package    aiplacement_competency
  * @category   test
  * @coversNothing
- * @copyright  2025 Nuria Pacheco
+ * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class template_render_test extends \advanced_testcase {
