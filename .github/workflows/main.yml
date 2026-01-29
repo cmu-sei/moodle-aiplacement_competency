@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: "./competency"
+
+      - id: competency
+        uses: pozetroninc/github-action-get-latest-release@v0.5.0
+        with:
+          owner: cmu-sei
+          repo: moodle-aiplacement_competency
+          excludes: prerelease, draft
+
+      - name: package
+        run: |
+          OLDRELEASE=${{ steps.competency.outputs.release }}
+          PREVIOUSVERSION=$(grep "plugin->version" competency/version.php | sed -e "s/.*= \(.*\);.*/\1/")
+          if [ $OLDRELEASE -ne $PREVIOUSVERSION ]; then
+              NEWVERSION=$PREVIOUSVERSION
+          else
+              OLDDATE=`echo $PREVIOUSVERSION | cut -b 1-8`
+              NEWDATE=`date +%Y%m%d`
+              if [ $OLDDATE -ne $NEWDATE ]; then
+                  NEWVERSION=$NEWDATE\00
+              else
+                  OLDVERS=`echo $PREVIOUSVERSION | cut -b 9-10`
+                  OLDVERS=${OLDVERS#0}
+                  let NEWVERS=(OLDVERS + 1)
+                  NEWVERSION=$OLDDATE`printf %02d $NEWVERS`
+              fi
+              sed -i "s#\(plugin->version.*\)$PREVIOUSVERSION#\1$NEWVERSION#" competency/version.php
+              cd ./competency
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add version.php
+              git commit -m "Updating version to $NEWVERSION"
+              git push
+              cd ..
+          fi
+          zip -r aiplacement_competency_$NEWVERSION.zip competency/ -x  "competency/*.git*"
+          echo "artifact_version=$NEWVERSION" >> $GITHUB_ENV
+          echo "artifact_name=aiplacement_competency_$NEWVERSION" >> $GITHUB_ENV
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.artifact_version }}
+          release_name: ${{ env.artifact_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload a Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{env.artifact_name}}.zip
+          asset_name: ${{env.artifact_name}}.zip
+          asset_content_type: application/zip
