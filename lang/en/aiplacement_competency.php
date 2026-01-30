@@ -144,6 +144,7 @@ $string['help'] = 'Help';
 $string['knowledge'] = 'Knowledge';
 $string['levels'] = 'Competency Levels';
 $string['levelsselection'] = 'Competency Selection';
+$string['levelsselection_empty'] = 'No competency levels found for this framework.';
 $string['levelsselection_help'] = 'Select the competency levels (taxonomies) you want the AI model to use when classifying your content.';
 $string['none'] = 'None';
 $string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
