@@ -43,7 +43,7 @@ DM26-0017
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026012900;
+$plugin->version   = 2026013000;
 $plugin->requires  = 2025040800;
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->core_hooks = [
