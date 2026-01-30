@@ -31,26 +31,8 @@
 {{!
     @template aiplacement_competency/framework_select
 
-    Renders the initial “pre-step” screen in the AI classification drawer where the user
-    selects a competency framework before running classification.
-
-    The template includes:
-    - A heading and helper text (lang strings)
-    - A framework <select> element that is expected to be populated by JS
-    - Continue / Cancel buttons for progressing or aborting the workflow
-
-    Expected context:
-    - No custom context variables are required.
-      The framework options are loaded and injected into the <select> by the plugin’s JS.
-
-    JS hooks:
-    - #classify-preselect: target <select> to populate and read selected framework id
-    - [data-action="continue"]: proceeds to the next step (initially disabled until selection)
-    - [data-action="cancel"]: cancels/closes the workflow
-
-    Notes:
-    - The “Continue” button starts disabled and should be enabled by JS after a valid framework is selected.
-    - This view is typically rendered into the drawer body dynamically as part of the placement workflow.
+    Framework selection step in AI classification drawer. Framework options populated by JS.
+    JS hooks: #classify-preselect, [data-action="continue"], [data-action="cancel"]
 }}
 
 <div class="ai-prestep">

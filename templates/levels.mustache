@@ -31,42 +31,9 @@
 {{!
     @template aiplacement_competency/levels
 
-    Renders the “level selection” step in the AI classification drawer workflow.
-    After a competency framework is chosen, this view lets the user pick one or more
-    framework “levels” (taxonomy buckets) to constrain the classification.
-
-    The template includes:
-    - A heading and helper text (lang strings)
-    - A checkbox list of available levels (options)
-    - Continue / Back / Cancel controls
-
-    Expected context (json):
-    {
-        "options": [
-            {
-                "value": "levelid_or_key",
-                "label": "Level name",
-                "help": "Optional helper text shown under the level"
-            }
-        ]
-    }
-
-    Context fields:
-    - options (array): list of selectable levels
-        - value (string): value for the checkbox (typically an id or key used by JS)
-        - label (string): label shown next to the checkbox
-        - help (string, optional): small helper text shown under the item
-
-    JS hooks:
-    - input[name="classify-levels"]: checkboxes read to determine selected levels
-    - [data-action="continue"]: proceeds to the next step (initially disabled)
-    - [data-action="back"]: returns to the previous step (framework selection)
-    - [data-action="cancel"]: cancels/closes the workflow
-
-    Notes:
-    - The “Continue” button starts disabled and should be enabled by JS when at least one
-      level is selected (or when the workflow permits continuing without a selection).
-    - When no options are provided, an empty-state message is shown.
+    Level selection step in AI classification drawer.
+    Context: { "options": [{ "value": "id", "label": "Name", "help": "Text" }] }
+    JS hooks: input[name="classify-levels"], [data-action="continue|back|cancel"]
 }}
 
 <div class="ai-prestep">

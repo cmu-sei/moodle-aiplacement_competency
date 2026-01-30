@@ -31,26 +31,9 @@
 {{!
     @template aiplacement_competency/applycmps_modal
 
-    This template renders the "Apply Competencies" UI used after AI classification.
-    It shows a checklist of suggested competencies with Select all / Clear all actions
-    and an "Apply now" button to apply/link the selected competencies.
-
-    Expected context (json):
-    {
-        "hascompetencies": true,
-        "competencies": [
-            "C1 - Communicate effectively",
-            "C2 - Analyze requirements"
-        ]
-    }
-
-    Notes:
-    - This template is intended to be used inside a modal or drawer.
-    - JS is expected to handle:
-        - data-action="selectall"
-        - data-action="clearall"
-        - data-action="apply-inline"
-      and read checked items via checkboxes with data-key="competencies".
+    Competency checklist UI after AI classification.
+    Context: { "hascompetencies": true, "competencies": ["C1", "C2"] }
+    JS hooks: [data-action="selectall|clearall|apply-inline"], [data-key="competencies"]
 }}
 
 <div class="aiplacement-applycmps">

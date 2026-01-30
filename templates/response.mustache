@@ -30,48 +30,10 @@
 
 {{!
     @template aiplacement_competency/response
-
-    Renders the AI classification result card shown inside the drawer after running the
-    placement. It displays the selected framework, the levels used for classification,
-    and the list of suggested competencies, along with action buttons.
-
-    The card also includes a copy-to-clipboard target and a watermark indicating AI-generated content.
-
-    Expected context (json):
-    {
-        "action": "classify_text",
-        "heading": "Suggested competencies",
-        "uniqid": "abc123",
-        "frameworkid": 12,
-        "frameworkshortname": "SEI-COMP",
-        "usedlevels": ["beginner", "intermediate"],
-        "competencies": [
-            "C1 - Communicate effectively",
-            "C2 - Analyze requirements"
-        ]
-    }
-
-    Context fields:
-    - action (string): name of the action performed (written to data-action-performed)
-    - heading (string): title shown at the top of the card
-    - uniqid (string): unique suffix used to create a stable DOM id for copy-to-clipboard
-    - frameworkid (int|string): framework identifier (written to data-frameworkid)
-    - frameworkshortname (string, optional): framework shortname; shows "none" if missing
-    - usedlevels (array of string, optional): level names used for classification; shows "none" if empty
-    - competencies (array of string, optional): suggested competencies; shows "none" if empty
-
-    JS hooks:
-    - [data-action="regenerate"]: reruns the AI classification
-    - [data-action="copytoclipboard"] with data-clipboard-target: copies the response block
-    - [data-action="applycmps"]: opens the "apply competencies" flow/modal
-    - #course-assist-response-content-{{uniqid}}: copy-to-clipboard target container
-    - dd[data-frameworkid]: provides selected framework id for subsequent actions
-    - dd[data-section="competencies"]: region containing the competency list
-
-    Notes:
-    - The competency list items are rendered as plain text (escaped by Mustache).
-    - The watermark string comes from core_ai and should remain for transparency.
+    Renders the AI classification result card with framework, levels, and suggested competencies.
 }}
+{{! Expected context: action, heading, uniqid, frameworkid, frameworkshortname, usedlevels, competencies }}
+{{! JS hooks: [data-action="regenerate"], [data-action="copytoclipboard"], [data-action="applycmps"] }}
 
 <section class="course-assist-response card mb-3" data-action-performed="{{action}}">
   <div class="card-body p-3">

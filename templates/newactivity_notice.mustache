@@ -31,25 +31,9 @@
 {{!
     @template aiplacement_competency/newactivity_notice
 
-    Renders an informational notice shown when the AI placement workflow is not available
-    because the user is creating a new activity that has not been saved yet.
+    Notice shown when AI placement is unavailable for unsaved activities.
 
-    This is typically used to tell the user they must save the activity first (so it has a cmid)
-    before competencies can be classified/applied.
-
-    Expected context (json):
-    {
-        "message": "<p>Save this activity to enable AI classification.</p>"
-    }
-
-    Context fields:
-    - message (string, HTML): The notice body to display. Rendered as raw HTML via triple-stash.
-
-    Notes:
-    - The wrapper includes `data-region="aiplacement-newactivity-notice"` so JS can find, update,
-      or hide the notice if the page state changes.
-    - Because `{{{ message }}}` renders raw HTML, ensure the message content is generated safely
-      server-side (e.g., via Moodle's formatting/escaping helpers) to avoid XSS.
+    Context: { "message": "<p>HTML message</p>" }
 }}
 
 <div class="alert alert-info mb-3" role="alert" data-region="aiplacement-newactivity-notice">

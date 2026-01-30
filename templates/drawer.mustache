@@ -31,26 +31,8 @@
 {{!
     @template aiplacement_competency/drawer
 
-    Renders the side drawer container used by the AI Placement "classify" workflow.
-    The drawer provides:
-    - A close button (top header)
-    - An initially empty body container where plugin JS injects the UI (forms, results, modals, etc.)
-
-    The template also boots the plugin's AMD module to initialize the placement on the page.
-
-    Expected context (json):
-    {
-        "userid": 123,
-        "contextid": 456
-    }
-
-    Notes:
-    - The drawer body is intentionally empty and is populated dynamically by JS.
-    - The body includes `data-cancelled` to allow JS to track whether the workflow was cancelled.
-    - The embedded JS requires `aiplacement_competency/placement` and instantiates it with:
-        new Cls(userid, contextid)
-      where `contextid` is the current page context (course or module context).
-    - The close button is expected to be wired up by the AMD module.
+    Side drawer for AI classification workflow. Body populated dynamically by JS.
+    Context: { "userid": 123, "contextid": 456 }
 }}
 
 <div class="ai-drawer" id="ai-classify-drawer" tabindex="-1">
