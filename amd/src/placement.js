@@ -166,7 +166,10 @@ define([
                         frameworks.forEach(fw => {
                             const opt = document.createElement('option');
                             opt.value = String(fw.id);
-                            opt.textContent = fw.shortname || fw.name || fw.idnumber || `Framework #${fw.id}`;
+                            // Decode HTML entities in framework name
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = fw.shortname || fw.name || fw.idnumber || `Framework #${fw.id}`;
+                            opt.textContent = tempDiv.textContent;
                             opt.dataset.shortname = fw.shortname || '';
                             opt.dataset.idnumber = fw.idnumber || '';
                             select.appendChild(opt);
