@@ -29,7 +29,6 @@ Licensed under a GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007-style lice
 This Software includes and/or makes use of Third-Party Software each subject to its own license.
 
 DM26-0017
-*/0017
 */
 
 namespace aiplacement_competency;
