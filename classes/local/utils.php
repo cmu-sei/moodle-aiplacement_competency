@@ -140,4 +140,101 @@ class utils {
             'competencies'       => $competencies,
         ];
     }
+
+    /**
+     * Check if a course module has content suitable for classification.
+     *
+     * @param int $cmid Course module ID
+     * @return bool True if the module has content, false otherwise
+     */
+    public static function has_module_content(int $cmid): bool {
+        global $DB;
+
+        if (!$cmid) {
+            return false;
+        }
+
+        $cm = $DB->get_record('course_modules', ['id' => $cmid]);
+        if (!$cm) {
+            return false;
+        }
+
+        $modinfo = get_fast_modinfo($cm->course);
+        $cminfo = $modinfo->get_cm($cmid);
+        $modname = $cminfo->modname;
+
+        // Get the module instance.
+        $instance = $DB->get_record($modname, ['id' => $cm->instance]);
+        if (!$instance) {
+            return false;
+        }
+
+        // Check intro field (common to most activities).
+        $hasintro = !empty($instance->intro) && trim(strip_tags($instance->intro)) !== '';
+
+        // Check activity-specific content fields.
+        $hasspecificcontent = false;
+
+        switch ($modname) {
+            case 'assign':
+                // Assignment instructions.
+                $hasspecificcontent = !empty($instance->intro) || !empty($instance->activity);
+                break;
+
+            case 'quiz':
+                // Check if quiz has questions.
+                $questioncount = $DB->count_records('quiz_slots', ['quizid' => $instance->id]);
+                $hasspecificcontent = $questioncount > 0;
+                break;
+
+            case 'page':
+                // Page content.
+                $hasspecificcontent = !empty($instance->content) && trim(strip_tags($instance->content)) !== '';
+                break;
+
+            case 'book':
+                // Check if book has chapters.
+                $chaptercount = $DB->count_records('book_chapters', ['bookid' => $instance->id]);
+                $hasspecificcontent = $chaptercount > 0;
+                break;
+
+            case 'forum':
+                // Forum intro or discussions.
+                $hasspecificcontent = $hasintro;
+                break;
+
+            case 'lesson':
+                // Check if lesson has pages.
+                $pagecount = $DB->count_records('lesson_pages', ['lessonid' => $instance->id]);
+                $hasspecificcontent = $pagecount > 0;
+                break;
+
+            case 'workshop':
+                // Workshop instructions.
+                $hasspecificcontent = !empty($instance->instructauthors) ||
+                                     !empty($instance->instructreviewers);
+                break;
+
+            case 'glossary':
+            case 'wiki':
+            case 'data':
+                // These grow with user contributions, intro is sufficient.
+                $hasspecificcontent = $hasintro;
+                break;
+
+            case 'resource':
+            case 'url':
+            case 'folder':
+                // These have intro + files/links, intro is sufficient.
+                $hasspecificcontent = $hasintro;
+                break;
+
+            default:
+                // For unknown activity types, check if intro exists.
+                $hasspecificcontent = $hasintro;
+                break;
+        }
+
+        return $hasintro || $hasspecificcontent;
+    }
 }

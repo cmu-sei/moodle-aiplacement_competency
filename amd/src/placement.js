@@ -65,6 +65,103 @@ define([
             this.registerExtraListener();
         }
 
+        /**
+         * Extract activity-specific content from the page.
+         * @returns {string} The activity-specific content
+         */
+        extractActivityContent() {
+            let content = '';
+
+            // Try to detect activity type from the page.
+            const bodyClasses = document.body.className;
+
+            // Quiz: Extract question content from visible question elements.
+            if (bodyClasses.includes('path-mod-quiz')) {
+                const questionSlots = document.querySelectorAll('.questionname, .qtext, .question-text');
+                questionSlots.forEach(slot => {
+                    const text = slot.textContent.trim();
+                    if (text) {
+                        content += text + ' ';
+                    }
+                });
+            }
+
+            // Page: Extract page content.
+            if (bodyClasses.includes('path-mod-page')) {
+                const pageEditor = document.querySelector('#id_page') || document.querySelector('[name="page[text]"]');
+                const pageContentEditable = document.querySelector('[id^="id_page"][contenteditable="true"]');
+                if (pageEditor && pageEditor.value) {
+                    content += pageEditor.value.trim() + ' ';
+                } else if (pageContentEditable) {
+                    content += pageContentEditable.textContent.trim() + ' ';
+                }
+            }
+
+            // Assignment: Extract assignment activity content.
+            if (bodyClasses.includes('path-mod-assign')) {
+                const activityEditor = document.querySelector('#id_activity') || document.querySelector('[name="activity[text]"]');
+                const activityContentEditable = document.querySelector('[id^="id_activity"][contenteditable="true"]');
+                if (activityEditor && activityEditor.value) {
+                    content += activityEditor.value.trim() + ' ';
+                } else if (activityContentEditable) {
+                    content += activityContentEditable.textContent.trim() + ' ';
+                }
+            }
+
+            // Workshop: Extract instruction fields.
+            if (bodyClasses.includes('path-mod-workshop')) {
+                const instructAuthors = document.querySelector('#id_instructauthorseditor') ||
+                                       document.querySelector('[name="instructauthors[text]"]');
+                const instructReviewers = document.querySelector('#id_instructreviewerseditor') ||
+                                         document.querySelector('[name="instructreviewers[text]"]');
+
+                if (instructAuthors) {
+                    const text = instructAuthors.value || instructAuthors.textContent;
+                    if (text) {
+                        content += text.trim() + ' ';
+                    }
+                }
+                if (instructReviewers) {
+                    const text = instructReviewers.value || instructReviewers.textContent;
+                    if (text) {
+                        content += text.trim() + ' ';
+                    }
+                }
+            }
+
+            // Book: Extract chapter content (if visible).
+            if (bodyClasses.includes('path-mod-book')) {
+                const chapters = document.querySelectorAll('.book_content, .chapter-content');
+                chapters.forEach(chapter => {
+                    const text = chapter.textContent.trim();
+                    if (text) {
+                        content += text + ' ';
+                    }
+                });
+            }
+
+            return content.trim();
+        }
+
+        /**
+         * Read activity description and content from the page.
+         * @returns {string} Combined intro and activity content
+         */
+        readActivityContent() {
+            // Read intro/description.
+            const ta = document.querySelector('#id_introeditor') || document.querySelector('[name="intro[text]"]');
+            const ce = document.querySelector('[id^="id_introeditor"][contenteditable="true"]');
+            const intro = (ta && typeof ta.value === 'string' ? ta.value.trim() : '') ||
+                         (ce && ce.textContent ? ce.textContent.trim() : '');
+
+            // Read activity-specific content.
+            const activityContent = this.extractActivityContent();
+
+            // Combine intro and activity content.
+            const combined = [intro, activityContent].filter(s => s).join('\n\n');
+            return combined.trim();
+        }
+
         registerExtraListener() {
             document.addEventListener('click', async e => {
                 // 1) Retry inside the drawer
@@ -73,12 +170,8 @@ define([
                     e.preventDefault();
                     retryBtn.disabled = true;
                     try {
-                        // Read activity description
-                        const ta = document.querySelector('#id_introeditor') || document.querySelector('[name="intro[text]"]');
-                        const ce = document.querySelector('[id^="id_introeditor"][contenteditable="true"]');
-                        const prompt =
-                            (ta && typeof ta.value === 'string' ? ta.value.trim() : '') ||
-                            (ce && ce.textContent ? ce.textContent.trim() : '');
+                        // Read activity content (intro + activity-specific content)
+                        const prompt = this.readActivityContent();
 
                         if (!prompt) {
                             const errorHtml = await Templates.render('aiplacement_competency/error', {});
@@ -101,12 +194,8 @@ define([
                 e.preventDefault();
                 this.openAIDrawer();
 
-                // If you want to require description here too, use the same strict read:
-                const ta = document.querySelector('#id_introeditor') || document.querySelector('[name="intro[text]"]');
-                const ce = document.querySelector('[id^="id_introeditor"][contenteditable="true"]');
-                const prompt =
-                    (ta && typeof ta.value === 'string' ? ta.value.trim() : '') ||
-                    (ce && ce.textContent ? ce.textContent.trim() : '');
+                // Read activity content (intro + activity-specific content)
+                const prompt = this.readActivityContent();
 
                 if (!prompt) {
                     Str.get_string('notify_empty_description', 'aiplacement_competency')
