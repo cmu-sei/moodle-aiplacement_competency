@@ -61,12 +61,12 @@
     - competencies (array of string, optional): suggested competencies; shows "none" if empty
 
     JS hooks:
-    - [data-action="regenerate"]: reruns the AI classification
-    - [data-action="copytoclipboard"] with data-clipboard-target: copies the response block
-    - [data-action="applycmps"]: opens the "apply competencies" flow/modal
-    - #course-assist-response-content-{{uniqid}}: copy-to-clipboard target container
-    - dd[data-frameworkid]: provides selected framework id for subsequent actions
-    - dd[data-section="competencies"]: region containing the competency list
+    - data-action regenerate: reruns the AI classification
+    - data-action copytoclipboard: copies the response block
+    - data-action applycmps: opens the apply competencies flow/modal
+    - course-assist-response-content with uniqid: copy-to-clipboard target container
+    - dd with data-frameworkid: provides selected framework id for subsequent actions
+    - dd with data-section competencies: region containing the competency list
 
     Notes:
     - The competency list items are rendered as plain text (escaped by Mustache).
