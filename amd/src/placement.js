@@ -140,6 +140,18 @@ define([
                 });
             }
 
+            // TopoMojo: Extract lab content from editor.
+            if (bodyClasses.includes('path-mod-topomojo')) {
+                const contentEditor = document.querySelector('#id_content_editor') ||
+                                     document.querySelector('[name="content_editor[text]"]');
+                const contentEditable = document.querySelector('[id^="id_content_editor"][contenteditable="true"]');
+                if (contentEditor && contentEditor.value) {
+                    content += contentEditor.value.trim() + ' ';
+                } else if (contentEditable) {
+                    content += contentEditable.textContent.trim() + ' ';
+                }
+            }
+
             return content.trim();
         }
 
