@@ -144,20 +144,6 @@ class classify_text extends external_api {
             $params['levels'] ?? []
         ))));
 
-        // Debug: Log the content being sent to AI.
-        debugging('AI Classification Prompt Text (' . strlen($params['prompttext']) . ' chars): ' .
-                 substr($params['prompttext'], 0, 500) .
-                 (strlen($params['prompttext']) > 500 ? '...' : ''), DEBUG_DEVELOPER);
-        error_log('=== AI CLASSIFICATION DEBUG ===');
-        error_log('Context ID: ' . $params['contextid']);
-        error_log('Framework ID: ' . $params['selectedframeworkid']);
-        error_log('Framework Shortname: ' . $params['selectedframeworkshortname']);
-        error_log('Selected Levels: ' . implode(', ', $selectedlevels));
-        error_log('Prompt Text Length: ' . strlen($params['prompttext']) . ' characters');
-        error_log('Prompt Text:');
-        error_log($params['prompttext']);
-        error_log('=== END AI CLASSIFICATION DEBUG ===');
-
         $placement = new \aiplacement_competency\placement();
         $rawjson = $placement->classify(
             $context,
@@ -230,6 +216,8 @@ class classify_text extends external_api {
             'frameworkshortname' => $fwshort,
             'usedlevels'         => $usedlevels,
             'competencies'       => $competencies,
+            'prompttext'         => $params['prompttext'],
+            'promptlength'       => strlen($params['prompttext']),
         ];
     }
 
@@ -300,6 +288,18 @@ class classify_text extends external_api {
                 'Classified competencies',
                 VALUE_DEFAULT,
                 []
+            ),
+            'prompttext' => new external_value(
+                PARAM_RAW,
+                'The full prompt text sent to AI',
+                VALUE_DEFAULT,
+                ''
+            ),
+            'promptlength' => new external_value(
+                PARAM_INT,
+                'Length of prompt text in characters',
+                VALUE_DEFAULT,
+                0
             ),
         ]);
     }

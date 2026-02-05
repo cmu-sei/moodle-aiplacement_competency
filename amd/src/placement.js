@@ -531,7 +531,8 @@ define([
                     return;
                 }
 
-                const {frameworkid, frameworkshortname, usedlevels = [], competencies = []} = result;
+                const {frameworkid, frameworkshortname, usedlevels = [], competencies = [],
+                       prompttext = '', promptlength = 0} = result;
                 const uniqid  = 'resp-' + Math.random().toString(36).slice(2, 11);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_competency');
 
@@ -545,6 +546,8 @@ define([
                         frameworkshortname,
                         usedlevels,
                         competencies,
+                        prompttext,
+                        promptlength,
                     }
                 );
 
