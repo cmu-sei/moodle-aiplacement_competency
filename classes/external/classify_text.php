@@ -106,6 +106,33 @@ class classify_text extends external_api {
         self::validate_context($context);
         require_capability('aiplacement/competency:classify_text', $context);
 
+        // If this is a course module context, check for activity-specific content.
+        if ($context->contextlevel == CONTEXT_MODULE) {
+            $cm = get_coursemodule_from_id('', $context->instanceid, 0, false, MUST_EXIST);
+
+            // Handle quiz questions.
+            if ($cm->modname === 'quiz') {
+                $quiz = $DB->get_record('quiz', ['id' => $cm->instance]);
+                if ($quiz) {
+                    $questionscontent = self::get_quiz_questions_content($quiz->id);
+                    if (!empty($questionscontent)) {
+                        $params['prompttext'] .= "\n\n" . $questionscontent;
+                    }
+                }
+            }
+
+            // Handle TopoMojo content.
+            if ($cm->modname === 'topomojo') {
+                $topomojo = $DB->get_record('topomojo', ['id' => $cm->instance], 'content');
+                if ($topomojo && !empty($topomojo->content)) {
+                    $content = trim(strip_tags($topomojo->content));
+                    if ($content !== '') {
+                        $params['prompttext'] .= "\n\n" . $content;
+                    }
+                }
+            }
+        }
+
         $selectedlevels = array_values(array_unique(array_filter(array_map(
             static function($s) {
                 $s = (string)$s;
@@ -189,6 +216,47 @@ class classify_text extends external_api {
             'usedlevels'         => $usedlevels,
             'competencies'       => $competencies,
         ];
+    }
+
+    /**
+     * Get quiz questions content for AI classification.
+     *
+     * @param int $quizid The quiz ID.
+     * @return string The concatenated question text.
+     */
+    protected static function get_quiz_questions_content(int $quizid): string {
+        global $DB;
+
+        $content = '';
+
+        // Get quiz slots and questions.
+        $sql = "SELECT qs.slot, q.questiontext, q.name
+                FROM {quiz_slots} qs
+                JOIN {question_references} qr ON qr.itemid = qs.id
+                    AND qr.component = 'mod_quiz'
+                    AND qr.questionarea = 'slot'
+                JOIN {question_bank_entries} qbe ON qbe.id = qr.questionbankentryid
+                JOIN {question_versions} qv ON qv.questionbankentryid = qbe.id
+                JOIN {question} q ON q.id = qv.questionid
+                WHERE qs.quizid = :quizid
+                ORDER BY qs.slot";
+
+        $questions = $DB->get_records_sql($sql, ['quizid' => $quizid]);
+
+        foreach ($questions as $question) {
+            $questiontext = strip_tags($question->questiontext ?? '');
+            $questionname = $question->name ?? '';
+
+            if (!empty($questiontext)) {
+                $content .= "Question {$question->slot}";
+                if (!empty($questionname)) {
+                    $content .= " ({$questionname})";
+                }
+                $content .= ": " . trim($questiontext) . "\n\n";
+            }
+        }
+
+        return trim($content);
     }
 
     /**
