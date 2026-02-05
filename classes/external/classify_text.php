@@ -115,7 +115,7 @@ class classify_text extends external_api {
             if ($cm->modname === 'quiz') {
                 $quiz = $DB->get_record('quiz', ['id' => $cm->instance]);
                 if ($quiz) {
-                    $questionscontent = self::get_quiz_questions_content($quiz->id);
+                    $questionscontent = self::get_quiz_questions_content((int)$quiz->id);
                     if (!empty($questionscontent)) {
                         $params['prompttext'] .= "\n\n" . $questionscontent;
                     }
@@ -143,6 +143,20 @@ class classify_text extends external_api {
             },
             $params['levels'] ?? []
         ))));
+
+        // Debug: Log the content being sent to AI.
+        debugging('AI Classification Prompt Text (' . strlen($params['prompttext']) . ' chars): ' .
+                 substr($params['prompttext'], 0, 500) .
+                 (strlen($params['prompttext']) > 500 ? '...' : ''), DEBUG_DEVELOPER);
+        error_log('=== AI CLASSIFICATION DEBUG ===');
+        error_log('Context ID: ' . $params['contextid']);
+        error_log('Framework ID: ' . $params['selectedframeworkid']);
+        error_log('Framework Shortname: ' . $params['selectedframeworkshortname']);
+        error_log('Selected Levels: ' . implode(', ', $selectedlevels));
+        error_log('Prompt Text Length: ' . strlen($params['prompttext']) . ' characters');
+        error_log('Prompt Text:');
+        error_log($params['prompttext']);
+        error_log('=== END AI CLASSIFICATION DEBUG ===');
 
         $placement = new \aiplacement_competency\placement();
         $rawjson = $placement->classify(

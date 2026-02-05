@@ -532,7 +532,7 @@ define([
                 }
 
                 const {frameworkid, frameworkshortname, usedlevels = [], competencies = []} = result;
-                const uniqid  = 'resp-' + Math.random().toString(36).substr(2, 9);
+                const uniqid  = 'resp-' + Math.random().toString(36).slice(2, 11);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_competency');
 
                 const responseHtml = await Templates.render(
