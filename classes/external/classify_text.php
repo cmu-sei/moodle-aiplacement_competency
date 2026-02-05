@@ -216,8 +216,9 @@ class classify_text extends external_api {
             'frameworkshortname' => $fwshort,
             'usedlevels'         => $usedlevels,
             'competencies'       => $competencies,
-            'prompttext'         => $params['prompttext'],
-            'promptlength'       => strlen($params['prompttext']),
+            // Commented out to hide debug information from users.
+            // 'prompttext'         => $params['prompttext'],
+            // 'promptlength'       => strlen($params['prompttext']),
         ];
     }
 
@@ -289,18 +290,19 @@ class classify_text extends external_api {
                 VALUE_DEFAULT,
                 []
             ),
-            'prompttext' => new external_value(
-                PARAM_RAW,
-                'The full prompt text sent to AI',
-                VALUE_DEFAULT,
-                ''
-            ),
-            'promptlength' => new external_value(
-                PARAM_INT,
-                'Length of prompt text in characters',
-                VALUE_DEFAULT,
-                0
-            ),
+            // Commented out to hide debug information from users.
+            // 'prompttext' => new external_value(
+            //     PARAM_RAW,
+            //     'The full prompt text sent to AI',
+            //     VALUE_DEFAULT,
+            //     ''
+            // ),
+            // 'promptlength' => new external_value(
+            //     PARAM_INT,
+            //     'Length of prompt text in characters',
+            //     VALUE_DEFAULT,
+            //     0
+            // ),
         ]);
     }
 }
