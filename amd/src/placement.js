@@ -159,6 +159,15 @@ define([
 
             // Combine intro and activity content.
             const combined = [intro, activityContent].filter(s => s).join('\n\n');
+
+            // Debug: Log what's being sent to AI.
+            console.group('🤖 AI Classification - Prompt Text');
+            console.log('Intro/Description:', intro || '(empty)');
+            console.log('Activity Content:', activityContent || '(empty)');
+            console.log('Combined (sent to AI):', combined || '(empty)');
+            console.log('Character count:', combined.length);
+            console.groupEnd();
+
             return combined.trim();
         }
 
