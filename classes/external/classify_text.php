@@ -93,6 +93,7 @@ class classify_text extends external_api {
         string $selectedframeworkshortname = '',
         array $levels = []
     ): array {
+        global $DB;
 
         $params = self::validate_parameters(self::execute_parameters(), [
             'contextid' => $contextid,
