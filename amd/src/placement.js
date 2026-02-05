@@ -194,7 +194,13 @@ define([
                         // Read activity content (intro + activity-specific content)
                         const prompt = this.readActivityContent();
 
-                        if (!prompt) {
+                        // Check if this activity type has database content support
+                        const bodyClasses = document.body.className;
+                        const hasDbContent = bodyClasses.includes('path-mod-quiz') ||
+                                            bodyClasses.includes('path-mod-topomojo');
+
+                        // Only show error if no content AND activity doesn't fetch from DB
+                        if (!prompt && !hasDbContent) {
                             const errorHtml = await Templates.render('aiplacement_competency/error', {});
                             this.aiDrawerBodyElement.innerHTML = errorHtml;
                             return;
@@ -218,7 +224,13 @@ define([
                 // Read activity content (intro + activity-specific content)
                 const prompt = this.readActivityContent();
 
-                if (!prompt) {
+                // Check if this activity type has database content support
+                const bodyClasses = document.body.className;
+                const hasDbContent = bodyClasses.includes('path-mod-quiz') ||
+                                    bodyClasses.includes('path-mod-topomojo');
+
+                // Only show error if no content AND activity doesn't fetch from DB
+                if (!prompt && !hasDbContent) {
                     Str.get_string('notify_empty_description', 'aiplacement_competency')
                         .catch(() => 'No content found to classify.')
                         .then(msg => Notification.addNotification({ type: 'error', message: msg }));
