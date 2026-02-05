@@ -61,12 +61,12 @@
     - competencies (array of string, optional): suggested competencies; shows "none" if empty
 
     JS hooks:
-    - [data-action="regenerate"]: reruns the AI classification
-    - [data-action="copytoclipboard"] with data-clipboard-target: copies the response block
-    - [data-action="applycmps"]: opens the "apply competencies" flow/modal
-    - #course-assist-response-content-{{uniqid}}: copy-to-clipboard target container
-    - dd[data-frameworkid]: provides selected framework id for subsequent actions
-    - dd[data-section="competencies"]: region containing the competency list
+    - data-action regenerate: reruns the AI classification
+    - data-action copytoclipboard: copies the response block
+    - data-action applycmps: opens the apply competencies flow/modal
+    - course-assist-response-content with uniqid: copy-to-clipboard target container
+    - dd with data-frameworkid: provides selected framework id for subsequent actions
+    - dd with data-section competencies: region containing the competency list
 
     Notes:
     - The competency list items are rendered as plain text (escaped by Mustache).
@@ -104,7 +104,7 @@
           <dd class="col-sm-8">
             <ul class="list-unstyled mb-0 pl-0">
               {{#usedlevels}}
-                <li class="text-capitalize">{{.}}</li>
+                <li class="text-capitalize">{{{.}}}</li>
               {{/usedlevels}}
               {{^usedlevels}}
                 <li class="text-muted">{{#str}} none, aiplacement_competency {{/str}}</li>
@@ -117,7 +117,7 @@
           <dd class="col-sm-8" data-section="competencies">
             <ul class="list-unstyled mb-0 pl-0">
               {{#competencies}}
-                <li>{{.}}</li>
+                <li>{{{.}}}</li>
               {{/competencies}}
               {{^competencies}}
                 <li class="text-muted">{{#str}} none, aiplacement_competency {{/str}}</li>

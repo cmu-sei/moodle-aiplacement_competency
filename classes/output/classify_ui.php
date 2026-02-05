@@ -70,6 +70,14 @@ class classify_ui {
             return;
         }
 
+        // Check if the activity has content before showing the classify button.
+        $cmid = !empty($params['update']) ? (int)$params['update'] : 0;
+        if ($cmid && !\aiplacement_competency\local\utils::has_module_content($cmid)) {
+            $msg = get_string('classify_note_nocontent', 'aiplacement_competency');
+            $PAGE->requires->js_call_amd('aiplacement_competency/newactivity_notice', 'init', [$msg]);
+            return;
+        }
+
         $html = $OUTPUT->render_from_template(
             'aiplacement_competency/drawer',
             ['userid' => $USER->id, 'contextid' => $PAGE->context->id]
