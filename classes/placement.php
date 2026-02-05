@@ -83,6 +83,15 @@ class placement extends \core_ai\placement {
         $instruction = utils::build_instruction($selectedframeworkid, $selectedframeworkshortname, $levels);
         $finalprompt = $instruction . "\n\nTEXT TO CLASSIFY:\n" . $prompttext;
 
+        // Debug: Log the prompt being sent to AI.
+        debugging('=== AI PROMPT TEXT START ===', DEBUG_DEVELOPER);
+        debugging($prompttext, DEBUG_DEVELOPER);
+        debugging('=== AI PROMPT TEXT END ===', DEBUG_DEVELOPER);
+        debugging('=== FULL PROMPT START ===', DEBUG_DEVELOPER);
+        debugging($finalprompt, DEBUG_DEVELOPER);
+        debugging('=== FULL PROMPT END ===', DEBUG_DEVELOPER);
+        error_log("AI Placement - Prompt text: " . substr($prompttext, 0, 500) . (strlen($prompttext) > 500 ? '...' : ''));
+
         $action = new \core_ai\aiactions\generate_text(
             $context->id,
             (int)$USER->id,
