@@ -48,9 +48,7 @@
         "competencies": [
             "C1 - Communicate effectively",
             "C2 - Analyze requirements"
-        ],
-        "prompttext": "Content sent to AI...",
-        "promptlength": 1234
+        ]
     }
 
     Context fields:
@@ -61,8 +59,6 @@
     - frameworkshortname (string, optional): framework shortname; shows "none" if missing
     - usedlevels (array of string, optional): level names used for classification; shows "none" if empty
     - competencies (array of string, optional): suggested competencies; shows "none" if empty
-    - prompttext (string, optional): the full prompt text sent to AI; displayed in collapsible section
-    - promptlength (int, optional): character count of prompt text
 
     JS hooks:
     - data-action regenerate: reruns the AI classification
@@ -128,23 +124,6 @@
               {{/competencies}}
             </ul>
           </dd>
-
-          {{!-- Debug: Prompt Content --}}
-          {{!-- Commented out to hide debug information from users
-          {{#prompttext}}
-          <dt class="col-sm-4 text-nowrap">Prompt Sent to AI</dt>
-          <dd class="col-sm-8">
-            <details class="mb-2">
-              <summary class="text-muted" style="cursor: pointer;">
-                <small>Show prompt content ({{promptlength}} characters)</small>
-              </summary>
-              <div class="mt-2 p-2 bg-light border rounded" style="max-height: 300px; overflow-y: auto;">
-                <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.85em;">{{{prompttext}}}</pre>
-              </div>
-            </details>
-          </dd>
-          {{/prompttext}}
-          --}}
         </dl>
       </div>
 

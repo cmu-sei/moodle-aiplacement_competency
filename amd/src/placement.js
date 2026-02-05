@@ -160,14 +160,6 @@ define([
             // Combine intro and activity content.
             const combined = [intro, activityContent].filter(s => s).join('\n\n');
 
-            // Debug: Log what's being sent to AI.
-            console.group('🤖 AI Classification - Prompt Text');
-            console.log('Intro/Description:', intro || '(empty)');
-            console.log('Activity Content:', activityContent || '(empty)');
-            console.log('Combined (sent to AI):', combined || '(empty)');
-            console.log('Character count:', combined.length);
-            console.groupEnd();
-
             return combined.trim();
         }
 
@@ -519,8 +511,7 @@ define([
                     return;
                 }
 
-                const {frameworkid, frameworkshortname, usedlevels = [], competencies = [],
-                       prompttext = '', promptlength = 0} = result;
+                const {frameworkid, frameworkshortname, usedlevels = [], competencies = []} = result;
                 const uniqid  = 'resp-' + Math.random().toString(36).slice(2, 11);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_competency');
 
@@ -534,8 +525,6 @@ define([
                         frameworkshortname,
                         usedlevels,
                         competencies,
-                        prompttext,
-                        promptlength,
                     }
                 );
 
