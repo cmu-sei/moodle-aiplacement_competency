@@ -42,12 +42,25 @@ DM26-0017
 
 $string['action_classify_text_instruction'] = '
 You will receive:
-- A course/activity description (free text).
+- Educational content which may be: activity descriptions, quiz questions, lab instructions, assignments, or other learning materials.
 - A competency framework shortname: "{$a->frameworkshortname}".
 - A list of selected levels (top level within that framework): {$a->levels}
 
 Task
-Classify the description using ONLY competencies that belong to "{$a->frameworkshortname}" and fall within the listed levels. If you are not certain a competency exists in the specified framework/level, DO NOT include it.
+Analyze the educational content and identify which competencies from "{$a->frameworkshortname}" are relevant. The content may be presented in different formats:
+
+1. If the content is QUIZ QUESTIONS: Identify the competencies being tested/assessed by those questions. Analyze what knowledge, skills, or abilities the learner needs to answer the questions correctly.
+
+2. If the content is DESCRIPTIONS/INSTRUCTIONS: Identify the competencies being taught or practiced in the activity.
+
+3. If the content is ASSIGNMENTS/LABS: Identify the competencies the learner will demonstrate by completing the work.
+
+CRITICAL REQUIREMENTS:
+- Use ONLY competencies that exist in "{$a->frameworkshortname}" framework
+- Use ONLY competencies from the specified levels: {$a->levels}
+- Match competencies based on the actual concepts, knowledge, and skills in the content
+- If you are not absolutely certain a specific competency exists in the framework, DO NOT include it
+- Return an empty array if no clear matches exist
 
 Output format
 Return JSON only, with these keys:
@@ -55,13 +68,16 @@ Return JSON only, with these keys:
   "framework": { "shortname": "{$a->frameworkshortname}" },
   "levels": {$a->levels},
   "competencies": [
-    "CODE - Name"  // If the framework has canonical codes (e.g., NICE K/S/T/A codes). Otherwise just "Name".
+    "CODE - Name"  // Use the exact code and name format from the framework (e.g., "T1119 - Skill name" or "K0001 - Knowledge description")
   ]
 }
 
 Rules
-1) Do not invent codes or names. If unsure, leave "competencies": [].
-2) Do not add extra keys, explanations, or markdown — JSON only.
+1) Do not invent codes or names. Use only real competencies from the specified framework.
+2) Do not include competencies from other frameworks or levels not specified.
+3) Do not add extra keys, explanations, or markdown — JSON only.
+4) For quiz questions, focus on what the questions TEST, not what they literally say.
+{$a->availablecompetencies}
 
 Examples (illustrative; not exhaustive)
 

@@ -51,6 +51,8 @@ class utils {
      * Build the instruction text for the model.
      */
     public static function build_instruction(int $frameworkid, string $shortname, array $levels): string {
+        global $DB;
+
         $seen = [];
         $normlevels = [];
         foreach ($levels as $d) {
@@ -69,10 +71,68 @@ class utils {
             $normlevels[] = $t;
         }
 
+        // Fetch available competencies from the framework to provide to the AI.
+        $availablecompetencies = '';
+        if ($frameworkid > 0) {
+            try {
+                // Get parent competencies (levels) that match the selected levels.
+                $parentcompetencies = $DB->get_records('competency', [
+                    'competencyframeworkid' => $frameworkid,
+                    'parentid' => 0
+                ]);
+
+                $competencylist = [];
+                foreach ($parentcompetencies as $parent) {
+                    $parentshortname = trim($parent->shortname ?? '');
+
+                    // Check if this parent matches one of the selected levels.
+                    $matches = false;
+                    foreach ($normlevels as $level) {
+                        if (stripos($parentshortname, $level) !== false || stripos($level, $parentshortname) !== false) {
+                            $matches = true;
+                            break;
+                        }
+                    }
+
+                    if ($matches || empty($normlevels)) {
+                        // Get all child competencies under this parent.
+                        $children = $DB->get_records('competency', [
+                            'competencyframeworkid' => $frameworkid,
+                            'parentid' => $parent->id
+                        ], 'shortname ASC');
+
+                        foreach ($children as $child) {
+                            $code = trim($child->shortname ?? '');
+                            $name = trim(strip_tags($child->description ?? ''));
+                            if (empty($name)) {
+                                $name = trim($child->idnumber ?? '');
+                            }
+
+                            if ($code) {
+                                $competencylist[] = $code . ($name ? ' - ' . $name : '');
+                            }
+                        }
+                    }
+                }
+
+                if (!empty($competencylist)) {
+                    // Limit to first 200 competencies to avoid token limits.
+                    $competencylist = array_slice($competencylist, 0, 200);
+                    $availablecompetencies = "\n\nAVAILABLE COMPETENCIES IN THIS FRAMEWORK/LEVEL:\n" .
+                                           implode("\n", $competencylist) .
+                                           "\n\nYou MUST only use competencies from the list above.";
+                }
+            } catch (\Exception $e) {
+                // If there's an error fetching competencies, continue without the list.
+                debugging('Failed to fetch competencies for AI instruction: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
         $a = (object)[
             'frameworkid'        => $frameworkid,
             'frameworkshortname' => $shortname,
             'levels'            => implode(', ', $normlevels),
+            'availablecompetencies' => $availablecompetencies,
         ];
 
         return get_string('action_classify_text_instruction', 'aiplacement_competency', $a);
