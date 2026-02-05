@@ -228,6 +228,11 @@ class utils {
                 $hasspecificcontent = $hasintro;
                 break;
 
+            case 'topomojo':
+                // TopoMojo content is synced from TopoMojo API.
+                $hasspecificcontent = !empty($instance->content) && trim(strip_tags($instance->content)) !== '';
+                break;
+
             default:
                 // For unknown activity types, check if intro exists.
                 $hasspecificcontent = $hasintro;
