@@ -33,22 +33,6 @@
 
     Renders an informational notice shown when the AI placement workflow is not available
     because the user is creating a new activity that has not been saved yet.
-
-    This is typically used to tell the user they must save the activity first (so it has a cmid)
-    before competencies can be classified/applied.
-
-    Expected context (json):
-    {
-        "message": "<p>Save this activity to enable AI classification.</p>"
-    }
-
-    Context fields:
-    - message (string): The notice body to display. HTML will be escaped for security.
-
-    Notes:
-    - The wrapper includes `data-region="aiplacement-newactivity-notice"` so JS can find, update,
-      or hide the notice if the page state changes.
-    - The message is HTML-escaped using `{{ }}` to prevent XSS vulnerabilities.
 }}
 
 <div class="alert alert-info mb-3" role="alert" data-region="aiplacement-newactivity-notice">
