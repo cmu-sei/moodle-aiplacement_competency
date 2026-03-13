@@ -425,7 +425,7 @@ define([
             boxes.forEach(b => b.addEventListener('change', updateContinue));
             updateContinue();
 
-            // Select all / Clear all handlers (same pattern as applycmps.js)
+            // Select all / Clear all handlers
             this.aiDrawerBodyElement.addEventListener('click', e => {
                 const selectAllBtn = e.target.closest('[data-action="selectall"]');
                 if (selectAllBtn) {

@@ -186,8 +186,6 @@ class classify_text extends external_api {
 
         $fwshort = (string)($inner['framework']['shortname'] ?? $params['selectedframeworkshortname']);
 
-        // Always use the levels that were explicitly selected by the user,
-        // rather than relying on the AI response which may be incomplete.
         $usedlevels = $selectedlevels;
 
         $competencies = [];
