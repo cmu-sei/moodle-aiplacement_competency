@@ -425,6 +425,33 @@ define([
             boxes.forEach(b => b.addEventListener('change', updateContinue));
             updateContinue();
 
+            // Select all / Clear all handlers (same pattern as applycmps.js)
+            this.aiDrawerBodyElement.addEventListener('click', e => {
+                const selectAllBtn = e.target.closest('[data-action="selectall"]');
+                if (selectAllBtn) {
+                    e.preventDefault();
+                    const sec = selectAllBtn.closest('.aiplacement-applycmps-section');
+                    if (sec) {
+                        sec.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                            cb.checked = true;
+                        });
+                        updateContinue();
+                    }
+                }
+
+                const clearAllBtn = e.target.closest('[data-action="clearall"]');
+                if (clearAllBtn) {
+                    e.preventDefault();
+                    const sec = clearAllBtn.closest('.aiplacement-applycmps-section');
+                    if (sec) {
+                        sec.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                            cb.checked = false;
+                        });
+                        updateContinue();
+                    }
+                }
+            });
+
             if (continueBtn) {
                 continueBtn.addEventListener('click', e => {
                     e.preventDefault();

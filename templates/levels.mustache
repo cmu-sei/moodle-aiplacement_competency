@@ -73,7 +73,20 @@
   <h3 class="h5">{{#str}} levelsselection, aiplacement_competency {{/str}}</h3>
   <p class="text-muted">{{#str}} levelsselection_help, aiplacement_competency {{/str}}</p>
 
-  <div class="form-group">
+  <div class="form-group aiplacement-applycmps-section" data-section="levels">
+    {{#options}}
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <label class="form-label m-0"><strong>{{#str}} levels, aiplacement_competency {{/str}}</strong></label>
+      <div>
+        <button type="button" class="btn btn-link p-0 me-3" data-action="selectall">
+          {{#str}} applycmps_selectall, aiplacement_competency {{/str}}
+        </button>
+        <button type="button" class="btn btn-link p-0" data-action="clearall">
+          {{#str}} applycmps_clearall, aiplacement_competency {{/str}}
+        </button>
+      </div>
+    </div>
+    {{/options}}
     {{#options}}
       <div class="form-check mb-2">
         <input class="form-check-input"
