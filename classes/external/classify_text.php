@@ -186,19 +186,7 @@ class classify_text extends external_api {
 
         $fwshort = (string)($inner['framework']['shortname'] ?? $params['selectedframeworkshortname']);
 
-        $usedlevels = [];
-        if (!empty($inner['levels']) && is_array($inner['levels'])) {
-            $usedlevels = array_values(array_unique(array_filter(array_map(
-                static function($s) {
-                    $s = trim((string)$s);
-                    return $s === '' ? null : preg_replace('/\s+/u', ' ', $s);
-                },
-                $inner['levels']
-            ))));
-        }
-        if (!$usedlevels) {
-            $usedlevels = $selectedlevels;
-        }
+        $usedlevels = $selectedlevels;
 
         $competencies = [];
         if (!empty($inner['competencies']) && is_array($inner['competencies'])) {
