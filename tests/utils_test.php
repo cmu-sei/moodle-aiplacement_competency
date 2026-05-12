@@ -47,7 +47,6 @@ use aiplacement_competency\local\utils;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class utils_test extends \advanced_testcase {
-
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
@@ -68,8 +67,11 @@ final class utils_test extends \advanced_testcase {
             $tokens = array_filter(array_map('trim', explode(',', $list)), fn($s) => $s !== '');
             $norm = array_map(fn($s) => mb_strtolower($s), $tokens);
 
-            $this->assertSame(['analyze', 'detect'], array_values(array_unique($norm)),
-                'Levels list should be deduped and normalized (order Analyze, Detect).');
+            $this->assertSame(
+                ['analyze', 'detect'],
+                array_values(array_unique($norm)),
+                'Levels list should be deduped and normalized (order Analyze, Detect).'
+            );
             $this->assertGreaterThanOrEqual(1, substr_count($list, 'Analyze'));
             $this->assertGreaterThanOrEqual(1, max(substr_count($list, 'Detect'), substr_count($list, 'detect')));
         } else {

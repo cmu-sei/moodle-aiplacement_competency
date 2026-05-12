@@ -50,7 +50,6 @@ use core_external\external_value;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class add_cm_competency extends external_api {
-
     /**
      * Describes the parameters for the external function.
      *
@@ -96,5 +95,4 @@ class add_cm_competency extends external_api {
     public static function execute_returns(): external_value {
         return new external_value(PARAM_BOOL, 'True if added, false if already linked');
     }
-
 }

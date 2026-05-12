@@ -107,7 +107,7 @@ final class template_render_test extends \advanced_testcase {
             [$c . '/levels', [
                 'options' => [
                     ['value' => 'analyze', 'label' => 'Analyze', 'help' => 'Use to examine data'],
-                    ['value' => 'detect',  'label' => 'Detect'],
+                    ['value' => 'detect', 'label' => 'Detect'],
                 ],
             ]],
 
