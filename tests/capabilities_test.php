@@ -42,7 +42,6 @@ namespace aiplacement_competency;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class capabilities_test extends \basic_testcase {
-
     /**
      * Capabilities loaded from the plugin's access.php file.
      *

@@ -46,7 +46,6 @@ namespace aiplacement_competency\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class utils {
-
     /**
      * Build the instruction text for the model.
      */
@@ -78,7 +77,7 @@ class utils {
                 // Get parent competencies (levels) that match the selected levels.
                 $parentcompetencies = $DB->get_records('competency', [
                     'competencyframeworkid' => $frameworkid,
-                    'parentid' => 0
+                    'parentid' => 0,
                 ]);
 
                 $competencylist = [];
@@ -98,7 +97,7 @@ class utils {
                         // Get all child competencies under this parent.
                         $children = $DB->get_records('competency', [
                             'competencyframeworkid' => $frameworkid,
-                            'parentid' => $parent->id
+                            'parentid' => $parent->id,
                         ], 'shortname ASC');
 
                         foreach ($children as $child) {
@@ -160,7 +159,7 @@ class utils {
             }
         }
 
-        $normstrings = function($rawval): array {
+        $normstrings = function ($rawval): array {
             $arr = is_array($rawval) ? $rawval : (is_string($rawval) ? [$rawval] : []);
             $out = [];
             foreach ($arr as $v) {

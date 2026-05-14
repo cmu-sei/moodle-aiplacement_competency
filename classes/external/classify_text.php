@@ -54,7 +54,6 @@ use aiplacement_competency\local\utils;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class classify_text extends external_api {
-
     /**
      * Describes the parameters accepted by the classify_text function.
      *
@@ -135,7 +134,7 @@ class classify_text extends external_api {
         }
 
         $selectedlevels = array_values(array_unique(array_filter(array_map(
-            static function($s) {
+            static function ($s) {
                 $s = (string)$s;
                 $s = trim($s);
                 $s = preg_replace('/\s+/u', ' ', $s);
@@ -156,7 +155,7 @@ class classify_text extends external_api {
         $outer = json_decode($rawjson, true);
         $inner = [];
 
-        $decodejsonmaybe = static function(string $s): ?array {
+        $decodejsonmaybe = static function (string $s): ?array {
             $s = trim($s);
             if (preg_match('/^\x60{3}[a-zA-Z]*\s*(.*?)\s*\x60{3}$/s', $s, $m)) {
                 $s = $m[1];
@@ -165,7 +164,8 @@ class classify_text extends external_api {
             if (is_array($decoded)) {
                 return $decoded;
             }
-            $p1 = strpos($s, '{'); $p2 = strrpos($s, '}');
+            $p1 = strpos($s, '{');
+            $p2 = strrpos($s, '}');
             if ($p1 !== false && $p2 !== false && $p2 > $p1) {
                 $slice = substr($s, $p1, $p2 - $p1 + 1);
                 $decoded = json_decode($slice, true);
@@ -191,7 +191,7 @@ class classify_text extends external_api {
         $competencies = [];
         if (!empty($inner['competencies']) && is_array($inner['competencies'])) {
             $competencies = array_values(array_unique(array_filter(array_map(
-                static function($s) {
+                static function ($s) {
                     $s = trim((string)$s);
                     return $s === '' ? null : $s;
                 },
@@ -280,16 +280,16 @@ class classify_text extends external_api {
             ),
             // Commented out to hide debug information from users.
             // 'prompttext' => new external_value(
-            //     PARAM_RAW,
-            //     'The full prompt text sent to AI',
-            //     VALUE_DEFAULT,
-            //     ''
+            // PARAM_RAW,
+            // 'The full prompt text sent to AI',
+            // VALUE_DEFAULT,
+            // ''
             // ),
             // 'promptlength' => new external_value(
-            //     PARAM_INT,
-            //     'Length of prompt text in characters',
-            //     VALUE_DEFAULT,
-            //     0
+            // PARAM_INT,
+            // 'Length of prompt text in characters',
+            // VALUE_DEFAULT,
+            // 0
             // ),
         ]);
     }

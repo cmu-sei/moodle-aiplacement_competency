@@ -47,7 +47,6 @@ use core\hook\output\before_footer_html_generation;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class classify_ui {
-
     /**
      * Load and inject the classify UI into the footer.
      *
@@ -147,5 +146,4 @@ class classify_ui {
 
         return $iseditform;
     }
-
 }

@@ -108,7 +108,6 @@ class fake_placement {
  * @covers     \aiplacement_competency\external\classify_text
  */
 final class classifytext_test extends \advanced_testcase {
-
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
@@ -183,4 +182,3 @@ final class classifytext_test extends \advanced_testcase {
         );
     }
 }
-

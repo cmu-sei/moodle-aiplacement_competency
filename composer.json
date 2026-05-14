@@ -1,0 +1,14 @@
+{
+  "name": "cmu-sei/moodle-aiplacement_competency",
+  "description": "Competency AI placement for Moodle",
+  "type": "moodle-aiplacement",
+  "license": "GPL-3.0-or-later",
+  "require-dev": {
+    "moodlehq/moodle-cs": "^3.6"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  }
+}
