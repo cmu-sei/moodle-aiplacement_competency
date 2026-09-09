@@ -31,21 +31,24 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Lab guide of a TopoMojo activity.
+ *
+ * The content field holds the workspace document synced from the TopoMojo API.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class topomojo_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        $instance = $this->get_instance('id, content');
 
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090904;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        return $instance ? self::clean($instance->content) : '';
+    }
+}

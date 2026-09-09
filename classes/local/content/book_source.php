@@ -31,21 +31,50 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Chapters of a book.
+ *
+ * Chapters carry the whole of a book's teaching content, and until now none of
+ * it was sent: the Classify button appeared because the chapters were counted,
+ * but only the intro was classified. Hidden chapters are left out, since
+ * students never see them.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class book_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        global $DB;
 
-defined('MOODLE_INTERNAL') || die();
+        $chapters = $DB->get_records(
+            'book_chapters',
+            ['bookid' => $this->cm->instance, 'hidden' => 0],
+            'pagenum ASC, id ASC',
+            'id, title, content, subchapter'
+        );
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090904;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        $content = '';
+        $number = 0;
+
+        foreach ($chapters as $chapter) {
+            $number++;
+            $label = empty($chapter->subchapter) ? "Chapter {$number}" : "Section {$number}";
+            $content .= self::chunk($label, $chapter->title, $chapter->content ?? '');
+        }
+
+        return trim($content);
+    }
+
+    #[\Override]
+    public function has_content(): bool {
+        global $DB;
+
+        return $DB->record_exists('book_chapters', ['bookid' => $this->cm->instance, 'hidden' => 0]);
+    }
+}

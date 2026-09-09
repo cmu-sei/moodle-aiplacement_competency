@@ -31,21 +31,47 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Question text of a quiz.
+ *
+ * Slots are resolved with the quiz question bank helper so that each slot
+ * contributes the version the quiz actually uses: the version pinned on the
+ * slot if there is one, otherwise the latest non-draft version.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class quiz_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        $content = '';
 
-defined('MOODLE_INTERNAL') || die();
+        $slots = \mod_quiz\question\bank\qbank_helper::get_question_structure(
+            (int)$this->cm->instance,
+            $this->context
+        );
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090904;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        foreach ($slots as $slot) {
+            // Random slots are unknowable until an attempt, and a missing type has no text.
+            if ($slot->qtype === 'random' || $slot->qtype === 'missingtype') {
+                continue;
+            }
+
+            $content .= self::chunk("Question {$slot->slot}", $slot->name ?? '', $slot->questiontext ?? '');
+        }
+
+        return trim($content);
+    }
+
+    #[\Override]
+    public function has_content(): bool {
+        global $DB;
+
+        return $DB->record_exists('quiz_slots', ['quizid' => $this->cm->instance]);
+    }
+}

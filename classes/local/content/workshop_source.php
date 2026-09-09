@@ -31,21 +31,29 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Instructions of a workshop.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class workshop_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        $instance = $this->get_instance('id, instructauthors, instructreviewers');
+        if (!$instance) {
+            return '';
+        }
 
-defined('MOODLE_INTERNAL') || die();
+        $content = '';
+        $content .= self::chunk('Instructions for submission', null, $instance->instructauthors ?? '');
+        $content .= self::chunk('Instructions for assessment', null, $instance->instructreviewers ?? '');
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090904;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        return trim($content);
+    }
+}

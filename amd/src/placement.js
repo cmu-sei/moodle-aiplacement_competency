@@ -216,11 +216,10 @@ define([
                         // Read activity content (intro + activity-specific content)
                         const prompt = this.readActivityContent();
 
-                        // Check if this activity type has database content support
+                        // On any activity settings page the server decides what content the
+                        // activity holds, so no list of module names is kept here.
                         const bodyClasses = document.body.className;
-                        const hasDbContent = bodyClasses.includes('path-mod-quiz') ||
-                                            bodyClasses.includes('path-mod-groupquiz') ||
-                                            bodyClasses.includes('path-mod-topomojo');
+                        const hasDbContent = bodyClasses.includes('path-mod-');
 
                         // Only show error if no content AND activity doesn't fetch from DB
                         if (!prompt && !hasDbContent) {
@@ -247,11 +246,10 @@ define([
                 // Read activity content (intro + activity-specific content)
                 const prompt = this.readActivityContent();
 
-                // Check if this activity type has database content support
+                // On any activity settings page the server decides what content the
+                // activity holds, so no list of module names is kept here.
                 const bodyClasses = document.body.className;
-                const hasDbContent = bodyClasses.includes('path-mod-quiz') ||
-                                    bodyClasses.includes('path-mod-groupquiz') ||
-                                    bodyClasses.includes('path-mod-topomojo');
+                const hasDbContent = bodyClasses.includes('path-mod-');
 
                 // Only show error if no content AND activity doesn't fetch from DB
                 if (!prompt && !hasDbContent) {
