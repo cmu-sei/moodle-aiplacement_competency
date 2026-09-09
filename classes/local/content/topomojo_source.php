@@ -36,9 +36,13 @@ declare(strict_types=1);
 namespace aiplacement_competency\local\content;
 
 /**
- * Lab guide of a TopoMojo activity.
+ * Lab guide and questions of a TopoMojo activity.
  *
  * The content field holds the workspace document synced from the TopoMojo API.
+ * The questions are held the way group quizzes hold theirs: a link table,
+ * topomojo_questions, whose questionid points straight at the question version
+ * the activity uses, ordered by the comma separated list of link ids in
+ * topomojo.questionorder.
  *
  * @package    aiplacement_competency
  * @copyright  2026 Carnegie Mellon University
@@ -47,8 +51,86 @@ namespace aiplacement_competency\local\content;
 class topomojo_source extends source {
     #[\Override]
     public function get_content(): string {
-        $instance = $this->get_instance('id, content');
+        $instance = $this->get_instance('id, content, questionorder');
+        if (!$instance) {
+            return '';
+        }
 
-        return $instance ? self::clean($instance->content) : '';
+        $parts = [];
+
+        $guide = self::clean($instance->content);
+        if ($guide !== '') {
+            $parts[] = $guide;
+        }
+
+        $questions = $this->get_questions((string)$instance->questionorder);
+        if ($questions !== '') {
+            $parts[] = $questions;
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    #[\Override]
+    public function has_content(): bool {
+        global $DB;
+
+        $instance = $this->get_instance('id, content');
+        if ($instance && self::clean($instance->content) !== '') {
+            return true;
+        }
+
+        return $DB->record_exists('topomojo_questions', ['topomojoid' => $this->cm->instance]);
+    }
+
+    /**
+     * The activity's questions, in the order it presents them.
+     *
+     * @param string $questionorder The comma separated topomojo_questions ids.
+     * @return string The question text, or an empty string when there is none.
+     */
+    private function get_questions(string $questionorder): string {
+        global $DB;
+
+        if (trim($questionorder) === '') {
+            return '';
+        }
+
+        $order = array_values(array_filter(array_map('intval', explode(',', $questionorder))));
+        if (empty($order)) {
+            return '';
+        }
+
+        $links = $DB->get_records('topomojo_questions', ['topomojoid' => $this->cm->instance], '', 'id, questionid');
+        if (empty($links)) {
+            return '';
+        }
+
+        $content = '';
+        $number = 0;
+
+        foreach ($order as $linkid) {
+            // Ids can outlive the link they name, so a stale order entry is skipped.
+            if (!isset($links[$linkid])) {
+                continue;
+            }
+
+            $question = $DB->get_record(
+                'question',
+                ['id' => $links[$linkid]->questionid],
+                'id, name, qtype, questiontext'
+            );
+            if (!$question || $question->qtype === 'missingtype') {
+                continue;
+            }
+
+            $chunk = self::chunk('Question ' . ($number + 1), $question->name, $question->questiontext ?? '');
+            if ($chunk !== '') {
+                $number++;
+                $content .= $chunk;
+            }
+        }
+
+        return trim($content);
     }
 }

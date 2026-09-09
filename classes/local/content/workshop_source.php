@@ -36,16 +36,35 @@ declare(strict_types=1);
 namespace aiplacement_competency\local\content;
 
 /**
- * Instructions of a workshop.
+ * Instructions and assessment criteria of a workshop.
+ *
+ * The criteria say what the work is judged on, which is a closer description of
+ * the skill being taught than the instructions usually are. They are held by
+ * the grading strategy subplugin the workshop uses, one table per strategy, and
+ * none of them appear on the settings form.
  *
  * @package    aiplacement_competency
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class workshop_source extends source {
+    /**
+     * The table each grading strategy keeps its criteria in.
+     *
+     * Every one of these is a core subplugin, but a site can uninstall one, so
+     * the strategy is checked against what is actually installed before its
+     * table is read.
+     */
+    private const STRATEGY_TABLES = [
+        'accumulative' => 'workshopform_accumulative',
+        'comments' => 'workshopform_comments',
+        'numerrors' => 'workshopform_numerrors',
+        'rubric' => 'workshopform_rubric',
+    ];
+
     #[\Override]
     public function get_content(): string {
-        $instance = $this->get_instance('id, instructauthors, instructreviewers');
+        $instance = $this->get_instance('id, instructauthors, instructreviewers, strategy');
         if (!$instance) {
             return '';
         }
@@ -53,7 +72,85 @@ class workshop_source extends source {
         $content = '';
         $content .= self::chunk('Instructions for submission', null, $instance->instructauthors ?? '');
         $content .= self::chunk('Instructions for assessment', null, $instance->instructreviewers ?? '');
+        $content .= $this->get_criteria((string)$instance->strategy);
 
         return trim($content);
+    }
+
+    /**
+     * The criteria the workshop's grading strategy assesses against.
+     *
+     * @param string $strategy The workshop's grading strategy.
+     * @return string The criteria, or an empty string when there are none.
+     */
+    private function get_criteria(string $strategy): string {
+        global $DB;
+
+        $table = self::STRATEGY_TABLES[$strategy] ?? null;
+        if ($table === null || \core_component::get_component_directory("workshopform_{$strategy}") === null) {
+            return '';
+        }
+
+        $dimensions = $DB->get_records(
+            $table,
+            ['workshopid' => $this->cm->instance],
+            'sort ASC, id ASC',
+            'id, description'
+        );
+
+        $content = '';
+        $number = 0;
+
+        foreach ($dimensions as $dimension) {
+            $description = self::clean($dimension->description);
+            if ($description === '') {
+                continue;
+            }
+
+            $number++;
+            $content .= self::chunk("Assessment criterion {$number}", null,
+                $description . $this->get_levels($strategy, (int)$dimension->id));
+        }
+
+        return $content;
+    }
+
+    /**
+     * The level definitions of one rubric criterion.
+     *
+     * Only the rubric strategy has these, and they are where a rubric says what
+     * good and poor work look like.
+     *
+     * @param string $strategy The workshop's grading strategy.
+     * @param int $dimensionid The criterion the levels belong to.
+     * @return string The levels, ready to append to the criterion.
+     */
+    private function get_levels(string $strategy, int $dimensionid): string {
+        global $DB;
+
+        if ($strategy !== 'rubric') {
+            return '';
+        }
+
+        $levels = $DB->get_records(
+            'workshopform_rubric_levels',
+            ['dimensionid' => $dimensionid],
+            'grade ASC, id ASC',
+            'id, definition'
+        );
+
+        $definitions = [];
+        foreach ($levels as $level) {
+            $definition = self::clean($level->definition);
+            if ($definition !== '') {
+                $definitions[] = $definition;
+            }
+        }
+
+        if (empty($definitions)) {
+            return '';
+        }
+
+        return ' Levels: ' . implode('; ', $definitions);
     }
 }

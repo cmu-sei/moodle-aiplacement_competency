@@ -135,9 +135,14 @@ final class resolver {
             $parts[] = $prompttext;
         }
 
-        $content = self::get_content($cm, $context);
-        if ($content !== '' && !self::already_present($prompttext, $content)) {
-            $parts[] = $content;
+        $source = self::get_source($cm, $context);
+        if ($source !== null) {
+            // Dropped before truncating, so the prompt budget is spent on
+            // content the caller has not already sent.
+            $content = self::truncate(self::strip_duplicates($prompttext, $source->get_content()));
+            if ($content !== '') {
+                $parts[] = $content;
+            }
         }
 
         return implode("\n\n", $parts);
@@ -161,22 +166,56 @@ final class resolver {
     }
 
     /**
-     * Whether the prompt already carries the content, ignoring whitespace.
+     * Removes the parts of the content the prompt already carries.
      *
      * The drawer scrapes some fields from the settings form, so for a saved
      * activity the same text can arrive twice. Sending it twice wastes prompt
-     * budget and overweights whatever is duplicated.
+     * budget and overweights whatever is duplicated. This works chunk by chunk
+     * because a source usually returns more than the drawer scraped: a workshop
+     * sends its instructions from the form and its assessment criteria from
+     * here, and dropping the whole lot because the instructions matched would
+     * lose the criteria.
      *
      * @param string $prompttext The prompt text so far.
      * @param string $content The content about to be appended.
-     * @return bool True when the content is already in the prompt.
+     * @return string The content, without anything already in the prompt.
      */
-    private static function already_present(string $prompttext, string $content): bool {
-        $normalise = static function (string $text): string {
-            return strtolower((string)preg_replace('/\s+/u', ' ', $text));
-        };
+    private static function strip_duplicates(string $prompttext, string $content): string {
+        if (trim($prompttext) === '' || trim($content) === '') {
+            return $content;
+        }
 
-        return str_contains($normalise($prompttext), $normalise($content));
+        $haystack = self::normalise($prompttext);
+
+        $kept = [];
+        foreach (preg_split('/\R{2,}/u', $content) ?: [] as $chunk) {
+            $chunk = trim($chunk);
+            if ($chunk === '') {
+                continue;
+            }
+
+            // A chunk reads 'Chapter 2 (Title): body', and what the drawer
+            // scraped is the body on its own, so the label is set aside before
+            // comparing. Labels never contain a colon.
+            $body = self::normalise(explode(': ', $chunk, 2)[1] ?? $chunk);
+            if ($body !== '' && str_contains($haystack, $body)) {
+                continue;
+            }
+
+            $kept[] = $chunk;
+        }
+
+        return implode("\n\n", $kept);
+    }
+
+    /**
+     * Reduces text to what it says, for comparing one piece against another.
+     *
+     * @param string $text The text to normalise.
+     * @return string The normalised text.
+     */
+    private static function normalise(string $text): string {
+        return \core_text::strtolower(trim((string)preg_replace('/\s+/u', ' ', $text)));
     }
 
     /**
