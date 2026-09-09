@@ -72,6 +72,7 @@ class utils {
 
         // Fetch available competencies from the framework to provide to the AI.
         $availablecompetencies = '';
+        $displaylevels = $normlevels;
         if ($frameworkid > 0) {
             try {
                 // Get parent competencies (levels) that match the selected levels.
@@ -80,36 +81,41 @@ class utils {
                     'parentid' => 0,
                 ]);
 
-                $competencylist = [];
-                foreach ($parentcompetencies as $parent) {
-                    $parentshortname = trim($parent->shortname ?? '');
+                $matchedparents = self::match_levels($parentcompetencies, $normlevels);
 
-                    // Check if this parent matches one of the selected levels.
-                    $matches = false;
-                    foreach ($normlevels as $level) {
-                        if (stripos($parentshortname, $level) !== false || stripos($level, $parentshortname) !== false) {
-                            $matches = true;
-                            break;
+                // The drawer lowercases the levels before sending them, so where a
+                // level named a competency, that competency's own shortname is the
+                // better thing to put in front of the model.
+                if (!empty($normlevels) && !empty($matchedparents)) {
+                    $named = [];
+                    foreach ($matchedparents as $parent) {
+                        $shortname = trim((string)($parent->shortname ?? ''));
+                        if ($shortname !== '') {
+                            $named[] = $shortname;
                         }
                     }
+                    if (!empty($named)) {
+                        $displaylevels = $named;
+                    }
+                }
 
-                    if ($matches || empty($normlevels)) {
-                        // Get all child competencies under this parent.
-                        $children = $DB->get_records('competency', [
-                            'competencyframeworkid' => $frameworkid,
-                            'parentid' => $parent->id,
-                        ], 'shortname ASC');
+                $competencylist = [];
+                foreach ($matchedparents as $parent) {
+                    // Get all child competencies under this parent.
+                    $children = $DB->get_records('competency', [
+                        'competencyframeworkid' => $frameworkid,
+                        'parentid' => $parent->id,
+                    ], 'shortname ASC');
 
-                        foreach ($children as $child) {
-                            $code = trim($child->shortname ?? '');
-                            $name = trim(strip_tags($child->description ?? ''));
-                            if (empty($name)) {
-                                $name = trim($child->idnumber ?? '');
-                            }
+                    foreach ($children as $child) {
+                        $code = trim($child->shortname ?? '');
+                        $name = trim(strip_tags($child->description ?? ''));
+                        if (empty($name)) {
+                            $name = trim($child->idnumber ?? '');
+                        }
 
-                            if ($code) {
-                                $competencylist[] = $code . ($name ? ' - ' . $name : '');
-                            }
+                        if ($code) {
+                            $competencylist[] = $code . ($name ? ' - ' . $name : '');
                         }
                     }
                 }
@@ -130,11 +136,74 @@ class utils {
         $a = (object)[
             'frameworkid'        => $frameworkid,
             'frameworkshortname' => $shortname,
-            'levels'            => implode(', ', $normlevels),
+            'levels'            => implode(', ', $displaylevels),
             'availablecompetencies' => $availablecompetencies,
         ];
 
         return get_string('action_classify_text_instruction', 'aiplacement_competency', $a);
+    }
+
+    /**
+     * The framework's top level competencies that the selected levels name.
+     *
+     * The checkbox values in the drawer are these competencies' own shortnames,
+     * so the comparison is an equality one, on a case folded and whitespace
+     * collapsed key: the drawer lowercases what it sends.
+     *
+     * Substring matching, which is what this did for every level unconditionally,
+     * is kept only as a per level fallback for a caller that sent something other
+     * than a shortname. On its own it matches far too much, because a short level
+     * name turns up inside unrelated ones: 'IT' is inside 'Monitoring', and the
+     * competencies of a level nobody asked for would then be sent to the model.
+     *
+     * @param array $parents The framework's top level competency records, keyed by id.
+     * @param array $levels The level names the caller selected, already normalised.
+     * @return array The matching parents, keyed by id. All of them when no level was selected.
+     */
+    private static function match_levels(array $parents, array $levels): array {
+        if (empty($levels)) {
+            return $parents;
+        }
+
+        $matched = [];
+
+        foreach ($levels as $level) {
+            $key = self::level_key($level);
+            $found = false;
+
+            foreach ($parents as $id => $parent) {
+                if ($key !== '' && self::level_key((string)($parent->shortname ?? '')) === $key) {
+                    $matched[$id] = $parent;
+                    $found = true;
+                }
+            }
+
+            if ($found) {
+                continue;
+            }
+
+            foreach ($parents as $id => $parent) {
+                $shortname = trim((string)($parent->shortname ?? ''));
+                if ($shortname === '') {
+                    continue;
+                }
+                if (stripos($shortname, $level) !== false || stripos($level, $shortname) !== false) {
+                    $matched[$id] = $parent;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    /**
+     * Reduces a level name to what it says, for comparing one against another.
+     *
+     * @param string $name The level or competency shortname.
+     * @return string The comparison key.
+     */
+    private static function level_key(string $name): string {
+        return mb_strtolower(trim((string)preg_replace('/\s+/u', ' ', $name)));
     }
 
     /**

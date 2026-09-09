@@ -31,6 +31,8 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
 namespace aiplacement_competency\privacy;
 
 use core_privacy\local\metadata\null_provider;

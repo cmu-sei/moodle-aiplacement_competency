@@ -54,8 +54,17 @@
     Context fields:
     - options (array): list of selectable levels
         - value (string): value for the checkbox (typically an id or key used by JS)
-        - label (string): label shown next to the checkbox
-        - help (string, optional): small helper text shown under the item
+        - label (string): label shown next to the checkbox, as plain text
+        - help (string, optional): small helper text shown under the item, as plain text
+
+    Both label and help are escaped. They are built from competency shortnames and
+    descriptions, which are author-entered, so neither may be trusted as HTML.
+
+    Each checkbox sits inside its own label rather than being paired with one by
+    id. The values are competency shortnames, which contain spaces and so cannot
+    be used to build an id attribute, and nesting associates the two without
+    needing one at all. The heading over the group is not a label, because it
+    labels the group rather than any one control.
 
     JS hooks:
     - input[name="classify-levels"]: checkboxes read to determine selected levels
@@ -75,7 +84,7 @@
 
   <div class="form-group aiplacement-applycmps-section" data-section="levels">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <label class="form-label m-0"><strong>{{#str}} levels, aiplacement_competency {{/str}}</strong></label>
+      <span class="form-label m-0"><strong>{{#str}} levels, aiplacement_competency {{/str}}</strong></span>
       <div>
         <button type="button" class="btn btn-link p-0 me-3" data-action="selectall">
           {{#str}} applycmps_selectall, aiplacement_competency {{/str}}
@@ -87,12 +96,14 @@
     </div>
     {{#options}}
       <div class="form-check mb-2">
-        <input class="form-check-input"
-               type="checkbox"
-               name="classify-levels"
-               value="{{value}}">
-        <label class="form-check-label">{{{label}}}</label>
-        {{#help}}<div class="form-text text-muted small">{{{help}}}</div>{{/help}}
+        <label class="form-check-label">
+          <input class="form-check-input"
+                 type="checkbox"
+                 name="classify-levels"
+                 value="{{value}}">
+          {{label}}
+        </label>
+        {{#help}}<div class="form-text text-muted small">{{help}}</div>{{/help}}
       </div>
     {{/options}}
     {{^options}}
