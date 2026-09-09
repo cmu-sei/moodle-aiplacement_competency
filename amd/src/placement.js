@@ -219,6 +219,7 @@ define([
                         // Check if this activity type has database content support
                         const bodyClasses = document.body.className;
                         const hasDbContent = bodyClasses.includes('path-mod-quiz') ||
+                                            bodyClasses.includes('path-mod-groupquiz') ||
                                             bodyClasses.includes('path-mod-topomojo');
 
                         // Only show error if no content AND activity doesn't fetch from DB
@@ -249,6 +250,7 @@ define([
                 // Check if this activity type has database content support
                 const bodyClasses = document.body.className;
                 const hasDbContent = bodyClasses.includes('path-mod-quiz') ||
+                                    bodyClasses.includes('path-mod-groupquiz') ||
                                     bodyClasses.includes('path-mod-topomojo');
 
                 // Only show error if no content AND activity doesn't fetch from DB

@@ -118,6 +118,14 @@ class classify_text extends external_api {
                 }
             }
 
+            // Handle group quiz questions.
+            if ($cm->modname === 'groupquiz') {
+                $questionscontent = self::get_groupquiz_questions_content((int)$cm->instance);
+                if (!empty($questionscontent)) {
+                    $params['prompttext'] .= "\n\n" . $questionscontent;
+                }
+            }
+
             // Handle TopoMojo content.
             if ($cm->modname === 'topomojo') {
                 $topomojo = $DB->get_record('topomojo', ['id' => $cm->instance], 'content');
@@ -237,6 +245,72 @@ class classify_text extends external_api {
             $content .= "Question {$slot->slot}";
             if (!empty($slot->name)) {
                 $content .= " ({$slot->name})";
+            }
+            $content .= ": " . $questiontext . "\n\n";
+        }
+
+        return trim($content);
+    }
+
+    /**
+     * Get group quiz questions content for AI classification.
+     *
+     * Group quizzes do not use quiz slots. They keep their own link table,
+     * groupquiz_questions, whose questionid points straight at the question
+     * version the activity uses, and they order those links with the comma
+     * separated id list in groupquiz.questionorder. This mirrors how
+     * \mod_groupquiz\questionmanager loads questions, so the text sent for
+     * classification is the text the activity presents. Ids left in the order
+     * list with no surviving link or question row are skipped, as are questions
+     * whose type is no longer installed.
+     *
+     * @param int $groupquizid The group quiz ID.
+     * @return string The concatenated question text.
+     */
+    protected static function get_groupquiz_questions_content(int $groupquizid): string {
+        global $DB;
+
+        $groupquiz = $DB->get_record('groupquiz', ['id' => $groupquizid], 'id, questionorder');
+        if (!$groupquiz || trim((string)$groupquiz->questionorder) === '') {
+            return '';
+        }
+
+        $order = array_values(array_filter(array_map('intval', explode(',', $groupquiz->questionorder))));
+        if (empty($order)) {
+            return '';
+        }
+
+        $links = $DB->get_records('groupquiz_questions', ['groupquizid' => $groupquizid], '', 'id, questionid');
+        if (empty($links)) {
+            return '';
+        }
+
+        $content = '';
+        $number = 0;
+
+        foreach ($order as $linkid) {
+            if (!isset($links[$linkid])) {
+                continue;
+            }
+
+            $question = $DB->get_record(
+                'question',
+                ['id' => $links[$linkid]->questionid],
+                'id, name, qtype, questiontext'
+            );
+            if (!$question || $question->qtype === 'missingtype') {
+                continue;
+            }
+
+            $questiontext = trim(strip_tags($question->questiontext ?? ''));
+            if ($questiontext === '') {
+                continue;
+            }
+
+            $number++;
+            $content .= "Question {$number}";
+            if (!empty($question->name)) {
+                $content .= " ({$question->name})";
             }
             $content .= ": " . $questiontext . "\n\n";
         }
