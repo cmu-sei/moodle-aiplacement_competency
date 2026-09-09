@@ -35,15 +35,17 @@ declare(strict_types=1);
 
 namespace aiplacement_competency;
 
+use PHPUnit\Framework\Attributes\CoversNothing;
+
 /**
  * PHPUnit test for language strings of the AI Placement Competency plugin.
  *
  * @package    aiplacement_competency
  * @category   test
- * @coversNothing
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversNothing]
 final class lang_strings_test extends \basic_testcase {
     public function test_pluginname_string_exists(): void {
         $component = 'aiplacement_competency';
