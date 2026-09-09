@@ -59,6 +59,7 @@ $functions = [
         'description' => 'Add a competency to a course module.',
         'type'        => 'write',
         'ajax'        => true,
-        'capabilities' => 'moodle/competency:coursecompetencyconfigure',
+        // Enforced by core_competency\api::add_competency_to_course_module().
+        'capabilities' => 'moodle/competency:coursecompetencymanage',
     ],
 ];

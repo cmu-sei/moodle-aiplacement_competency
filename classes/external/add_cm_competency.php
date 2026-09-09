@@ -31,6 +31,8 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
 namespace aiplacement_competency\external;
 
 use core_external\external_api;
@@ -70,8 +72,6 @@ class add_cm_competency extends external_api {
      * @return bool True if competency was added, false if already linked.
      */
     public static function execute($cmid, $competencyid): bool {
-        global $CFG;
-
         $params = self::validate_parameters(self::execute_parameters(), [
             'cmid' => $cmid,
             'competencyid' => $competencyid,
