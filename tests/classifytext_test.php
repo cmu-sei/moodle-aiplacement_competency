@@ -31,94 +31,85 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
-/**
- * Unit tests for the classify_text external function in the
- * AI Placement Competency plugin.
- *
- * @package    aiplacement_competency
- * @category   test
- * @covers     \aiplacement_competency\external\classify_text
- * @copyright  2026 Carnegie Mellon University
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 declare(strict_types=1);
+
 namespace aiplacement_competency;
 
-defined('MOODLE_INTERNAL') || die();
-
 use aiplacement_competency\external\classify_text;
+use core_ai\aiactions\responses\response_generate_text;
 use PHPUnit\Framework\Attributes\CoversClass;
-
-/**
- * Fake placement stub for testing.
- *
- * @package    aiplacement_competency
- * @category   test
- */
-class fake_placement {
-    /**
-     * Fake classify method that simulates AI classification output.
-     *
-     * @param \context $context The Moodle context
-     * @param string $prompttext The input prompt
-     * @param int $selectedframeworkid Framework ID
-     * @param string $selectedframeworkshortname Framework shortname
-     * @param array $selectedlevels Selected levels
-     * @return string JSON encoded classification response
-     */
-    public function classify(
-        \context $context,
-        string $prompttext,
-        int $selectedframeworkid,
-        string $selectedframeworkshortname,
-        array $selectedlevels
-    ): string {
-        if ($prompttext === '__NO_LEVELS__') {
-            return json_encode([
-                'generatedcontent' => json_encode([
-                    'framework'    => ['shortname' => $selectedframeworkshortname ?: 'NICE-1.0.0'],
-                    'competencies' => [
-                        'T1119 - Recommend vulnerability remediation strategies',
-                        'T1119 - Recommend vulnerability remediation strategies',
-                    ],
-                ]),
-                'finishreason' => 'stop',
-            ]);
-        }
-
-        return json_encode([
-            'generatedcontent' => json_encode([
-                'framework'    => ['shortname' => 'NICE-1.0.0'],
-                'levels'       => ['Analyze', 'Detect', 'Analyze'],
-                'competencies' => [
-                    'T1119 - Recommend vulnerability remediation strategies',
-                    'T1119 - Recommend vulnerability remediation strategies',
-                ],
-            ]),
-            'finishreason' => 'stop',
-        ]);
-    }
-}
 
 /**
  * Unit tests for the classify_text external function.
  *
+ * The AI provider is never contacted: core_ai\manager is replaced in the
+ * dependency injection container, so each test controls exactly what the
+ * model is deemed to have returned.
+ *
  * @package    aiplacement_competency
  * @category   test
- * @covers     \aiplacement_competency\external\classify_text
+ * @copyright  2026 Carnegie Mellon University
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversClass(classify_text::class)]
 final class classifytext_test extends \advanced_testcase {
+    /**
+     * Reset the database and the DI container between tests.
+     */
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
     }
 
-    public function test_execute_success_parses_and_dedupes(): void {
+    /**
+     * Replaces core_ai\manager with a mock returning the given generated content.
+     *
+     * @param array $generatedcontent The classification payload the model "returned".
+     */
+    private function mock_ai_manager(array $generatedcontent): void {
+        $response = new response_generate_text(success: true);
+        $response->set_response_data([
+            'generatedcontent' => json_encode($generatedcontent),
+            'finishreason' => 'stop',
+        ]);
+
+        $mockmanager = $this->createMock(\core_ai\manager::class);
+        $mockmanager->method('process_action')->willReturn($response);
+        $mockmanager->method('is_action_available')->willReturn(true);
+        $mockmanager->method('is_action_enabled')->willReturn(true);
+
+        \core\di::set(\core_ai\manager::class, function () use ($mockmanager) {
+            return $mockmanager;
+        });
+    }
+
+    /**
+     * Creates an activity and returns its module context.
+     *
+     * @return \context_module The context of a new assignment.
+     */
+    private function create_module_context(): \context_module {
         $course = $this->getDataGenerator()->create_course();
         $cm = $this->getDataGenerator()->create_module('assign', ['course' => $course->id]);
-        $cmctx = \context_module::instance($cm->cmid);
 
+        return \context_module::instance($cm->cmid);
+    }
+
+    /**
+     * Duplicate competencies in the model response are collapsed.
+     */
+    public function test_execute_success_parses_and_dedupes(): void {
+        $cmctx = $this->create_module_context();
         $this->setAdminUser();
+
+        $this->mock_ai_manager([
+            'framework' => ['shortname' => 'NICE-1.0.0'],
+            'levels' => ['Analyze', 'Detect', 'Analyze'],
+            'competencies' => [
+                'T1119 - Recommend vulnerability remediation strategies',
+                'T1119 - Recommend vulnerability remediation strategies',
+            ],
+        ]);
 
         $result = classify_text::execute(
             $cmctx->id,
@@ -137,17 +128,25 @@ final class classifytext_test extends \advanced_testcase {
         );
     }
 
+    /**
+     * A response without a levels key still reports the levels the user selected.
+     */
     public function test_execute_falls_back_to_selectedlevels_when_response_missing_levels(): void {
-        $course = $this->getDataGenerator()->create_course();
-        $cm = $this->getDataGenerator()->create_module('assign', ['course' => $course->id]);
-        $cmctx = \context_module::instance($cm->cmid);
-
+        $cmctx = $this->create_module_context();
         $this->setAdminUser();
+
+        $this->mock_ai_manager([
+            'framework' => ['shortname' => 'NICE-1.0.0'],
+            'competencies' => [
+                'T1119 - Recommend vulnerability remediation strategies',
+                'T1119 - Recommend vulnerability remediation strategies',
+            ],
+        ]);
 
         $selected = ['Analyze', 'Detect'];
         $result = classify_text::execute(
             $cmctx->id,
-            '__NO_LEVELS__',
+            'Any prompt here',
             99,
             'NICE-1.0.0',
             $selected
@@ -162,6 +161,57 @@ final class classifytext_test extends \advanced_testcase {
         );
     }
 
+    /**
+     * The framework shortname falls back to the one the caller selected.
+     */
+    public function test_execute_falls_back_to_selected_framework_shortname(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+
+        $this->mock_ai_manager([
+            'competencies' => ['T1059 - Command and Scripting Interpreter'],
+        ]);
+
+        $result = classify_text::execute(
+            $cmctx->id,
+            'Any prompt here',
+            42,
+            'DCWF-1.0.0',
+            ['Analyze']
+        );
+
+        $this->assertSame('DCWF-1.0.0', $result['frameworkshortname']);
+        $this->assertEquals(['T1059 - Command and Scripting Interpreter'], $result['competencies']);
+    }
+
+    /**
+     * Content that is not valid JSON yields no competencies rather than an error.
+     */
+    public function test_execute_tolerates_unparseable_generated_content(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+
+        $response = new response_generate_text(success: true);
+        $response->set_response_data([
+            'generatedcontent' => 'I am afraid I cannot help with that.',
+            'finishreason' => 'stop',
+        ]);
+
+        $mockmanager = $this->createMock(\core_ai\manager::class);
+        $mockmanager->method('process_action')->willReturn($response);
+        \core\di::set(\core_ai\manager::class, function () use ($mockmanager) {
+            return $mockmanager;
+        });
+
+        $result = classify_text::execute($cmctx->id, 'Any prompt here', 1, 'NICE-1.0.0', ['Analyze']);
+
+        $this->assertSame([], $result['competencies']);
+        $this->assertEquals(['Analyze'], $result['usedlevels']);
+    }
+
+    /**
+     * Users without the classify capability are rejected.
+     */
     public function test_execute_requires_capability_in_module_context(): void {
         $course = $this->getDataGenerator()->create_course();
         $cm = $this->getDataGenerator()->create_module('assign', ['course' => $course->id]);

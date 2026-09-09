@@ -62,7 +62,7 @@ final class template_render_test extends \advanced_testcase {
         $this->resetAfterTest(true);
     }
 
-    #[DataProvider('templateProvider')]
+    #[DataProvider('template_provider')]
     public function test_template_renders_without_exceptions(string $templatename, array $context): void {
         global $PAGE, $OUTPUT;
 
