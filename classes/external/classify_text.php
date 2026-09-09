@@ -112,12 +112,9 @@ class classify_text extends external_api {
 
             // Handle quiz questions.
             if ($cm->modname === 'quiz') {
-                $quiz = $DB->get_record('quiz', ['id' => $cm->instance]);
-                if ($quiz) {
-                    $questionscontent = self::get_quiz_questions_content((int)$quiz->id);
-                    if (!empty($questionscontent)) {
-                        $params['prompttext'] .= "\n\n" . $questionscontent;
-                    }
+                $questionscontent = self::get_quiz_questions_content((int)$cm->instance, $context);
+                if (!empty($questionscontent)) {
+                    $params['prompttext'] .= "\n\n" . $questionscontent;
                 }
             }
 
@@ -213,39 +210,35 @@ class classify_text extends external_api {
     /**
      * Get quiz questions content for AI classification.
      *
+     * Slot contents are resolved with the quiz question bank helper so that each
+     * slot contributes the version the quiz actually uses: the version pinned on
+     * the slot if there is one, otherwise the latest non-draft version. Random
+     * and missing questions have no text of their own and are skipped.
+     *
      * @param int $quizid The quiz ID.
+     * @param \context_module $quizcontext The context of the quiz.
      * @return string The concatenated question text.
      */
-    protected static function get_quiz_questions_content(int $quizid): string {
-        global $DB;
-
+    protected static function get_quiz_questions_content(int $quizid, \context_module $quizcontext): string {
         $content = '';
 
-        // Get quiz slots and questions.
-        $sql = "SELECT qs.slot, q.questiontext, q.name
-                FROM {quiz_slots} qs
-                JOIN {question_references} qr ON qr.itemid = qs.id
-                    AND qr.component = 'mod_quiz'
-                    AND qr.questionarea = 'slot'
-                JOIN {question_bank_entries} qbe ON qbe.id = qr.questionbankentryid
-                JOIN {question_versions} qv ON qv.questionbankentryid = qbe.id
-                JOIN {question} q ON q.id = qv.questionid
-                WHERE qs.quizid = :quizid
-                ORDER BY qs.slot";
+        $slots = \mod_quiz\question\bank\qbank_helper::get_question_structure($quizid, $quizcontext);
 
-        $questions = $DB->get_records_sql($sql, ['quizid' => $quizid]);
-
-        foreach ($questions as $question) {
-            $questiontext = strip_tags($question->questiontext ?? '');
-            $questionname = $question->name ?? '';
-
-            if (!empty($questiontext)) {
-                $content .= "Question {$question->slot}";
-                if (!empty($questionname)) {
-                    $content .= " ({$questionname})";
-                }
-                $content .= ": " . trim($questiontext) . "\n\n";
+        foreach ($slots as $slot) {
+            if ($slot->qtype === 'random' || $slot->qtype === 'missingtype') {
+                continue;
             }
+
+            $questiontext = trim(strip_tags($slot->questiontext ?? ''));
+            if ($questiontext === '') {
+                continue;
+            }
+
+            $content .= "Question {$slot->slot}";
+            if (!empty($slot->name)) {
+                $content .= " ({$slot->name})";
+            }
+            $content .= ": " . $questiontext . "\n\n";
         }
 
         return trim($content);

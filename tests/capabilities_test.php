@@ -32,15 +32,17 @@ DM26-0017
 */
 namespace aiplacement_competency;
 
+use PHPUnit\Framework\Attributes\CoversNothing;
+
 /**
  * Unit tests for capabilities in the AI Placement Competency plugin.
  *
  * @package    aiplacement_competency
  * @category   test
- * @coversNothing
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversNothing]
 final class capabilities_test extends \basic_testcase {
     /**
      * Capabilities loaded from the plugin's access.php file.

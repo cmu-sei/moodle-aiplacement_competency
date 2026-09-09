@@ -54,15 +54,26 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(classify_text::class)]
 final class classifytext_test extends \advanced_testcase {
     /**
+     * The prompt text of every action the mocked manager was asked to process.
+     *
+     * @var string[]
+     */
+    private array $sentprompts = [];
+
+    /**
      * Reset the database and the DI container between tests.
      */
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
+        $this->sentprompts = [];
     }
 
     /**
      * Replaces core_ai\manager with a mock returning the given generated content.
+     *
+     * The prompt of each processed action is recorded in $this->sentprompts, so
+     * tests can assert on what would have been sent to the model.
      *
      * @param array $generatedcontent The classification payload the model "returned".
      */
@@ -74,7 +85,12 @@ final class classifytext_test extends \advanced_testcase {
         ]);
 
         $mockmanager = $this->createMock(\core_ai\manager::class);
-        $mockmanager->method('process_action')->willReturn($response);
+        $mockmanager->method('process_action')->willReturnCallback(
+            function (\core_ai\aiactions\base $action) use ($response) {
+                $this->sentprompts[] = (string)$action->get_configuration('prompttext');
+                return $response;
+            }
+        );
         $mockmanager->method('is_action_available')->willReturn(true);
         $mockmanager->method('is_action_enabled')->willReturn(true);
 
@@ -182,6 +198,86 @@ final class classifytext_test extends \advanced_testcase {
 
         $this->assertSame('DCWF-1.0.0', $result['frameworkshortname']);
         $this->assertEquals(['T1059 - Command and Scripting Interpreter'], $result['competencies']);
+    }
+
+    /**
+     * Creates a quiz holding one question that has two versions.
+     *
+     * The first version says FIRSTVERSIONTEXT, the second says SECONDVERSIONTEXT.
+     *
+     * @return array [the quiz record, its module context]
+     */
+    private function create_quiz_with_two_question_versions(): array {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->getDataGenerator()->get_plugin_generator('mod_quiz')->create_instance([
+            'course' => $course->id,
+            'questionsperpage' => 0,
+            'grade' => 100.0,
+        ]);
+
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $questiongenerator->create_question_category();
+        $question = $questiongenerator->create_question('shortanswer', null, [
+            'category' => $category->id,
+            'name' => 'Question version one',
+            'questiontext' => ['text' => '<p>FIRSTVERSIONTEXT</p>', 'format' => FORMAT_HTML],
+        ]);
+        quiz_add_quiz_question($question->id, $quiz);
+
+        $questiongenerator->update_question($question, null, [
+            'name' => 'Question version two',
+            'questiontext' => ['text' => '<p>SECONDVERSIONTEXT</p>', 'format' => FORMAT_HTML],
+        ]);
+
+        return [$quiz, \context_module::instance($quiz->cmid)];
+    }
+
+    /**
+     * A quiz slot contributes the latest version of its question, not an arbitrary one.
+     */
+    public function test_quiz_prompt_uses_the_latest_question_version(): void {
+        [, $quizcontext] = $this->create_quiz_with_two_question_versions();
+        $this->setAdminUser();
+        $this->mock_ai_manager(['competencies' => []]);
+
+        classify_text::execute($quizcontext->id, 'ACTIVITY INTRO', 1, 'NICE-1.0.0', ['Analyze']);
+
+        $this->assertCount(1, $this->sentprompts);
+        $prompt = $this->sentprompts[0];
+        $this->assertStringContainsString('ACTIVITY INTRO', $prompt);
+        $this->assertStringContainsString('SECONDVERSIONTEXT', $prompt);
+        $this->assertStringContainsString('Question version two', $prompt);
+        $this->assertStringNotContainsString('FIRSTVERSIONTEXT', $prompt);
+    }
+
+    /**
+     * A slot pinned to an older version contributes that version, not the latest.
+     */
+    public function test_quiz_prompt_honours_a_slot_pinned_to_an_older_version(): void {
+        global $DB;
+
+        [$quiz, $quizcontext] = $this->create_quiz_with_two_question_versions();
+
+        // This is what choosing a specific version in the "Question version" selector does.
+        $slotid = $DB->get_field('quiz_slots', 'id', ['quizid' => $quiz->id], MUST_EXIST);
+        $DB->set_field('question_references', 'version', 1, [
+            'itemid' => $slotid,
+            'component' => 'mod_quiz',
+            'questionarea' => 'slot',
+        ]);
+
+        $this->setAdminUser();
+        $this->mock_ai_manager(['competencies' => []]);
+
+        classify_text::execute($quizcontext->id, 'ACTIVITY INTRO', 1, 'NICE-1.0.0', ['Analyze']);
+
+        $this->assertCount(1, $this->sentprompts);
+        $prompt = $this->sentprompts[0];
+        $this->assertStringContainsString('FIRSTVERSIONTEXT', $prompt);
+        $this->assertStringNotContainsString('SECONDVERSIONTEXT', $prompt);
     }
 
     /**

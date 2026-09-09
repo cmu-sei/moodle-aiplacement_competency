@@ -33,6 +33,8 @@ DM26-0017
 
 namespace aiplacement_competency;
 
+use PHPUnit\Framework\Attributes\CoversNothing;
+
 /**
  * PHPUnit tests for plugininfo of the AI Placement Competency plugin.
  *
@@ -41,10 +43,10 @@ namespace aiplacement_competency;
  *
  * @package    aiplacement_competency
  * @category   test
- * @coversNothing
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversNothing]
 final class plugininfo_test extends \basic_testcase {
     public function test_plugin_is_registered_and_version_is_int(): void {
         $pm = \core_plugin_manager::instance();

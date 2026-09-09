@@ -35,6 +35,7 @@ declare(strict_types=1);
 
 namespace aiplacement_competency;
 
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -44,10 +45,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * @package    aiplacement_competency
  * @category   test
- * @coversNothing
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversNothing]
 final class template_render_test extends \advanced_testcase {
     /**
      * The plugin component name used in template references.

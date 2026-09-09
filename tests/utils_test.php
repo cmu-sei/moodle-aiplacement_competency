@@ -36,16 +36,17 @@ declare(strict_types=1);
 namespace aiplacement_competency;
 
 use aiplacement_competency\local\utils;
+use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
  * Unit tests for the utils helper class in the AI Placement Competency plugin.
  *
  * @package    aiplacement_competency
  * @category   test
- * @covers     \aiplacement_competency\local\utils
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversClass(utils::class)]
 final class utils_test extends \advanced_testcase {
     protected function setUp(): void {
         parent::setUp();
