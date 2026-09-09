@@ -92,21 +92,18 @@ define([
     if (added.length) {
       jobs.push(
         Str.get_string(headings.added.key, headings.added.comp, { count: added.length })
-          .catch(function(){ return headings.added.fallback(added.length); })
           .then(function(h) { Notification.addNotification({ type: 'success', message: '<div>' + esc(h) + '</div>' + renderList(added) }); })
       );
     }
     if (exists.length) {
       jobs.push(
         Str.get_string(headings.exists.key, headings.exists.comp, { count: exists.length })
-          .catch(function(){ return headings.exists.fallback(exists.length); })
           .then(function(h) { Notification.addNotification({ type: 'warning', message: '<div>' + esc(h) + '</div>' + renderList(exists) }); })
       );
     }
     if (failed.length) {
       jobs.push(
         Str.get_string(headings.failed.key, headings.failed.comp, { count: failed.length })
-          .catch(function(){ return headings.failed.fallback(failed.length); })
           .then(function(h) { Notification.addNotification({ type: 'error', message: '<div>' + esc(h) + '</div>' + renderList(failed) }); })
       );
     }
@@ -116,18 +113,18 @@ define([
   // Call these after load to show course notifications once the page refreshes
   function showPostReloadCourseNoticesIfAny() {
     showNoticesFrom(RELOAD_COURSE_KEY, {
-      added : { key: 'notify_course_added_heading',  comp:'aiplacement_competency', fallback: c => 'Course competencies added (' + c + ')' },
-      exists: { key: 'notify_course_exists_heading', comp:'aiplacement_competency', fallback: c => 'Already in course (' + c + ')' },
-      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_competency', fallback: c => 'Failed to add to course (does not match selected framework) (' + c + ')' }
+      added : { key: 'notify_course_added_heading',  comp:'aiplacement_competency' },
+      exists: { key: 'notify_course_exists_heading', comp:'aiplacement_competency' },
+      failed: { key: 'notify_course_failed_heading', comp:'aiplacement_competency' }
     });
   }
 
   // Call these after load to show activity notifications once the page refreshes
   function showPostReloadCmNoticesIfAny() {
     showNoticesFrom(RELOAD_CM_KEY, {
-      added : { key: 'notify_cm_added_heading',  comp:'aiplacement_competency', fallback: c => 'Added to activity (' + c + ')' },
-      exists: { key: 'notify_cm_exists_heading', comp:'aiplacement_competency', fallback: c => 'Already linked to activity (' + c + ')' },
-      failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_competency', fallback: c => 'Failed to link to activity (' + c + ')' }
+      added : { key: 'notify_cm_added_heading',  comp:'aiplacement_competency' },
+      exists: { key: 'notify_cm_exists_heading', comp:'aiplacement_competency' },
+      failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_competency' }
     });
   }
 
