@@ -132,8 +132,9 @@ Example C — no clear matches
   "competencies": []
 }
 ';
-$string['aiclassification_help'] = 'Uses AI to classify course context according to the NICE Framework Competencies.';
+$string['aiclassification_help'] = 'Uses AI to classify this content against the competency framework you select.';
 $string['aiclassificationlabel'] = 'AI Classification';
+$string['aiclassifyfailed'] = 'AI classification failed. Please try again.';
 $string['applycmps'] = 'Apply CMPs';
 $string['applycmps_clearall'] = 'Clear all';
 $string['applycmps_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
@@ -145,10 +146,10 @@ $string['applynow'] = 'Apply';
 $string['classify_note_newactivity'] = 'Once this activity has been saved, the Competency Classification tool will be enabled.';
 $string['classify_note_nocontent'] = 'Add content to this activity to enable the Competency Classification tool.';
 $string['classify_tooltips'] = 'Classify content based on competency framework.';
-$string['competency:classify_text'] = 'Classify Text';
 $string['classifybutton'] = 'Classify Text';
 $string['classifyheading'] = 'AI Classification Result';
 $string['competencies'] = 'Competencies';
+$string['competency:classify_text'] = 'Classify Text';
 $string['copy'] = 'Copy';
 $string['frameworkselection'] = 'Competency Framework Selection';
 $string['frameworkselection_help'] = 'Choose the competency framework that the AI model should use to classify your content.';
@@ -161,6 +162,7 @@ $string['help'] = 'Help';
 $string['knowledge'] = 'Knowledge';
 $string['levels'] = 'Competency Levels';
 $string['levelsselection'] = 'Competency Selection';
+$string['levelsselection_empty'] = 'No competency levels are available for the selected framework.';
 $string['levelsselection_help'] = 'Select the competency levels (taxonomies) you want the AI model to use when classifying your content.';
 $string['none'] = 'None';
 $string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
@@ -170,6 +172,7 @@ $string['notify_course_added_heading']  = 'Added {$a->count} competencies to thi
 $string['notify_course_exists_heading'] = 'Already in this course (not added): {$a->count}';
 $string['notify_course_failed_heading'] = 'Failed to add to course: {$a->count}';
 $string['notify_empty_description'] = 'Please add content to this activity before using the Competency Classification tool.';
+$string['notify_nocourseid'] = 'The course could not be determined, so no competencies were applied.';
 $string['pluginname'] = 'Competency';
 $string['privacy:metadata'] = 'The AI Placement Competency plugin stores no personal data.';
 $string['regenerate'] = 'Regenerate';
