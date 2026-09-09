@@ -81,6 +81,93 @@ final class utils_test extends \advanced_testcase {
         }
     }
 
+    public function test_build_instruction_matches_a_level_whatever_its_case(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'Operate and Maintain' => ['OM-1' => 'Administer the network'],
+        ]);
+
+        // The drawer lowercases the level before sending it.
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['operate and maintain']);
+
+        $this->assertStringContainsString('OM-1 - Administer the network', $instruction);
+        // Named back with the shortname the framework uses, not as it arrived.
+        $this->assertStringContainsString('Operate and Maintain', $instruction);
+    }
+
+    public function test_build_instruction_ignores_a_level_that_is_only_inside_another_name(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'IT' => ['IT-1' => 'Maintain the server estate'],
+            'Monitoring' => ['MON-1' => 'Watch the sensor feeds'],
+        ]);
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['it']);
+
+        $this->assertStringContainsString('IT-1 - Maintain the server estate', $instruction);
+        // 'it' is inside 'Monitoring', which used to be enough to pull it in.
+        $this->assertStringNotContainsString('MON-1', $instruction);
+        $this->assertStringNotContainsString('Watch the sensor feeds', $instruction);
+    }
+
+    public function test_build_instruction_falls_back_to_a_partial_level_match(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'Securely Provision' => ['SP-1' => 'Design secure systems'],
+            'Investigate' => ['IN-1' => 'Collect digital evidence'],
+        ]);
+
+        // Not a shortname, so nothing matches outright and the fallback runs.
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['Securely']);
+
+        $this->assertStringContainsString('SP-1 - Design secure systems', $instruction);
+        $this->assertStringNotContainsString('IN-1', $instruction);
+    }
+
+    public function test_build_instruction_without_a_level_offers_the_whole_framework(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'Analyze' => ['AN-1' => 'Interpret threat reporting'],
+            'Protect and Defend' => ['PD-1' => 'Respond to incidents'],
+        ]);
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', []);
+
+        $this->assertStringContainsString('AN-1 - Interpret threat reporting', $instruction);
+        $this->assertStringContainsString('PD-1 - Respond to incidents', $instruction);
+    }
+
+    /**
+     * Creates a framework of top level competencies, each with children.
+     *
+     * @param array $levels Level shortname => [child shortname => child description].
+     * @return int The framework id.
+     */
+    private function create_framework(array $levels): int {
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $framework = $generator->create_framework(['shortname' => 'TESTFW']);
+        $frameworkid = (int)$framework->get('id');
+
+        foreach ($levels as $shortname => $children) {
+            $parent = $generator->create_competency([
+                'competencyframeworkid' => $frameworkid,
+                'shortname' => $shortname,
+                'description' => '',
+            ]);
+
+            foreach ($children as $childshortname => $description) {
+                $generator->create_competency([
+                    'competencyframeworkid' => $frameworkid,
+                    'parentid' => $parent->get('id'),
+                    'shortname' => $childshortname,
+                    'description' => $description,
+                ]);
+            }
+        }
+
+        return $frameworkid;
+    }
+
     public function test_extract_classification_from_plain_json_string_payload(): void {
         $payload = json_encode([
             'framework' => ['shortname' => 'NICE-1.0.0'],

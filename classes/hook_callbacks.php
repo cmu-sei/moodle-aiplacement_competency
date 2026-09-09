@@ -31,6 +31,8 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
 namespace aiplacement_competency;
 
 use core\hook\output\before_footer_html_generation;

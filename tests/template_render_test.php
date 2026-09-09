@@ -76,6 +76,33 @@ final class template_render_test extends \advanced_testcase {
         $this->assertNotSame('', trim($html), "Rendered HTML is empty for {$templatename}");
     }
 
+    public function test_levels_template_escapes_author_text_and_pairs_its_labels(): void {
+        global $PAGE, $OUTPUT;
+
+        $PAGE->set_context(\context_system::instance());
+        $PAGE->set_url(new \moodle_url('/'));
+
+        $html = $OUTPUT->render_from_template(self::COMPONENT . '/levels', [
+            'options' => [
+                [
+                    'value' => 'Operate and Maintain',
+                    'label' => '<img src=x onerror=alert(1)>',
+                    'help' => '<script>alert(2)</script>',
+                ],
+            ],
+        ]);
+
+        // Both come from competency shortnames and descriptions, which whoever
+        // manages the framework types in, so neither may render as markup.
+        $this->assertStringNotContainsString('<img', $html);
+        $this->assertStringNotContainsString('<script', $html);
+        $this->assertStringContainsString('&lt;img', $html);
+
+        // The checkbox sits inside its own label, so the text is clickable
+        // without an id, which a shortname containing spaces cannot supply.
+        $this->assertMatchesRegularExpression('/<label[^>]*>\s*<input[^>]*type="checkbox"/', $html);
+    }
+
     /**
      * Provides template names and contexts for testing.
      *
