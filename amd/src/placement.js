@@ -46,6 +46,7 @@ define([
     const SELECTOR_LEVELS  = 'input[name="classify-levels"]';
     const ID_CLOSE_BTN         = '#ai-classify-drawer-close';
     const SELECTOR_RETRY      = '[data-action="retry"]';
+    const COMPONENT            = 'aiplacement_competency';
 
     return class ClassifyPlacement extends Base {
         constructor(userId, contextId) {
@@ -63,6 +64,47 @@ define([
 
             this._levels = [];
             this.registerExtraListener();
+        }
+
+        /**
+         * Fetch, and cache for the lifetime of the drawer, the strings the steps need.
+         * @returns {Promise<Object>} Strings keyed by string identifier
+         */
+        getStrings() {
+            if (!this._stringsPromise) {
+                const requests = [
+                    {key: 'loading', component: 'core'},
+                    {key: 'frameworkselection_placeholder', component: COMPONENT},
+                    {key: 'frameworkselection_none', component: COMPONENT},
+                    {key: 'frameworkselection_error', component: COMPONENT},
+                    {key: 'levelsselection_error', component: COMPONENT},
+                    {key: 'notify_empty_description', component: COMPONENT},
+                ];
+
+                this._stringsPromise = Str.get_strings(requests).then(values => {
+                    const strings = {};
+                    requests.forEach((request, index) => {
+                        strings[request.key] = values[index];
+                    });
+                    return strings;
+                });
+            }
+
+            return this._stringsPromise;
+        }
+
+        /**
+         * Build the disabled, selected option shown when there is nothing to choose yet.
+         * @param {string} text The option label
+         * @returns {HTMLOptionElement} The placeholder option
+         */
+        createPlaceholderOption(text) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.disabled = true;
+            option.selected = true;
+            option.textContent = text;
+            return option;
         }
 
         /**
@@ -211,12 +253,14 @@ define([
 
                 // Only show error if no content AND activity doesn't fetch from DB
                 if (!prompt && !hasDbContent) {
-                    Str.get_string('notify_empty_description', 'aiplacement_competency')
-                        .catch(() => 'No content found to classify.')
-                        .then(msg => Notification.addNotification({ type: 'error', message: msg }));
-
                     const errorHtml = await Templates.render('aiplacement_competency/error', {});
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
+
+                    const strings = await this.getStrings();
+                    Notification.addNotification({
+                        type: 'error',
+                        message: strings.notify_empty_description,
+                    });
                     return;
                 }
 
@@ -228,12 +272,14 @@ define([
         async showSelectFramework(prompt) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
+            const strings = await this.getStrings();
+
             const prestepHtml = await Templates.render('aiplacement_competency/framework_select', {});
             this.aiDrawerBodyElement.innerHTML = prestepHtml;
 
             const select = this.aiDrawerBodyElement.querySelector(SELECTOR_PRESELECT);
             if (select) {
-                select.innerHTML = '<option value="" disabled selected>Loading…</option>';
+                select.replaceChildren(this.createPlaceholderOption(strings.loading));
             }
 
             try {
@@ -253,22 +299,17 @@ define([
                                 : [];
 
                 if (select) {
-                    select.innerHTML = '';
-
                     if (!frameworks.length) {
-                        select.innerHTML = '<option value="" disabled selected>No frameworks found</option>';
+                        select.replaceChildren(this.createPlaceholderOption(strings.frameworkselection_none));
                     } else {
-                        const ph = document.createElement('option');
-                        ph.value = '';
-                        ph.disabled = true;
-                        ph.selected = true;
-                        ph.textContent = 'Select Competency Framework...';
-                        select.appendChild(ph);
+                        select.replaceChildren(
+                            this.createPlaceholderOption(strings.frameworkselection_placeholder)
+                        );
 
                         frameworks.forEach(fw => {
                             const opt = document.createElement('option');
                             opt.value = String(fw.id);
-                            opt.innerHTML = fw.shortname || fw.name || fw.idnumber || `Framework #${fw.id}`;
+                            opt.textContent = fw.shortname || fw.name || fw.idnumber || `#${fw.id}`;
                             opt.dataset.shortname = fw.shortname || '';
                             opt.dataset.idnumber = fw.idnumber || '';
                             select.appendChild(opt);
@@ -277,7 +318,7 @@ define([
                 }
             } catch (error) {
                 if (select) {
-                    select.innerHTML = '<option value="" disabled selected>Failed to load frameworks</option>';
+                    select.replaceChildren(this.createPlaceholderOption(strings.frameworkselection_error));
                 }
                 Notification.exception(error);
             }
@@ -346,10 +387,13 @@ define([
         async showLevels(prompt, framework) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
+            const strings = await this.getStrings();
+
             const html = await Templates.render('aiplacement_competency/levels', { options: [] });
             this.aiDrawerBodyElement.innerHTML = html;
 
             let competencies = [];
+            let loadfailed = false;
 
             try {
             const args = {
@@ -377,12 +421,9 @@ define([
             competencies = competencies.filter(c => Number(c.parentid || 0) === 0);
 
             } catch (error) {
-            this.aiDrawerBodyElement.querySelector('.ai-prestep')?.insertAdjacentHTML(
-                'afterbegin',
-                '<div class="alert alert-danger mb-3">Failed to load levels.</div>'
-            );
             Notification.exception(error);
             competencies = [];
+            loadfailed = true;
             }
 
             const options = competencies.map(c => {
@@ -405,6 +446,14 @@ define([
 
             const finalHtml = await Templates.render('aiplacement_competency/levels', { options });
             this.aiDrawerBodyElement.innerHTML = finalHtml;
+
+            if (loadfailed) {
+                // Insert after the final render, otherwise the render wipes the message out.
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger mb-3';
+                alert.textContent = strings.levelsselection_error;
+                this.aiDrawerBodyElement.querySelector('.ai-prestep')?.prepend(alert);
+            }
 
             const cancelBtn   = this.aiDrawerBodyElement.querySelector(SELECTOR_CANCEL);
             const backBtn     = this.aiDrawerBodyElement.querySelector(SELECTOR_BACK);
