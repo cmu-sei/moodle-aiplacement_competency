@@ -245,6 +245,12 @@ class utils {
                 $hasspecificcontent = $questioncount > 0;
                 break;
 
+            case 'groupquiz':
+                // Check if the group quiz has questions.
+                $questioncount = $DB->count_records('groupquiz_questions', ['groupquizid' => $instance->id]);
+                $hasspecificcontent = $questioncount > 0;
+                break;
+
             case 'page':
                 // Page content.
                 $hasspecificcontent = !empty($instance->content) && trim(strip_tags($instance->content)) !== '';
