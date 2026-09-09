@@ -31,21 +31,45 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Options offered by a choice activity.
+ *
+ * The question itself is the intro; the options are what the activity asks the
+ * student to decide between, and they are often the only subject-specific text
+ * in it.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class choice_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        global $DB;
 
-defined('MOODLE_INTERNAL') || die();
+        $options = $DB->get_records(
+            'choice_options',
+            ['choiceid' => $this->cm->instance],
+            'id ASC',
+            'id, text'
+        );
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090905;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        $texts = [];
+        foreach ($options as $option) {
+            $text = self::clean($option->text);
+            if ($text !== '') {
+                $texts[] = $text;
+            }
+        }
+
+        if (empty($texts)) {
+            return '';
+        }
+
+        return trim(self::chunk('Options', null, implode('; ', $texts)));
+    }
+}

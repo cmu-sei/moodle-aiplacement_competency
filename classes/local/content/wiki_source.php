@@ -31,21 +31,66 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * First page of a collaborative wiki.
+ *
+ * A wiki is mostly learner work, so only the first page is read, and only in a
+ * collaborative wiki. In an individual wiki every page, the first one included,
+ * belongs to the student who holds that subwiki, and none of it describes what
+ * the activity sets out to teach.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class wiki_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        global $DB;
 
-defined('MOODLE_INTERNAL') || die();
+        $instance = $this->get_instance('id, firstpagetitle, wikimode');
+        if (!$instance || $instance->wikimode !== 'collaborative') {
+            return '';
+        }
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090905;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        $title = trim((string)$instance->firstpagetitle);
+        if ($title === '') {
+            return '';
+        }
+
+        $pages = $DB->get_records_sql(
+            "SELECT p.id, p.title, p.cachedcontent
+               FROM {wiki_pages} p
+               JOIN {wiki_subwikis} s ON s.id = p.subwikiid
+              WHERE s.wikiid = :wikiid AND p.title = :title
+           ORDER BY p.id ASC",
+            ['wikiid' => $this->cm->instance, 'title' => $title]
+        );
+
+        $content = '';
+        $seen = [];
+
+        foreach ($pages as $page) {
+            $body = self::clean($page->cachedcontent);
+            if ($body === '') {
+                continue;
+            }
+
+            // A wiki in group mode keeps one subwiki per group, each starting
+            // from the same first page, so identical copies are sent once.
+            $key = md5($body);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            $content .= self::chunk('First page', $page->title, $body);
+        }
+
+        return trim($content);
+    }
+}

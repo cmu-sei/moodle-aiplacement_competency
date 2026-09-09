@@ -31,21 +31,59 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Tasks of a Crucible exercise.
+ *
+ * The tasks are what the exercise actually asks a student to do, so they carry
+ * more competency signal than the intro does. Tasks hidden from students are
+ * left out; whether a task is graded is not a reason to ignore what it asks.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class crucible_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        global $DB;
 
-defined('MOODLE_INTERNAL') || die();
+        $tasks = $DB->get_records(
+            'crucible_tasks',
+            ['crucibleid' => $this->cm->instance, 'visible' => 1],
+            'id ASC',
+            'id, name, description'
+        );
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090905;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        $content = '';
+        $number = 0;
+
+        foreach ($tasks as $task) {
+            $name = self::clean($task->name);
+            $description = self::clean($task->description);
+            if ($name === '' && $description === '') {
+                continue;
+            }
+
+            $number++;
+            // A task name is often the whole of what the task asks for, so it
+            // becomes the body when there is no description rather than being
+            // dropped as a heading with nothing under it.
+            $content .= $description === ''
+                ? self::chunk("Task {$number}", null, $name)
+                : self::chunk("Task {$number}", $name, $description);
+        }
+
+        return trim($content);
+    }
+
+    #[\Override]
+    public function has_content(): bool {
+        global $DB;
+
+        return $DB->record_exists('crucible_tasks', ['crucibleid' => $this->cm->instance, 'visible' => 1]);
+    }
+}

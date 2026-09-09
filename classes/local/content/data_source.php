@@ -31,21 +31,48 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Field definitions of a database activity.
+ *
+ * The fields are what the author asks students to record, so they describe the
+ * activity. The records themselves are learner work and are left alone.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class data_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        global $DB;
 
-defined('MOODLE_INTERNAL') || die();
+        $fields = $DB->get_records(
+            'data_fields',
+            ['dataid' => $this->cm->instance],
+            'id ASC',
+            'id, name, description'
+        );
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090905;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        $content = '';
+        $number = 0;
+
+        foreach ($fields as $field) {
+            $name = self::clean($field->name);
+            $description = self::clean($field->description);
+            if ($name === '' && $description === '') {
+                continue;
+            }
+
+            $number++;
+            $content .= $description === ''
+                ? self::chunk("Field {$number}", null, $name)
+                : self::chunk("Field {$number}", $name, $description);
+        }
+
+        return trim($content);
+    }
+}

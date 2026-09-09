@@ -31,21 +31,68 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 DM26-0017
 */
 
+declare(strict_types=1);
+
+namespace aiplacement_competency\local\content;
+
 /**
- * Plugin version details for the AI Placement Competency plugin.
+ * Table of contents of an IMS content package.
+ *
+ * The package's own pages are files Moodle only serves, so the manifest titles
+ * are all there is. They are held on the activity row as a serialized tree of
+ * items, each with a title and its own subitems.
  *
  * @package    aiplacement_competency
- * @category   admin
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class imscp_source extends source {
+    #[\Override]
+    public function get_content(): string {
+        $instance = $this->get_instance('id, structure');
+        if (!$instance) {
+            return '';
+        }
 
-defined('MOODLE_INTERNAL') || die();
+        $structure = unserialize_array((string)$instance->structure);
+        if (!is_array($structure)) {
+            return '';
+        }
 
-$plugin->component = 'aiplacement_competency';
-$plugin->version   = 2026090905;
-$plugin->requires  = 2025040800;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->core_hooks = [
-    'output\before_footer_html_generation',
-];
+        $titles = self::collect_titles($structure);
+        if (empty($titles)) {
+            return '';
+        }
+
+        return trim(self::chunk('Package contents', null, implode('; ', $titles)));
+    }
+
+    /**
+     * Walks the item tree, depth first, collecting the titles in reading order.
+     *
+     * @param array $items The items to walk.
+     * @return string[] The non-empty titles found.
+     */
+    private static function collect_titles(array $items): array {
+        $titles = [];
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $title = self::clean(is_string($item['title'] ?? null) ? $item['title'] : '');
+            if ($title !== '') {
+                $titles[] = $title;
+            }
+
+            if (!empty($item['subitems']) && is_array($item['subitems'])) {
+                foreach (self::collect_titles($item['subitems']) as $subtitle) {
+                    $titles[] = $subtitle;
+                }
+            }
+        }
+
+        return $titles;
+    }
+}
