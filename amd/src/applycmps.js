@@ -14,6 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+/* eslint-disable max-len */
 /*
 AI Placement Plugin for Moodle Competencies
 
@@ -30,6 +31,7 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 
 DM26-0017
 */
+/* eslint-enable max-len */
 define([
   'core/modal',
   'core/modal_factory',
@@ -46,7 +48,13 @@ define([
   var RELOAD_COURSE_KEY = 'aiplacement:coursePostReloadNotices';
   var RELOAD_CM_KEY     = 'aiplacement:cmPostReloadNotices';
 
-  // Save the competencies that were added, exists, or failed to be added to the course
+  /**
+   * Save the competencies that were added, exists, or failed to be added to the course.
+   *
+   * @param {Array} added Names of the competencies that were added
+   * @param {Array} exists Names of the competencies the course already had
+   * @param {Array} failed Names of the competencies that could not be added
+   */
   function stashCourseNotices(added, exists, failed) {
     try {
       sessionStorage.setItem(RELOAD_COURSE_KEY, JSON.stringify({
@@ -54,7 +62,14 @@ define([
       }));
     } catch (e) {}
   }
-  // Save the competencies that were added, exists, or failed to be added to the activity
+
+  /**
+   * Save the competencies that were added, exists, or failed to be added to the activity.
+   *
+   * @param {Array} added Names of the competencies that were added
+   * @param {Array} exists Names of the competencies the activity already had
+   * @param {Array} failed Names of the competencies that could not be added
+   */
   function stashCmNotices(added, exists, failed) {
     try {
       sessionStorage.setItem(RELOAD_CM_KEY, JSON.stringify({
@@ -63,7 +78,12 @@ define([
     } catch (e) {}
   }
 
-  // Show notices with added, exists, or failed competencies with green, yellow, and red notifications
+  /**
+   * Show notices with added, exists, or failed competencies with green, yellow, and red notifications.
+   *
+   * @param {string} key The sessionStorage key the notices were stashed under
+   * @param {Object} headings Per outcome string identifiers, keyed added / exists / failed
+   */
   function showNoticesFrom(key, headings) {
     var raw = null;
     try { raw = sessionStorage.getItem(key); } catch (e) {}
@@ -89,28 +109,31 @@ define([
       '</ul>';
     };
 
+    var notify = function (heading, type, items) {
+      return Str.get_string(heading.key, heading.comp, { count: items.length })
+        .then(function (h) {
+          Notification.addNotification({
+            type: type,
+            message: '<div>' + esc(h) + '</div>' + renderList(items)
+          });
+        });
+    };
+
     if (added.length) {
-      jobs.push(
-        Str.get_string(headings.added.key, headings.added.comp, { count: added.length })
-          .then(function(h) { Notification.addNotification({ type: 'success', message: '<div>' + esc(h) + '</div>' + renderList(added) }); })
-      );
+      jobs.push(notify(headings.added, 'success', added));
     }
     if (exists.length) {
-      jobs.push(
-        Str.get_string(headings.exists.key, headings.exists.comp, { count: exists.length })
-          .then(function(h) { Notification.addNotification({ type: 'warning', message: '<div>' + esc(h) + '</div>' + renderList(exists) }); })
-      );
+      jobs.push(notify(headings.exists, 'warning', exists));
     }
     if (failed.length) {
-      jobs.push(
-        Str.get_string(headings.failed.key, headings.failed.comp, { count: failed.length })
-          .then(function(h) { Notification.addNotification({ type: 'error', message: '<div>' + esc(h) + '</div>' + renderList(failed) }); })
-      );
+      jobs.push(notify(headings.failed, 'error', failed));
     }
     Promise.allSettled(jobs);
   }
 
-  // Call these after load to show course notifications once the page refreshes
+  /**
+   * Call this after load to show course notifications once the page refreshes.
+   */
   function showPostReloadCourseNoticesIfAny() {
     showNoticesFrom(RELOAD_COURSE_KEY, {
       added : { key: 'notify_course_added_heading',  comp:'aiplacement_competency' },
@@ -119,7 +142,9 @@ define([
     });
   }
 
-  // Call these after load to show activity notifications once the page refreshes
+  /**
+   * Call this after load to show activity notifications once the page refreshes.
+   */
   function showPostReloadCmNoticesIfAny() {
     showNoticesFrom(RELOAD_CM_KEY, {
       added : { key: 'notify_cm_added_heading',  comp:'aiplacement_competency' },
@@ -259,18 +284,34 @@ define([
       }).fail(reject);
     });
   };
+  /**
+   * Read the course id out of the body classes.
+   *
+   * @returns {?number} The course id, or null when the page carries no course-N class
+   */
   function getCourseIdFromBody() {
     var cls = (document.body && document.body.className) || '';
     var m = cls.match(/(?:^|\s)course-(\d+)(?:\s|$)/);
     return m ? parseInt(m[1], 10) : null;
   }
 
-  // Grab cmid from the URL (activity edit page uses ?update=<cmid>)
+  /**
+   * Grab cmid from the URL (activity edit page uses ?update=<cmid>).
+   *
+   * @returns {number} The course module id, or 0 when not editing a module
+   */
   function getCmidFromUrl() {
     var qs = new URLSearchParams(window.location.search);
     return Number(qs.get('update') || 0);
   }
 
+  /**
+   * Link one competency to a course module.
+   *
+   * @param {number} cmid The course module id
+   * @param {number} competencyId The competency id
+   * @returns {Promise} Resolves true when linked, false when the module already had it
+   */
   function addToModule(cmid, competencyId) {
     return Ajax.call([{
       methodname: 'aiplacement_competency_add_cm_competency',
@@ -278,7 +319,8 @@ define([
     }])[0];
   }
 
-  // Modal that shows the ai response competencies to the user, here the user will be able to select which should be added to the course
+  // Modal that shows the ai response competencies to the user, here the user will be
+  // able to select which should be added to the course
   var openModal = function(values) {
     return Str.get_string('applycmps_title', 'aiplacement_competency').then(function(title) {
       return Templates.render('aiplacement_competency/applycmps_modal', {
@@ -319,7 +361,9 @@ define([
                   var all = Array.isArray(res.matches) ? res.matches : [];
                   var matched   = all.filter(function(m){ return m && m.id !== null; });
                   var unmatched = all.filter(function(m){ return !m || m.id === null; });
-                  var unmatchedLabels = unmatched.map(function(m){ return (m && m.input) ? String(m.input).trim() : ''; }).filter(Boolean);
+                  var unmatchedLabels = unmatched.map(function(m){
+                    return (m && m.input) ? String(m.input).trim() : '';
+                  }).filter(Boolean);
 
                   var courseId = getCourseIdFromBody();
                   if (!courseId) {
@@ -333,7 +377,10 @@ define([
 
                   // Add to course
                   var calls = res.matchedIds.map(function(id) {
-                    return { methodname: 'core_competency_add_competency_to_course', args: { courseid: courseId, competencyid: id } };
+                    return {
+                      methodname: 'core_competency_add_competency_to_course',
+                      args: { courseid: courseId, competencyid: id }
+                    };
                   });
                   var reqs = Ajax.call(calls);
                   Promise.all(reqs.map(function(p, idx) {
@@ -363,7 +410,10 @@ define([
 
                     });
 
-                    var nameOf = function(id){ var m = byId.get(id); return m ? (m.shortname || m.input || ('ID ' + id)) : ('ID ' + id); };
+                    var nameOf = function(id){
+                      var m = byId.get(id);
+                      return m ? (m.shortname || m.input || ('ID ' + id)) : ('ID ' + id);
+                    };
                     stashCourseNotices(added.map(nameOf), exists.map(nameOf), failed.map(nameOf).concat(unmatchedLabels));
 
                     // Also link to CM if we're editing a module

@@ -83,15 +83,18 @@ class utils {
 
                 $matchedparents = self::match_levels($parentcompetencies, $normlevels);
 
-                // The drawer lowercases the levels before sending them, so where a
-                // level named a competency, that competency's own shortname is the
-                // better thing to put in front of the model.
+                // Where a level named a competency, that competency's own shortname is
+                // the better thing to put in front of the model than whatever casing
+                // the caller happened to send.
                 if (!empty($normlevels) && !empty($matchedparents)) {
                     $named = [];
                     foreach ($matchedparents as $parent) {
-                        $shortname = trim((string)($parent->shortname ?? ''));
-                        if ($shortname !== '') {
-                            $named[] = $shortname;
+                        // Deliberately not $shortname: that is the framework's own, and
+                        // reusing it here told the model the framework was called after
+                        // the last matched level.
+                        $parentname = trim((string)($parent->shortname ?? ''));
+                        if ($parentname !== '') {
+                            $named[] = $parentname;
                         }
                     }
                     if (!empty($named)) {
@@ -148,7 +151,7 @@ class utils {
      *
      * The checkbox values in the drawer are these competencies' own shortnames,
      * so the comparison is an equality one, on a case folded and whitespace
-     * collapsed key: the drawer lowercases what it sends.
+     * collapsed key, which keeps it working for a caller that sends its own casing.
      *
      * Substring matching, which is what this did for every level unconditionally,
      * is kept only as a per level fallback for a caller that sent something other

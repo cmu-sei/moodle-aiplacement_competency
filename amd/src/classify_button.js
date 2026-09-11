@@ -14,6 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+/* eslint-disable max-len */
 /*
 AI Placement Plugin for Moodle Competencies
 
@@ -30,6 +31,7 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 
 DM26-0017
 */
+/* eslint-enable max-len */
 define(['core/templates', 'jquery', 'core/notification'], function(Templates, $, Notification) {
     return {
         init() {
