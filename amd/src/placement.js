@@ -14,6 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+/* eslint-disable max-len */
 /*
 AI Placement Plugin for Moodle Competencies
 
@@ -30,6 +31,7 @@ This Software includes and/or makes use of Third-Party Software each subject to 
 
 DM26-0017
 */
+/* eslint-enable max-len */
 define([
     'aiplacement_courseassist/placement',
     'core/templates',
@@ -109,6 +111,14 @@ define([
 
         /**
          * Extract activity-specific content from the page.
+         *
+         * Only the editor fields of the settings form are read here, because that form is
+         * the only page the drawer renders on. Everything a module keeps outside the form -
+         * a book's chapters, a quiz's questions, a workshop's grading criteria - is read
+         * from the database by the server, in aiplacement_competency\local\content\*_source.
+         * The fields below are still worth reading client side because they carry edits the
+         * user has not saved yet, which the server cannot see.
+         *
          * @returns {string} The activity-specific content
          */
         extractActivityContent() {
@@ -116,17 +126,6 @@ define([
 
             // Try to detect activity type from the page.
             const bodyClasses = document.body.className;
-
-            // Quiz: Extract question content from visible question elements.
-            if (bodyClasses.includes('path-mod-quiz')) {
-                const questionSlots = document.querySelectorAll('.questionname, .qtext, .question-text');
-                questionSlots.forEach(slot => {
-                    const text = slot.textContent.trim();
-                    if (text) {
-                        content += text + ' ';
-                    }
-                });
-            }
 
             // Page: Extract page content.
             if (bodyClasses.includes('path-mod-page')) {
@@ -169,17 +168,6 @@ define([
                         content += text.trim() + ' ';
                     }
                 }
-            }
-
-            // Book: Extract chapter content (if visible).
-            if (bodyClasses.includes('path-mod-book')) {
-                const chapters = document.querySelectorAll('.book_content, .chapter-content');
-                chapters.forEach(chapter => {
-                    const text = chapter.textContent.trim();
-                    if (text) {
-                        content += text + ' ';
-                    }
-                });
             }
 
             return content.trim();
@@ -563,12 +551,22 @@ define([
                 (Array.isArray(this._selectedLevels) && this._selectedLevels.length) ? this._selectedLevels :
                 [];
 
-                const selectedLevels = [...new Set(
-                rawSelectedLevels
+                // Dedupe case insensitively, but send each level as the framework spells
+                // it. classify_text echoes these straight back as usedlevels and the
+                // response panel prints them verbatim, so folding the case here is what
+                // used to make a level read as 'attack t101 (demo collision)'.
+                const seenLevels = new Set();
+                const selectedLevels = rawSelectedLevels
                     .map(s => String(s).trim().replace(/\s+/g, ' '))
                     .filter(Boolean)
-                    .map(s => s.toLowerCase())
-                )];
+                    .filter(s => {
+                        const key = s.toLowerCase();
+                        if (seenLevels.has(key)) {
+                            return false;
+                        }
+                        seenLevels.add(key);
+                        return true;
+                    });
 
                 const calls = Ajax.call([{
                     methodname: 'aiplacement_competency_classify_text',

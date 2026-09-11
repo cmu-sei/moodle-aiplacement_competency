@@ -87,12 +87,28 @@ final class utils_test extends \advanced_testcase {
             'Operate and Maintain' => ['OM-1' => 'Administer the network'],
         ]);
 
-        // The drawer lowercases the level before sending it.
+        // The drawer sends the level as the framework spells it, but the match does not
+        // depend on that: a level arriving in any case still finds its competency.
         $instruction = utils::build_instruction($framework, 'TESTFW', ['operate and maintain']);
 
         $this->assertStringContainsString('OM-1 - Administer the network', $instruction);
         // Named back with the shortname the framework uses, not as it arrived.
         $this->assertStringContainsString('Operate and Maintain', $instruction);
+    }
+
+    public function test_build_instruction_still_names_the_framework_after_matching_a_level(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'Operate and Maintain' => ['OM-1' => 'Administer the network'],
+        ]);
+
+        $instruction = utils::build_instruction($framework, 'attack-demo', ['Operate and Maintain']);
+
+        // The framework's own shortname, not the level's. classify_text asks the model to
+        // echo this back and shows what it returns as the Framework, so a level's name
+        // leaking into this slot is visible in the drawer.
+        $this->assertStringContainsString('shortname: "attack-demo"', $instruction);
+        $this->assertStringNotContainsString('shortname: "Operate and Maintain"', $instruction);
     }
 
     public function test_build_instruction_ignores_a_level_that_is_only_inside_another_name(): void {
