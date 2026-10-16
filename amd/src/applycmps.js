@@ -34,14 +34,13 @@ DM26-0017
 /* eslint-enable max-len */
 define([
   'core/modal',
-  'core/modal_factory',
   'core/modal_events',
   'core/templates',
   'core/str',
   'core/ajax',
   'jquery',
   'core/notification'
-], function(Modal, ModalFactory, ModalEvents, Templates, Str, Ajax, $, Notification) {
+], function(Modal, ModalEvents, Templates, Str, Ajax, $, Notification) {
 
   var toArray = function(nl) { return Array.prototype.slice.call(nl || []); };
 
@@ -152,17 +151,6 @@ define([
       failed: { key: 'notify_cm_failed_heading', comp:'aiplacement_competency' }
     });
   }
-
-  var getModalAPI = function() {
-    var hasNew = Modal && typeof Modal.create === 'function';
-    return {
-      create: hasNew ? Modal.create.bind(Modal)
-        : (ModalFactory && ModalFactory.create.bind(ModalFactory)),
-      types: (hasNew && (Modal.types || Modal.TYPE)) ||
-        (ModalFactory && ModalFactory.types) ||
-        null
-    };
-  };
 
   // Get the AI response
   var extractFromResponse = function(root) {
@@ -327,17 +315,7 @@ define([
         competencies: values.competencies || [],
         hascompetencies: !!(values.competencies && values.competencies.length)
       }).then(function(html, js) {
-        var api = getModalAPI();
-        if (!api.create) {
-          throw new Error('No modal API available');
-        }
-
-        var opts = { title: title, body: html, large: true };
-        if (api.types && api.types.SAVE_CANCEL) {
-          opts.type = api.types.SAVE_CANCEL;
-        }
-
-        return api.create(opts).then(function(modal) {
+        return Modal.create({ title: title, body: html, large: true }).then(function(modal) {
           if (js) {
             Templates.runTemplateJS(js);
           }
