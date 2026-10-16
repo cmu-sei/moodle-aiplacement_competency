@@ -110,10 +110,10 @@ class classify_ui {
             return false;
         }
 
-        // Placement plugin itself must be installed & enabled.
-        $pm = \core_plugin_manager::instance();
-        $info = $pm->get_plugin_info('aiplacement_competency');
-        if (!$info || !$info->is_enabled()) {
+        // Placement plugin itself must be enabled. Read the setting directly, as core's course
+        // assist does: the plugin manager's enabled list is cached across requests, and a change
+        // made with set_config() (the CLI, Behat) does not reset it, so it went on hiding the UI.
+        if (!\core\plugininfo\aiplacement::is_plugin_enabled('competency')) {
             return false;
         }
 
