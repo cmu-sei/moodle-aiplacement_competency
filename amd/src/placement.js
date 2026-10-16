@@ -33,12 +33,11 @@ DM26-0017
 */
 /* eslint-enable max-len */
 define([
-    'aiplacement_courseassist/placement',
     'core/templates',
     'core/ajax',
     'core/notification',
     'core/str'
-], function(Base, Templates, Ajax, Notification, Str) {
+], function(Templates, Ajax, Notification, Str) {
 
     const SELECTOR_CLASSIFY    = '[data-action="classify"]';
     const SELECTOR_CANCEL      = '[data-action="cancel"]';
@@ -50,11 +49,21 @@ define([
     const SELECTOR_RETRY      = '[data-action="retry"]';
     const COMPONENT            = 'aiplacement_competency';
 
-    return class ClassifyPlacement extends Base {
+    // Deliberately not a subclass of aiplacement_courseassist/placement. That class is core's
+    // internal implementation, not an API: its constructor looks up core's own #ai-drawer and
+    // dereferences it unchecked (current 5.0, 5.2 and 5.3), so it threw on every page that has this
+    // drawer but not core's, and the error stalled every other JavaScript init on the page. It
+    // also registered core's Summarise/Explain click handlers a second time on pages with both.
+    // The few drawer methods this placement needs are below instead.
+    return class ClassifyPlacement {
         constructor(userId, contextId) {
-            super(userId, contextId);
-
+            this.userId = userId;
+            this.contextId = contextId;
+            this.pageElement = document.querySelector('#page');
             this.aiDrawerElement      = document.querySelector('#ai-classify-drawer');
+            if (!this.aiDrawerElement) {
+                return;
+            }
             this.aiDrawerBodyElement  = this.aiDrawerElement.querySelector('.ai-drawer-body');
             this.aiDrawerCloseElement = this.aiDrawerElement.querySelector(ID_CLOSE_BTN);
             if (this.aiDrawerCloseElement) {
@@ -66,6 +75,74 @@ define([
 
             this._levels = [];
             this.registerExtraListener();
+        }
+
+        /**
+         * Whether the drawer is showing.
+         * @returns {boolean}
+         */
+        isAIDrawerOpen() {
+            return this.aiDrawerElement.classList.contains('show');
+        }
+
+        /**
+         * Whether the user cancelled the request in flight.
+         * @returns {boolean}
+         */
+        isRequestCancelled() {
+            return this.aiDrawerBodyElement.dataset.cancelled === '1';
+        }
+
+        /**
+         * Mark the request in flight as cancelled, so its response is discarded.
+         */
+        setRequestCancelled() {
+            this.aiDrawerBodyElement.dataset.cancelled = '1';
+        }
+
+        /**
+         * Open the drawer, making room for it on the page.
+         */
+        openAIDrawer() {
+            if (this.isAIDrawerOpen()) {
+                return;
+            }
+            this.aiDrawerElement.classList.add('show');
+            this.aiDrawerElement.setAttribute('tabindex', 0);
+            this.aiDrawerBodyElement.setAttribute('aria-live', 'polite');
+            if (this.pageElement && !this.pageElement.classList.contains('show-drawer-right')) {
+                this.pageElement.classList.add('show-drawer-right');
+                this.aiDrawerBodyElement.dataset.removepadding = '1';
+            }
+            this.aiDrawerElement.focus();
+        }
+
+        /**
+         * Close the drawer and hand focus back to the button that opened it.
+         */
+        closeAIDrawer() {
+            this.aiDrawerElement.classList.remove('show');
+            this.aiDrawerElement.setAttribute('tabindex', -1);
+            this.aiDrawerBodyElement.removeAttribute('aria-live');
+            if (this.pageElement && this.aiDrawerBodyElement.dataset.removepadding === '1') {
+                this.pageElement.classList.remove('show-drawer-right');
+                this.aiDrawerBodyElement.dataset.removepadding = '0';
+            }
+            const opener = document.querySelector(SELECTOR_CLASSIFY);
+            if (opener) {
+                opener.focus();
+            }
+        }
+
+        /**
+         * Open the drawer if it is closed, close it if it is open.
+         */
+        toggleAIDrawer() {
+            if (this.isAIDrawerOpen()) {
+                this.closeAIDrawer();
+            } else {
+                this.openAIDrawer();
+            }
         }
 
         /**
