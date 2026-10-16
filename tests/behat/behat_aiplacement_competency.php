@@ -83,4 +83,33 @@ class behat_aiplacement_competency extends behat_base {
         JS);
         $this->wait_for_pending_js();
     }
+
+    /**
+     * TEMPORARY diagnostic.
+     *
+     * @Given /^I dump the aiplacement diagnostics$/
+     */
+    public function i_dump_the_aiplacement_diagnostics(): void {
+        $this->getSession()->executeScript(<<<JS
+            window.__aipdiag = 'pending';
+            var ctx = requirejs.s.contexts._;
+            var out = {
+                theme: M.cfg.theme, jsrev: M.cfg.jsrev, pending: M.util.pending_js,
+                comp: !!document.querySelector('#id_competenciessectioncontainer'),
+                drawer: !!document.querySelector('#ai-classify-drawer'),
+                btn: !!document.querySelector('[data-action="classify"]'),
+                defined: Object.keys(ctx.defined).filter(function(k) { return /aiplacement|modal|templates/.test(k); }),
+                registry: Object.keys(ctx.registry).map(function(k) { var m = ctx.registry[k];
+                    return k + (m.error ? ' ERR ' + m.error : '') + ' deps=' + (m.depMaps || []).map(function(d) { return d.name; }).join(','); }),
+                scripts: Array.prototype.map.call(document.querySelectorAll('script:not([src])'), function(x) { return x.textContent; })
+                    .filter(function(t) { return /aiplacement/.test(t); }).map(function(t) { return t.slice(0, 600); })
+            };
+            require(['aiplacement_competency/classify_button', 'aiplacement_competency/applycmps'], function() {
+                out.load = 'ok'; window.__aipdiag = JSON.stringify(out);
+            }, function(e) { out.load = 'ERR ' + e + ' ' + (e.requireModules || []).join(','); window.__aipdiag = JSON.stringify(out); });
+            setTimeout(function() { if (window.__aipdiag === 'pending') { out.load = 'timeout'; window.__aipdiag = JSON.stringify(out); } }, 5000);
+        JS);
+        sleep(6);
+        throw new \Exception('AIPDIAG ' . $this->getSession()->evaluateScript('return window.__aipdiag;'));
+    }
 }
