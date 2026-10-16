@@ -23,7 +23,6 @@ Feature: Apply AI-suggested competencies
   Scenario: The classify button opens the classification drawer
     Given I am on the "PageName1" "page activity editing" page logged in as "admin"
     And I expand all fieldsets
-    And I dump the aiplacement diagnostics
     When I click on "Classify Text" "button"
     Then I should see "Competency Framework Selection" in the "#ai-classify-drawer" "css_element"
     And I click on "#ai-classify-drawer-close" "css_element"
@@ -45,7 +44,6 @@ Feature: Apply AI-suggested competencies
       | T0001 - Test one |
       | T0002 - Test two |
     When I click on "Apply" "button" in the ".course-assist-response" "css_element"
-    And I dump the aiplacement diagnostics
     Then "Apply classification" "dialogue" should be visible
     And I should see "T0001 - Test one" in the "Apply classification" "dialogue"
     And I should see "T0002 - Test two" in the "Apply classification" "dialogue"
