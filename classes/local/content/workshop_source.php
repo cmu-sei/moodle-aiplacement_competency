@@ -108,8 +108,11 @@ class workshop_source extends source {
             }
 
             $number++;
-            $content .= self::chunk("Assessment criterion {$number}", null,
-                $description . $this->get_levels($strategy, (int)$dimension->id));
+            $content .= self::chunk(
+                "Assessment criterion {$number}",
+                null,
+                $description . $this->get_levels($strategy, (int)$dimension->id)
+            );
         }
 
         return $content;

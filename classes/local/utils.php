@@ -102,7 +102,9 @@ class utils {
                     }
                 }
 
+                // Keyed by competency id, so a competency reached twice is listed once.
                 $competencylist = [];
+                $linked = false;
                 foreach ($matchedparents as $parent) {
                     // Get all child competencies under this parent.
                     $children = $DB->get_records('competency', [
@@ -111,24 +113,34 @@ class utils {
                     ], 'shortname ASC');
 
                     foreach ($children as $child) {
-                        $code = trim($child->shortname ?? '');
-                        $name = trim(strip_tags($child->description ?? ''));
-                        if (empty($name)) {
-                            $name = trim($child->idnumber ?? '');
+                        $line = self::competency_line($child);
+                        if ($line !== '') {
+                            $competencylist[$child->id] = $line;
                         }
+                    }
 
-                        if ($code) {
-                            $competencylist[] = $code . ($name ? ' - ' . $name : '');
+                    foreach (self::get_grouped_competencies($frameworkid, array_keys($children)) as $grouped) {
+                        $line = self::competency_line($grouped);
+                        if ($line !== '' && !isset($competencylist[$grouped->id])) {
+                            $competencylist[$grouped->id] = $line;
+                            $linked = true;
                         }
                     }
                 }
 
                 if (!empty($competencylist)) {
-                    // Limit to first 200 competencies to avoid token limits.
-                    $competencylist = array_slice($competencylist, 0, 200);
+                    // The whole list, however long. Cutting it short used to leave the
+                    // model to choose from whatever sorted first: the first 200 of
+                    // NICE's 942 tasks, and no knowledge or skill at all when every
+                    // level was selected.
                     $availablecompetencies = "\n\nAVAILABLE COMPETENCIES IN THIS FRAMEWORK/LEVEL:\n" .
                                            implode("\n", $competencylist) .
                                            "\n\nYou MUST only use competencies from the list above.";
+                    if ($linked) {
+                        $availablecompetencies .= " Some of them sit outside the selected levels in the framework," .
+                            " but are listed because a competency in a selected level groups them, the way a work role" .
+                            " groups its tasks, knowledge and skills. They count as part of the selected levels.";
+                    }
                 }
             } catch (\Exception $e) {
                 // If there's an error fetching competencies, continue without the list.
@@ -197,6 +209,73 @@ class utils {
         }
 
         return $matched;
+    }
+
+    /**
+     * One competency as the model is shown it, "CODE - Name".
+     *
+     * A framework whose shortnames already carry the name, as NICE's
+     * "T1406 - Construct cyber defense network tool signatures" does, is not
+     * sent the description a second time.
+     *
+     * @param \stdClass $competency The competency record.
+     * @return string The line, or an empty string for a competency with no shortname.
+     */
+    private static function competency_line(\stdClass $competency): string {
+        $code = trim((string)($competency->shortname ?? ''));
+        if ($code === '') {
+            return '';
+        }
+
+        $name = trim(strip_tags((string)($competency->description ?? '')));
+        if ($name === '') {
+            $name = trim((string)($competency->idnumber ?? ''));
+        }
+
+        if ($name === '' || mb_stripos($code, $name) !== false) {
+            return $code;
+        }
+
+        return $code . ' - ' . $name;
+    }
+
+    /**
+     * The competencies that the given ones group through related competencies.
+     *
+     * A NICE work role is a competency whose related competencies are the
+     * tasks, knowledge and skills the role is made of, and selecting the level
+     * that holds the work roles means those, not the bare role names. A
+     * competency counts as grouping others when it lists related competencies
+     * and none lists it, which keeps a task, which the work roles list, from
+     * pulling every work role it belongs to in after it.
+     *
+     * @param int $frameworkid The framework id.
+     * @param int[] $competencyids The ids of a level's competencies.
+     * @return \stdClass[] The grouped competencies in the same framework, by shortname.
+     */
+    private static function get_grouped_competencies(int $frameworkid, array $competencyids): array {
+        global $DB;
+
+        if (empty($competencyids)) {
+            return [];
+        }
+
+        [$insql, $params] = $DB->get_in_or_equal($competencyids, SQL_PARAMS_NAMED);
+        $params['frameworkid'] = $frameworkid;
+
+        $sql = "SELECT DISTINCT c.id, c.shortname, c.description, c.idnumber
+                  FROM {competency_relatedcomp} rc
+                  JOIN {competency} c ON c.id = rc.relatedcompetencyid
+                 WHERE rc.competencyid {$insql}
+                   AND c.competencyframeworkid = :frameworkid
+                   AND NOT EXISTS (
+                           SELECT 1
+                             FROM {competency_relatedcomp} up
+                            WHERE up.relatedcompetencyid = rc.competencyid
+                       )
+              ORDER BY c.shortname";
+
+        return array_values($DB->get_records_sql($sql, $params));
     }
 
     /**

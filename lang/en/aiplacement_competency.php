@@ -68,7 +68,7 @@ Return JSON only, with these keys:
   "framework": { "shortname": "{$a->frameworkshortname}" },
   "levels": {$a->levels},
   "competencies": [
-    "CODE - Name"  // Use the exact code and name format from the framework (e.g., "T1119 - Skill name" or "K0001 - Knowledge description")
+    "CODE - Name"  // Use the exact code and name format from the framework (e.g., "T1586 - Conduct cybersecurity risk assessments" or "K0835 - Knowledge of risk assessment principles and practices")
   ]
 }
 
@@ -83,12 +83,12 @@ Examples (illustrative; not exhaustive)
 
 Example A — single level
 {
-  "framework": { "shortname": "NICE-1.0.0" },
-  "levels": ["Oversight and Governance"],
+  "framework": { "shortname": "NICE-2.0.0" },
+  "levels": ["Tasks"],
   "competencies": [
-    "T1119 - Recommend vulnerability remediation strategies",
-    "S0415 - Skill in evaluating regulations",
-    "K0676 - Knowledge of cybersecurity laws and regulations"
+    "T1543 - Develop cybersecurity policies and procedures",
+    "T1547 - Determine compliance with cybersecurity policies and legal and regulatory requirements",
+    "T1586 - Conduct cybersecurity risk assessments"
   ]
 }
 
@@ -116,19 +116,19 @@ Example A — single level
 
 Example B — multiple levels
 {
-  "framework": { "shortname": "NICE-1.0.0" },
-  "levels": ["Protect and Defend", "Investigate"],
+  "framework": { "shortname": "NICE-2.0.0" },
+  "levels": ["Knowledges", "Skills"],
   "competencies": [
-    "T1241 - Document cybersecurity incidents",
-    "S0385 - Skill in communicating complex concepts",
-    "K0674 - Knowledge of computer networking protocols"
+    "K0835 - Knowledge of risk assessment principles and practices",
+    "K1087 - Knowledge of social engineering tools and techniques",
+    "S0686 - Skill in performing risk assessments"
   ]
 }
 
 Example C — no clear matches
 {
-  "framework": { "shortname": "NICE-1.0.0" },
-  "levels": ["Analyze"],
+  "framework": { "shortname": "NICE-2.0.0" },
+  "levels": ["Tasks"],
   "competencies": []
 }
 ';

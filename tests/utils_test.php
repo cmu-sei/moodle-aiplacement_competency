@@ -153,6 +153,101 @@ final class utils_test extends \advanced_testcase {
         $this->assertStringContainsString('PD-1 - Respond to incidents', $instruction);
     }
 
+    public function test_build_instruction_lists_every_competency_in_a_long_level(): void {
+        $this->setAdminUser();
+        $tasks = [];
+        for ($i = 1; $i <= 250; $i++) {
+            $tasks[sprintf('T%04d', $i)] = "Perform task {$i}";
+        }
+        $framework = $this->create_framework(['Tasks' => $tasks]);
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['Tasks']);
+
+        // The list used to stop at 200, so nothing sorting after T0200 was offered.
+        $this->assertStringContainsString('T0001 - Perform task 1', $instruction);
+        $this->assertStringContainsString('T0250 - Perform task 250', $instruction);
+    }
+
+    public function test_build_instruction_does_not_repeat_a_name_the_shortname_carries(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'Tasks' => ['T1406 - Construct cyber defense network tool signatures' =>
+                'Construct cyber defense network tool signatures'],
+        ]);
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['Tasks']);
+
+        $this->assertSame(1, substr_count($instruction, 'Construct cyber defense network tool signatures'));
+    }
+
+    public function test_build_instruction_offers_what_a_selected_work_role_groups(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'PROTECTION and DEFENSE' => ['Incident Response' => ''],
+            'Tasks' => ['T1102' => 'Identify intrusions', 'T2000' => 'Audit the payroll'],
+            'Knowledges' => ['K0724' => 'Knowledge of incident response principles'],
+        ]);
+        $role = $this->get_competency($framework, 'Incident Response');
+        $this->relate($role, $this->get_competency($framework, 'T1102'));
+        $this->relate($role, $this->get_competency($framework, 'K0724'));
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['PROTECTION and DEFENSE']);
+
+        $this->assertStringContainsString('Incident Response', $instruction);
+        $this->assertStringContainsString('T1102 - Identify intrusions', $instruction);
+        $this->assertStringContainsString('K0724 - Knowledge of incident response principles', $instruction);
+        // Only what the role groups, not the rest of the levels its competencies sit in.
+        $this->assertStringNotContainsString('T2000', $instruction);
+        $this->assertStringContainsString('They count as part of the selected levels.', $instruction);
+    }
+
+    public function test_build_instruction_does_not_pull_work_roles_in_after_a_task(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'PROTECTION and DEFENSE' => ['Incident Response' => ''],
+            'Tasks' => ['T1102' => 'Identify intrusions'],
+        ]);
+        $this->relate(
+            $this->get_competency($framework, 'Incident Response'),
+            $this->get_competency($framework, 'T1102')
+        );
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['Tasks']);
+
+        $this->assertStringContainsString('T1102 - Identify intrusions', $instruction);
+        $this->assertStringNotContainsString('Incident Response', $instruction);
+        $this->assertStringNotContainsString('They count as part of the selected levels.', $instruction);
+    }
+
+    /**
+     * The id of the framework's competency with the given shortname.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string $shortname The competency shortname.
+     * @return int The competency id.
+     */
+    private function get_competency(int $frameworkid, string $shortname): int {
+        global $DB;
+
+        return (int)$DB->get_field('competency', 'id', [
+            'competencyframeworkid' => $frameworkid,
+            'shortname' => $shortname,
+        ], MUST_EXIST);
+    }
+
+    /**
+     * Records one competency as related to another, as a framework import does.
+     *
+     * @param int $competencyid The competency that lists the other.
+     * @param int $relatedid The competency it lists.
+     */
+    private function relate(int $competencyid, int $relatedid): void {
+        $this->getDataGenerator()->get_plugin_generator('core_competency')->create_related_competency([
+            'competencyid' => $competencyid,
+            'relatedcompetencyid' => $relatedid,
+        ]);
+    }
+
     /**
      * Creates a framework of top level competencies, each with children.
      *

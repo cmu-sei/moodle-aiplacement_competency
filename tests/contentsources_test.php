@@ -251,12 +251,13 @@ final class contentsources_test extends \advanced_testcase {
             'eventtemplateid' => 'template-under-test',
         ]);
 
-        foreach ([
+        $tasks = [
             ['name' => 'Task alpha', 'description' => '<p>ALPHADESC</p>', 'visible' => 1],
             // No description: the name is the whole of what the task asks.
             ['name' => 'NAMEONLYTASK', 'description' => '', 'visible' => 1],
             ['name' => 'Task hidden', 'description' => '<p>HIDDENDESC</p>', 'visible' => 0],
-        ] as $task) {
+        ];
+        foreach ($tasks as $task) {
             $DB->insert_record('crucible_tasks', (object)($task + [
                 'crucibleid' => $instanceid,
                 'gradable' => 1,
@@ -479,12 +480,13 @@ final class contentsources_test extends \advanced_testcase {
         // tie this test to a fixture mod_scorm ships, so the parsed table is
         // replaced with known rows.
         $DB->delete_records('scorm_scoes', ['scorm' => $scorm->id]);
-        foreach ([
+        $scoes = [
             ['title' => 'PACKAGETITLE', 'sortorder' => 1],
             ['title' => 'FIRSTSCOTITLE', 'sortorder' => 2],
             // A one-SCO package repeats its title on the organisation row.
             ['title' => 'PACKAGETITLE', 'sortorder' => 3],
-        ] as $sco) {
+        ];
+        foreach ($scoes as $sco) {
             $DB->insert_record('scorm_scoes', (object)($sco + [
                 'scorm' => $scorm->id,
                 'manifest' => '',
@@ -540,10 +542,11 @@ final class contentsources_test extends \advanced_testcase {
         ]);
 
         // Deliberately inserted out of order, to prove sort is honoured.
-        foreach ([
+        $dimensions = [
             ['description' => '<p>SECONDCRITERION</p>', 'sort' => 2],
             ['description' => '<p>FIRSTCRITERION</p>', 'sort' => 1],
-        ] as $dimension) {
+        ];
+        foreach ($dimensions as $dimension) {
             $DB->insert_record('workshopform_accumulative', (object)($dimension + [
                 'workshopid' => $workshop->id,
                 'descriptionformat' => FORMAT_HTML,
@@ -575,8 +578,11 @@ final class contentsources_test extends \advanced_testcase {
             'descriptionformat' => FORMAT_HTML,
         ]);
 
-        foreach ([['grade' => 1, 'definition' => 'LOWDEFINITION'], ['grade' => 2, 'definition' => 'HIGHDEFINITION']]
-                as $level) {
+        $levels = [
+            ['grade' => 1, 'definition' => 'LOWDEFINITION'],
+            ['grade' => 2, 'definition' => 'HIGHDEFINITION'],
+        ];
+        foreach ($levels as $level) {
             $DB->insert_record('workshopform_rubric_levels', (object)($level + [
                 'dimensionid' => $dimensionid,
                 'definitionformat' => FORMAT_HTML,
