@@ -43,7 +43,6 @@ use core\hook\output\before_footer_html_generation;
  * Registers output injected via Moodle’s hook API.
  *
  * @package    aiplacement_competency
- * @category   hook
  * @copyright  2026 Carnegie Mellon University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

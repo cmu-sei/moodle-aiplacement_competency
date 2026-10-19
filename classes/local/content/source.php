@@ -59,7 +59,9 @@ abstract class source {
      * @param \context_module $context The context of the activity.
      */
     public function __construct(
+        /** @var \stdClass The course module record, as returned by get_coursemodule_from_id() */
         protected \stdClass $cm,
+        /** @var \context_module The context of the activity */
         protected \context_module $context
     ) {
     }
