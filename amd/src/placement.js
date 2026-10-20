@@ -355,6 +355,9 @@ define([
                         order: 'ASC',
                         skip: 0,
                         context: { contextid: 1, instanceid: 0 },
+                        // As core's own competency picker does: hiding a framework, such
+                        // as an old NICE version, stops new content being tagged with it.
+                        onlyvisible: true,
                     }
                 }]);
 
