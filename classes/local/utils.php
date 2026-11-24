@@ -138,6 +138,34 @@ class utils {
     }
 
     /**
+     * The framework the administrator chose as the default, by its idnumber or shortname.
+     *
+     * The idnumber is tried first, since it is meant to be unique, then the shortname, with case ignored. A hidden
+     * framework is not offered by the drawer, so it is not a default either.
+     *
+     * @return int The framework id, or 0 when none is set or none matches.
+     */
+    public static function default_framework_id(): int {
+        global $DB;
+
+        $wanted = \core_text::strtolower(trim((string)get_config('aiplacement_competency', 'defaultframework')));
+        if ($wanted === '') {
+            return 0;
+        }
+
+        $frameworks = $DB->get_records('competency_framework', ['visible' => 1], 'id ASC', 'id, idnumber, shortname');
+        foreach (['idnumber', 'shortname'] as $field) {
+            foreach ($frameworks as $framework) {
+                if (\core_text::strtolower(trim((string)$framework->{$field})) === $wanted) {
+                    return (int)$framework->id;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    /**
      * The most competencies one classification should return per framework.
      *
      * @return int The cap, at least one.

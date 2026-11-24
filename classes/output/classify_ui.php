@@ -88,6 +88,7 @@ class classify_ui {
                 'userid' => $USER->id,
                 'contextid' => $PAGE->context->id,
                 'verify' => get_config('aiplacement_competency', 'verify') !== '0' ? 1 : 0,
+                'defaultframework' => \aiplacement_competency\local\utils::default_framework_id(),
             ]
         );
         $hook->add_html($html);

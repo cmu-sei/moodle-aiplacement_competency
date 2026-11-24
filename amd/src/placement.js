@@ -399,6 +399,19 @@ define([
                 Notification.exception(error);
             }
 
+            // Come back to the framework already chosen, else the site's default. A default that is no longer on
+            // the list, because the framework was hidden or deleted, selects nothing.
+            if (select) {
+                const wanted = String(
+                    this._selectedFrameworkId
+                    || document.getElementById('ai-classify-drawer')?.dataset.defaultframework
+                    || ''
+                );
+                if (wanted && wanted !== '0' && Array.from(select.options).some(o => o.value === wanted && !o.disabled)) {
+                    select.value = wanted;
+                }
+            }
+
             const continueBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CONTINUE);
             const sel        = this.aiDrawerBodyElement.querySelector(SELECTOR_PRESELECT);
             const backBtn    = this.aiDrawerBodyElement.querySelector(SELECTOR_BACK);

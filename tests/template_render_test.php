@@ -126,6 +126,20 @@ final class template_render_test extends \advanced_testcase {
         $this->assertStringContainsString('data-action="regenerate"', $html);
     }
 
+    public function test_drawer_template_carries_the_default_framework(): void {
+        global $PAGE, $OUTPUT;
+
+        $PAGE->set_context(\context_system::instance());
+        $PAGE->set_url(new \moodle_url('/'));
+
+        $html = $OUTPUT->render_from_template(
+            self::COMPONENT . '/drawer',
+            ['userid' => 2, 'contextid' => 1, 'verify' => 1, 'defaultframework' => 7]
+        );
+
+        $this->assertStringContainsString('data-defaultframework="7"', $html);
+    }
+
     public function test_levels_template_offers_verification_only_when_enabled(): void {
         global $PAGE, $OUTPUT;
 

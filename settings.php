@@ -46,6 +46,14 @@ defined('MOODLE_INTERNAL') || die();
 
 if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/defaultframework',
+        get_string('setting_defaultframework', 'aiplacement_competency'),
+        get_string('setting_defaultframework_desc', 'aiplacement_competency'),
+        '',
+        PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'aiplacement_competency/maxtags',
         get_string('setting_maxtags', 'aiplacement_competency'),
         get_string('setting_maxtags_desc', 'aiplacement_competency'),
