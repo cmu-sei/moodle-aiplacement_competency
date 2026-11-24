@@ -402,4 +402,63 @@ final class lecturecontent_test extends \advanced_testcase {
         $this->assertStringContainsString('NOBOMWORDS', $content);
         $this->assertSame(['empty.vtt'], filetext::take_omitted());
     }
+
+    public function test_a_description_without_blank_lines_is_cut_at_its_solution_heading(): void {
+        $this->assertSame(
+            "Intro text about Kerberos.",
+            resolver::drop_solutions("Intro text about Kerberos.\nSolution guide\nRun nmap then msfconsole.")
+        );
+        $html = "<p>Intro about Kerberos.</p>\n<p><strong>Walkthrough:</strong> Start by running nmap.</p>\n" .
+            '<p>Then exploit it.</p>';
+        $this->assertSame('<p>Intro about Kerberos.</p>', resolver::drop_solutions($html));
+        $this->assertSame('<p>Intro.</p>', resolver::drop_solutions('<p>Intro.</p><p>Solution: run SECRET</p>'));
+    }
+
+    public function test_a_bold_heading_before_a_heading_tag_solution_is_not_hidden_by_it(): void {
+        $html = '<p><strong>Walkthrough</strong></p><p>Run SECRETCOMMAND.</p><h2>Answer key</h2><p>flag</p>' .
+            '<h2>Next</h2><p>Keep</p>';
+
+        $this->assertSame('', resolver::drop_solutions($html));
+    }
+
+    public function test_numbered_and_named_solution_headings_are_recognised(): void {
+        $headings = ['Challenge 1 Solution', 'CTF Writeup', 'Lab 3 Walkthrough', 'Solution to Task 2', 'Task 2 Solution'];
+        foreach ($headings as $heading) {
+            $this->assertSame('Intro', resolver::drop_solutions("Intro\n\n{$heading}\n\nRun the exploit."), $heading);
+        }
+    }
+
+    public function test_a_chapter_whose_title_mentions_solutions_is_kept(): void {
+        $content = "Page 2 (Endpoint Security Solutions): Compare EDR products.\n\nPage 3 (Solution guide): SECRET steps.\n\n" .
+            'Page 4 (Next): keep';
+
+        $kept = resolver::drop_solutions($content, true);
+
+        $this->assertStringContainsString('Endpoint Security Solutions', $kept);
+        $this->assertStringContainsString('Page 4', $kept);
+        $this->assertStringNotContainsString('SECRET', $kept);
+    }
+
+    public function test_a_solution_in_a_page_activity_is_dropped(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $page = $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'content' => '<p>Review the alerts.</p><h3>Solution guide</h3><p>Run PAGESECRET.</p>',
+        ]);
+        $cm = get_coursemodule_from_id('page', $page->cmid, 0, false, MUST_EXIST);
+
+        $content = resolver::get_content($cm, \context_module::instance($page->cmid));
+
+        $this->assertStringContainsString('Review the alerts.', $content);
+        $this->assertStringNotContainsString('PAGESECRET', $content);
+    }
+
+    public function test_utf16_big_endian_text_starting_with_a_non_ascii_character_is_read(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $utf16 = mb_convert_encoding("\u{201C}Lecture about network security.\u{201D} BEWORDS", 'UTF-16BE', 'UTF-8');
+        $resource = $this->create_file_activity($course, ['note.txt' => $utf16]);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+
+        $this->assertStringContainsString('BEWORDS', resolver::get_content($cm, \context_module::instance($resource->cmid)));
+    }
 }

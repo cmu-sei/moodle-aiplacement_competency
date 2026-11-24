@@ -105,7 +105,7 @@ final class filetext {
 
         $ext = self::extension($file->get_filename());
         if ($ext === 'pdf') {
-            $text = self::read_pdf($file);
+            $text = resolver::drop_solutions(self::read_pdf($file));
             if ($text === '') {
                 self::$omitted[] = $file->get_filename();
             }
@@ -212,7 +212,15 @@ final class filetext {
         }
         // UTF-16 text without a byte order mark: every other byte is NUL, which is valid UTF-8 and so goes unnoticed.
         if (strlen($raw) > 1 && substr_count($raw, "\0") >= strlen($raw) / 4) {
-            return (string)mb_convert_encoding($raw, 'UTF-8', ($raw[0] === "\0") ? 'UTF-16BE' : 'UTF-16LE');
+            // Mostly ASCII text has its NULs in the high byte: odd positions for little endian, even for big.
+            $even = $odd = 0;
+            for ($i = 0, $n = min(strlen($raw), 200); $i < $n; $i++) {
+                if ($raw[$i] === "\0") {
+                    ($i % 2 === 0) ? $even++ : $odd++;
+                }
+            }
+
+            return (string)mb_convert_encoding($raw, 'UTF-8', $even > $odd ? 'UTF-16BE' : 'UTF-16LE');
         }
         $raw = (string)preg_replace('/^\xEF\xBB\xBF/', '', $raw);
 

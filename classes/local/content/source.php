@@ -105,6 +105,18 @@ abstract class source {
     }
 
     /**
+     * Reduces authored HTML to plain text, first leaving out any solution guide it holds.
+     *
+     * For the body of an activity, not for its names and titles: a task that is itself called 'Solution' is a name.
+     *
+     * @param string|null $html The raw field value.
+     * @return string The cleaned text.
+     */
+    protected static function clean_body(?string $html): string {
+        return self::clean(resolver::drop_solutions((string)$html));
+    }
+
+    /**
      * Formats one titled chunk of content.
      *
      * @param string $label The label for the chunk, such as "Chapter 2".
@@ -113,7 +125,7 @@ abstract class source {
      * @return string The formatted chunk, or an empty string when the body is empty.
      */
     protected static function chunk(string $label, ?string $title, string $body): string {
-        $body = self::clean($body);
+        $body = self::clean_body($body);
         if ($body === '') {
             return '';
         }

@@ -50,6 +50,6 @@ class page_source extends source {
     public function get_content(): string {
         $instance = $this->get_instance('id, content');
 
-        return $instance ? self::clean($instance->content) : '';
+        return $instance ? self::clean_body($instance->content) : '';
     }
 }

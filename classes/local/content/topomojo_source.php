@@ -61,7 +61,7 @@ class topomojo_source extends source {
 
         $parts = [];
 
-        $guide = self::clean($instance->content);
+        $guide = self::clean_body($instance->content);
         if ($guide !== '') {
             $parts[] = $guide;
         }

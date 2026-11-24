@@ -1001,4 +1001,48 @@ final class classifytext_test extends \advanced_testcase {
 
         $this->assertStringContainsString('ONLYSECTIONMARK', end($this->sentprompts));
     }
+
+    /**
+     * Keeping a sub-technique does not keep its parent.
+     */
+    public function test_execute_verify_does_not_keep_a_parent_for_its_child(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tactics' => ['T1566' => 'Phishing', 'T1566.001' => 'Spearphishing Attachment']]);
+        $this->mock_ai_sequence([
+            ['competencies' => ['T1566', 'T1566.001']],
+            ['keep' => ['T1566.001']],
+        ]);
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tactics'], true);
+
+        $this->assertSame(['T1566.001 - Spearphishing Attachment'], $result['competencies']);
+    }
+
+    /**
+     * A generated label never reads the same as another competency's own label.
+     */
+    public function test_execute_labels_stay_unique_when_a_description_ends_like_a_suffix(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $fw = (int)$generator->create_framework(['shortname' => 'TESTFW'])->get('id');
+        $parent = $generator->create_competency(['competencyframeworkid' => $fw, 'shortname' => 'Skills', 'idnumber' => 'Skills']);
+        $descriptions = ['S001' => 'Use nmap.', 'S002' => 'Use nmap.', 'S003' => 'Use nmap. (S002)'];
+        foreach ($descriptions as $idnumber => $description) {
+            $generator->create_competency([
+                'competencyframeworkid' => $fw,
+                'parentid' => $parent->get('id'),
+                'shortname' => 'Discovery',
+                'idnumber' => $idnumber,
+                'description' => $description,
+            ]);
+        }
+        $this->mock_ai_manager(['competencies' => ['S001', 'S002', 'S003']]);
+        set_config('maxtags', 5, 'aiplacement_competency');
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Skills']);
+
+        $this->assertCount(3, array_unique(array_map('strtolower', $result['competencies'])));
+    }
 }

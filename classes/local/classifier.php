@@ -209,12 +209,22 @@ final class classifier {
         // Two competencies can read alike in full. The apply step is told which is which by the idnumber, and
         // the person ticking them needs to be able to tell them apart too.
         $seen = [];
+        foreach ($found as $tag) {
+            $seen[\core_text::strtolower($tag['label'])] = true;
+        }
+        $used = [];
         foreach ($found as &$tag) {
             $key = \core_text::strtolower($tag['label']);
-            if (isset($seen[$key])) {
+            while (isset($used[$key])) {
+                // Not the same text as any label in the list, the ones just given included.
                 $tag['label'] .= ' (' . $tag['idnumber'] . ')';
+                $key = \core_text::strtolower($tag['label']);
+                if (isset($seen[$key]) && !isset($used[$key])) {
+                    $tag['label'] .= '*';
+                    $key = \core_text::strtolower($tag['label']);
+                }
             }
-            $seen[$key] = true;
+            $used[$key] = true;
         }
         unset($tag);
 
@@ -305,7 +315,7 @@ final class classifier {
         $kept = array_values(array_filter($found, static function ($tag) use ($keep) {
             $code = preg_quote(\core_text::strtolower($tag['idnumber']), '/');
             foreach ($keep as $entry) {
-                if (preg_match('/^' . $code . '(?![\p{L}\p{N}_])/u', $entry)) {
+                if (preg_match('/^' . $code . '(?![\p{L}\p{N}_]|[.\-][\p{L}\p{N}])/u', $entry)) {
                     return true;
                 }
             }
