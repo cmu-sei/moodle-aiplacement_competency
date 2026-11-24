@@ -46,8 +46,8 @@
         "frameworkshortname": "SEI-COMP",
         "usedlevels": ["beginner", "intermediate"],
         "competencies": [
-            "C1 - Communicate effectively",
-            "C2 - Analyze requirements"
+            {"label": "C1 - Communicate effectively", "idnumber": "C1"},
+            {"label": "C2 - Analyze requirements", "idnumber": "C2"}
         ],
         "warnings": ["The content does not appear to be about this activity."],
         "hasreasons": true,
@@ -63,7 +63,8 @@
     - frameworkid (int|string): framework identifier (written to data-frameworkid)
     - frameworkshortname (string, optional): framework shortname; shows "none" if missing
     - usedlevels (array of string, optional): level names used for classification; shows "none" if empty
-    - competencies (array of string, optional): suggested competencies; shows "none" if empty
+    - competencies (array, optional): suggested competencies, each with a label and the idnumber the apply flow
+      matches on; shows "none" if empty
     - warnings (array of string, optional): things to check before applying, shown above the reasons
     - suggestions (array, optional): idnumber and reason for each competency, listed outside the
       competencies region so that the apply flow, which reads that region, never sees them
@@ -126,7 +127,7 @@
           <dd class="col-sm-8" data-section="competencies">
             <ul class="list-unstyled mb-0 pl-0">
               {{#competencies}}
-                <li>{{{.}}}</li>
+                <li data-idnumber="{{idnumber}}">{{label}}</li>
               {{/competencies}}
               {{^competencies}}
                 <li class="text-muted">{{#str}} none, aiplacement_competency {{/str}}</li>

@@ -92,7 +92,7 @@ final class template_render_test extends \advanced_testcase {
             'frameworkid' => 1,
             'frameworkshortname' => 'NICE',
             'usedlevels' => ['Tasks'],
-            'competencies' => ['T1 - One'],
+            'competencies' => [['label' => 'T1 - One', 'idnumber' => 'T1']],
             'warnings' => ['Check the <transcript>'],
             'hasreasons' => true,
             'suggestions' => [['idnumber' => 'T1', 'reason' => 'Because <b>of this</b>']],
@@ -216,8 +216,8 @@ final class template_render_test extends \advanced_testcase {
                 'frameworkshortname' => 'NICE-1.0.0',
                 'usedlevels' => ['Analyze', 'Detect'],
                 'competencies' => [
-                    'T1119 - Recommend vulnerability remediation strategies',
-                    'T1059 - Command and Scripting Interpreter',
+                    ['label' => 'T1119 - Recommend vulnerability remediation strategies', 'idnumber' => 'T1119'],
+                    ['label' => 'T1059 - Command and Scripting Interpreter', 'idnumber' => 'T1059'],
                 ],
             ]],
         ];

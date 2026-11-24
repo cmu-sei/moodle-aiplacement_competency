@@ -527,28 +527,24 @@ final class classifytext_test extends \advanced_testcase {
     }
 
     /**
-     * Content that is not valid JSON yields no competencies rather than an error.
+     * A reply that is not an answer is reported as unusable, not shown as "no competencies".
      */
-    public function test_execute_tolerates_unparseable_generated_content(): void {
+    public function test_execute_reports_unparseable_generated_content(): void {
         $cmctx = $this->create_module_context();
         $this->setAdminUser();
-
         $response = new response_generate_text(success: true);
         $response->set_response_data([
             'generatedcontent' => 'Here are some thoughts, but nothing structured.',
             'finishreason' => 'stop',
         ]);
+        $this->mock_ai_sequence([$response]);
 
-        $mockmanager = $this->createMock(\core_ai\manager::class);
-        $mockmanager->method('process_action')->willReturn($response);
-        \core\di::set(\core_ai\manager::class, function () use ($mockmanager) {
-            return $mockmanager;
-        });
-
-        $result = classify_text::execute($cmctx->id, 'Any prompt here', 1, 'NICE-1.0.0', ['Analyze']);
-
-        $this->assertSame([], $result['competencies']);
-        $this->assertEquals(['Analyze'], $result['usedlevels']);
+        try {
+            classify_text::execute($cmctx->id, 'Any prompt here', 1, 'NICE-1.0.0', ['Analyze']);
+            $this->fail('An unusable reply should throw.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiclassifyunusable', $e->errorcode);
+        }
     }
 
     /**
@@ -805,5 +801,120 @@ final class classifytext_test extends \advanced_testcase {
 
         $this->assertStringContainsString('Learners scan a host.', $this->sentprompts[0]);
         $this->assertStringNotContainsString('SECRETCOMMAND', $this->sentprompts[0]);
+    }
+
+    /**
+     * A refused connection is an outage, not the model declining.
+     */
+    public function test_execute_does_not_call_a_refused_connection_a_refusal(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $response = new response_generate_text(success: false, errorcode: 500, errormessage: 'cURL error 7: Connection refused');
+        $this->mock_ai_sequence([$response]);
+
+        try {
+            classify_text::execute($cmctx->id, 'Some text', 0, '', []);
+            $this->fail('A failure should throw.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiclassifyfailed', $e->errorcode);
+        }
+    }
+
+    /**
+     * An empty reply that the provider marks as a refusal is explained as one.
+     */
+    public function test_execute_reports_an_empty_reply_with_a_refusal_stop_reason_as_a_refusal(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $response = new response_generate_text(success: true);
+        $response->set_response_data(['generatedcontent' => '', 'finishreason' => 'refusal']);
+        $this->mock_ai_sequence([$response]);
+
+        try {
+            classify_text::execute($cmctx->id, 'Some text', 0, '', []);
+            $this->fail('A refusal should throw.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiclassifyrefused', $e->errorcode);
+        }
+    }
+
+    /**
+     * A reviewer that answers with "CODE - Name" is understood, and one that names nothing known is not trusted.
+     */
+    public function test_execute_verify_reads_code_and_name_and_ignores_an_answer_about_nothing(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One', 'T2' => 'Two']]);
+        $this->mock_ai_sequence([
+            ['competencies' => ['T1', 'T2']],
+            ['keep' => ['T2 - Two']],
+        ]);
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks'], true);
+        $this->assertSame(['T2 - Two'], $result['competencies']);
+
+        $this->mock_ai_sequence([
+            ['competencies' => ['T1', 'T2']],
+            ['keep' => ['Something else entirely']],
+        ]);
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks'], true);
+        $this->assertCount(2, $result['competencies']);
+        $this->assertStringContainsString('not been double-checked', implode(' ', $result['warnings']));
+    }
+
+    /**
+     * The reviewer is shown the section that backs a tag, even one in the middle of the content.
+     */
+    public function test_execute_verify_shows_the_section_behind_a_tag(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One', 'T2' => 'Two']]);
+        $filler = str_repeat('filler words about nothing in particular. ', 140) . "\n\n";
+        $text = $filler . 'MIDDLEMARK ' . $filler . $filler . $filler . $filler . $filler . $filler;
+        $this->mock_ai_sequence([
+            ['competencies' => ['T1']],
+            ['competencies' => ['T2']],
+            ['competencies' => ['T1']],
+            ['competencies' => ['T1']],
+            ['competencies' => ['T1']],
+            ['competencies' => ['T1']],
+            ['competencies' => ['T1']],
+            ['keep' => ['T1', 'T2']],
+        ]);
+
+        classify_text::execute($cmctx->id, $text, $fw, 'TESTFW', ['Tasks'], true);
+
+        $this->assertStringContainsString('strict reviewer', end($this->sentprompts));
+        $this->assertStringContainsString('MIDDLEMARK', end($this->sentprompts));
+    }
+
+    /**
+     * With nothing offered to choose from, the answer says why it is empty.
+     */
+    public function test_execute_warns_when_the_levels_offer_no_competencies(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $this->mock_ai_manager(['competencies' => ['T1']]);
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['No such level']);
+
+        $this->assertSame([], $result['competencies']);
+        $this->assertStringContainsString('No competencies were found', implode(' ', $result['warnings']));
+    }
+
+    /**
+     * The title reaches the model and the warning as written, not HTML escaped.
+     */
+    public function test_execute_does_not_escape_the_title(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $cm = $this->getDataGenerator()->create_module('assign', ['course' => $course->id, 'name' => 'R&D Cryptography']);
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $this->mock_ai_manager(['competencies' => ['T1']]);
+
+        classify_text::execute(\context_module::instance($cm->cmid)->id, 'Anything', $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertStringContainsString('"R&D Cryptography"', $this->sentprompts[0]);
+        $this->assertStringNotContainsString('&amp;', $this->sentprompts[0]);
     }
 }

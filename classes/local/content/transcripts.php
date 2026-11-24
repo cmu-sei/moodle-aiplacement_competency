@@ -54,8 +54,9 @@ final class transcripts {
     /**
      * The file activities holding captions that sit with a label in its section.
      *
-     * Looks forward to the next label, which is the next lecture, and only
-     * when nothing is there looks backward to the previous one.
+     * Looks forward only, to the next label, which is the next lecture. A
+     * transcript before a label belongs to the lecture before it, so a label
+     * with nothing after it has no transcript rather than borrowing that one.
      *
      * @param \stdClass $label The label's course module record.
      * @return \cm_info[] The file activities with a .vtt file, in section order.
@@ -70,12 +71,7 @@ final class transcripts {
             return [];
         }
 
-        $after = self::scan($modinfo, array_slice($ids, $position + 1));
-        if (!empty($after)) {
-            return $after;
-        }
-
-        return array_reverse(self::scan($modinfo, array_reverse(array_slice($ids, 0, $position))));
+        return self::scan($modinfo, array_slice($ids, $position + 1));
     }
 
     /**

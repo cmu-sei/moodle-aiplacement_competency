@@ -133,7 +133,7 @@ class classify_text extends external_api {
 
         $title = '';
         if (isset($cm)) {
-            $title = trim(format_string($cm->name, true, ['context' => $context]));
+            $title = trim(format_string($cm->name, true, ['context' => $context, 'escape' => false]));
         }
 
         $result = classifier::classify(

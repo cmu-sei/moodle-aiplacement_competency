@@ -175,20 +175,26 @@ final class resolver {
             return $content;
         }
 
+        $content = self::drop_solution_html($content);
+
         $kept = [];
         $skipping = false;
         foreach (preg_split('/\R{2,}/u', $content) ?: [] as $chunk) {
-            $heading = self::heading($chunk);
-            if ($heading !== '' && preg_match(self::SOLUTION_PATTERN, $heading)) {
-                // The guide runs on past its heading, in paragraphs that carry no heading of their own.
-                $skipping = true;
+            if ($skipping) {
                 continue;
             }
-            if ($skipping) {
-                if (!self::is_heading($chunk)) {
+
+            $label = self::source_label($chunk);
+            if ($label !== null) {
+                // A source's own chunk is labelled, and each chunk stands alone.
+                if (preg_match(self::SOLUTION_PATTERN, $label)) {
                     continue;
                 }
-                $skipping = false;
+            } else if (self::is_solution_heading($chunk)) {
+                // A guide is written last and runs on past its heading, with sub headings of its own, so
+                // once one starts the rest of this text goes. Losing a section after it costs less than sending it.
+                $skipping = true;
+                continue;
             }
             $kept[] = $chunk;
         }
@@ -197,33 +203,77 @@ final class resolver {
     }
 
     /**
-     * The heading a chunk of content opens with, or an empty string.
+     * Removes HTML sections that open with a solution heading.
      *
-     * A source's chunk reads 'Heading (Title): body'. A description may instead open with a short line.
+     * A description scraped from the editor can arrive as one line of markup, so the heading is found by its tag. The
+     * section runs to the next heading of the same or a higher level, or to the end.
      *
-     * @param string $chunk The chunk.
-     * @return string The heading.
+     * @param string $content The content.
+     * @return string The content without those sections.
      */
-    private static function heading(string $chunk): string {
-        $first = trim(explode("\n", trim($chunk), 2)[0]);
-        $heading = explode(': ', $first, 2)[0];
+    private static function drop_solution_html(string $content): string {
+        if (!preg_match_all('/<h([1-6])\b[^>]*>(.*?)<\/h\1>/isu', $content, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            return $content;
+        }
 
-        return \core_text::strlen($heading) <= 120 ? $heading : '';
+        $cuts = [];
+        $cutuntil = 0;
+        foreach ($found as $i => $heading) {
+            $start = $heading[0][1];
+            if ($start < $cutuntil || !preg_match(self::SOLUTION_PATTERN, strip_tags($heading[2][0]))) {
+                continue;
+            }
+            $end = strlen($content);
+            for ($j = $i + 1; $j < count($found); $j++) {
+                if ((int)$found[$j][1][0] <= (int)$heading[1][0]) {
+                    $end = $found[$j][0][1];
+                    break;
+                }
+            }
+            $cuts[] = [$start, $end];
+            $cutuntil = $end;
+        }
+
+        // From the last to the first, so the offsets of those still to cut hold.
+        foreach (array_reverse($cuts) as [$start, $end]) {
+            $content = substr($content, 0, $start) . substr($content, $end);
+        }
+
+        return $content;
     }
 
     /**
-     * Whether a chunk is a heading that starts something new rather than a paragraph of the text before it.
+     * The label of a chunk a content source wrote, 'Label (Title): body', or null for any other text.
+     *
+     * Sources write short labels such as 'Chapter 2' or 'Transcript', so a long run of words before a colon
+     * is a sentence of a description and not a label.
      *
      * @param string $chunk The chunk.
-     * @return bool True for a short line with no sentence ending, or a labelled source chunk.
+     * @return string|null The label with its title, or null.
      */
-    private static function is_heading(string $chunk): bool {
-        $chunk = trim($chunk);
-        if (preg_match('/^[^\n:]{1,100}: /u', $chunk) && !str_contains(explode(': ', $chunk, 2)[0], '.')) {
-            return true;
+    private static function source_label(string $chunk): ?string {
+        if (!preg_match('/^([^\n:()]{1,40}?)(\s*\([^\n)]{0,120}\))?: /u', trim($chunk), $m)) {
+            return null;
         }
 
-        return !str_contains($chunk, "\n") && \core_text::strlen($chunk) <= 80 && !preg_match('/[.!?]$/u', $chunk);
+        return str_word_count($m[1]) <= 3 ? $m[1] . ($m[2] ?? '') : null;
+    }
+
+    /**
+     * Whether a chunk of plain text is a heading that introduces a solution.
+     *
+     * A heading is a short line with no sentence of its own: 'Solution guide', 'Walkthrough:', 'Answer key'.
+     * 'Design a solution for the network below.' is a sentence about solutions, and is kept.
+     *
+     * @param string $chunk The chunk.
+     * @return bool True when the chunk's first line is such a heading.
+     */
+    private static function is_solution_heading(string $chunk): bool {
+        $line = trim(explode("\n", trim($chunk), 2)[0]);
+        $line = rtrim(trim(strip_tags($line)), ':');
+
+        return \core_text::strlen($line) <= 60 && str_word_count($line) <= 5 && !preg_match('/[.!?,;]/u', $line)
+            && preg_match(self::SOLUTION_PATTERN, $line);
     }
 
     /**

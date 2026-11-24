@@ -86,8 +86,14 @@ class add_cm_competency extends external_api {
 
         // Moodle refuses an activity competency the course does not already list, and a
         // caller that skipped the course step would stop partway. Adding is harmless
-        // when the course has it.
-        \core_competency\api::add_competency_to_course($cm->course, $params['competencyid']);
+        // when the course has it. A user who may manage competencies on this activity but
+        // not on the course cannot add it: the activity link below then succeeds only if
+        // the course already had it, as it always did.
+        try {
+            \core_competency\api::add_competency_to_course($cm->course, $params['competencyid']);
+        } catch (\required_capability_exception $e) {
+            debugging('Could not add the competency to the course: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
 
         $added = (bool) \core_competency\api::add_competency_to_course_module(
             $params['cmid'],
@@ -95,12 +101,17 @@ class add_cm_competency extends external_api {
         );
 
         // A lecture video and its transcript are one lesson: what the video teaches,
-        // the transcript file next to it teaches too.
+        // the transcript file next to it teaches too. The link the caller asked for is
+        // already made, so a transcript that cannot be tagged is left, not reported as a failure.
         if ($cm->modname === 'label' && get_config('aiplacement_competency', 'pairtranscripts') !== '0') {
             foreach (transcripts::for_label($cm) as $pair) {
-                $managed = has_capability('moodle/competency:coursecompetencymanage', \context_module::instance($pair->id));
-                if ($pair->uservisible && $managed) {
-                    \core_competency\api::add_competency_to_course_module($pair->id, $params['competencyid']);
+                try {
+                    $managed = has_capability('moodle/competency:coursecompetencymanage', \context_module::instance($pair->id));
+                    if ($pair->uservisible && $managed) {
+                        \core_competency\api::add_competency_to_course_module($pair->id, $params['competencyid']);
+                    }
+                } catch (\moodle_exception $e) {
+                    debugging('Could not tag the transcript: ' . $e->getMessage(), DEBUG_DEVELOPER);
                 }
             }
         }

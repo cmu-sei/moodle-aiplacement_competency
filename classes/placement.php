@@ -149,7 +149,7 @@ class placement extends \core_ai\placement {
      */
     public static function looks_like_refusal(string $text): bool {
         return (bool)preg_match(
-            '/refus|safeguard|safety (filter|system|polic)|content[ _-]?(filter|polic)|guardrail|' .
+            '/refusal|\brefus(ed|es|ing)\s+to\b|safeguard|safety (filter|system|polic)|content[ _-]?(filter|polic)|guardrail|' .
             'stop_reason.{0,6}(refusal|content)|' .
             '\bI\s+(can\'?t|cannot|won\'?t|am unable to|\'m unable to)\s+(help|assist|provide|comply|classify)/iu',
             $text

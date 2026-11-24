@@ -152,6 +152,9 @@ define([
     });
   }
 
+  // Idnumber of each suggested competency, by the label the person ticked.
+  var idnumberByLabel = new Map();
+
   // Get the AI response
   var extractFromResponse = function(root) {
     var out = { competencies: [] };
@@ -164,8 +167,16 @@ define([
       return out;
     }
 
+    // The idnumber the server validated for each label, so applying never re-guesses a competency from its words.
+    idnumberByLabel = new Map();
     out.competencies = toArray(dd.querySelectorAll('li'))
-      .map(function(li) { return (li.innerText || '').trim(); })
+      .map(function(li) {
+        var label = (li.innerText || '').trim();
+        if (label && li.dataset.idnumber) {
+          idnumberByLabel.set(label, li.dataset.idnumber);
+        }
+        return label;
+      })
       .filter(Boolean)
       .filter(function(s) { return s.toLowerCase() !== 'none'; });
 
@@ -243,7 +254,13 @@ define([
           var name = norm(parts.slice(1).join(' - '));
           var comp = null;
 
-          if (code && byIdnumber.has(code)) {
+          // The server already validated which competency this is. Trust that over the words.
+          var known = norm(idnumberByLabel.get(original) || '');
+          if (known && byIdnumber.has(known)) {
+            comp = byIdnumber.get(known);
+          }
+
+          if (!comp && code && byIdnumber.has(code)) {
             comp = byIdnumber.get(code);
           }
 

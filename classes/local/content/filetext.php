@@ -113,7 +113,7 @@ final class filetext {
             return $text;
         }
 
-        $raw = $file->get_content();
+        $raw = self::to_utf8($file->get_content());
         if ($ext === 'vtt') {
             return self::parse_vtt($raw, self::is_chapter_file($file->get_filename()));
         }
@@ -189,6 +189,24 @@ final class filetext {
      */
     public static function is_chapter_file(string $filename): bool {
         return (bool)preg_match('/\.chp\.vtt$|chapters?\.vtt$/i', $filename);
+    }
+
+    /**
+     * Converts a file's bytes to UTF-8.
+     *
+     * Handouts come in Windows-1252, and captions saved by some tools in UTF-16. Left as they are, the text
+     * functions that follow reject them and the file would contribute nothing without a word said.
+     *
+     * @param string $raw The file's content.
+     * @return string The content as UTF-8, without a byte order mark.
+     */
+    private static function to_utf8(string $raw): string {
+        if (str_starts_with($raw, "\xFF\xFE") || str_starts_with($raw, "\xFE\xFF")) {
+            return (string)mb_convert_encoding($raw, 'UTF-8', 'UTF-16');
+        }
+        $raw = (string)preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+
+        return mb_check_encoding($raw, 'UTF-8') ? $raw : (string)mb_convert_encoding($raw, 'UTF-8', 'Windows-1252');
     }
 
     /**

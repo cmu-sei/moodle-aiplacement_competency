@@ -261,16 +261,56 @@ final class lecturecontent_test extends \advanced_testcase {
         $this->assertFalse(resolver::has_content($cm, $context));
     }
 
-    public function test_a_solution_guide_is_dropped_through_its_following_paragraphs(): void {
-        $content = "Learners scan a host.\n\nSolution guide\n\nRun SECRETCOMMAND first.\n\nThen run ANOTHERSECRET.\n\n" .
-            "Grading\n\nEach task is worth ten points.";
+    public function test_a_plain_text_solution_guide_is_dropped_to_the_end_including_its_sub_headings(): void {
+        $content = "Learners scan a host.\n\nSolution guide\n\nRun SECRETCOMMAND first.\n\nEnumeration\n\nThen run ANOTHERSECRET.";
 
         $kept = resolver::drop_solutions($content);
 
-        $this->assertStringContainsString('Learners scan a host.', $kept);
+        $this->assertSame('Learners scan a host.', $kept);
+    }
+
+    public function test_a_sentence_that_mentions_a_solution_is_not_a_solution_guide(): void {
+        $content = "Design a solution for the network below.\n\nStudents write up their findings: in a short report.\n\n" .
+            'Each task is worth ten points.';
+
+        $this->assertSame($content, resolver::drop_solutions($content));
+    }
+
+    public function test_an_html_solution_section_is_dropped_from_a_single_line_description(): void {
+        $html = '<p>Lab tasks: scan the network and list the hosts you find on it, then report them.</p>' .
+            '<h3>Solution guide</h3><p>Run SECRETCOMMAND against the host.</p><h4>Enumeration</h4><p>ANOTHERSECRET</p>' .
+            '<h3>Grading</h3><p>Ten points per task.</p>';
+
+        $kept = resolver::drop_solutions($html);
+
+        $this->assertStringContainsString('Lab tasks', $kept);
         $this->assertStringNotContainsString('SECRETCOMMAND', $kept);
         $this->assertStringNotContainsString('ANOTHERSECRET', $kept);
-        $this->assertStringContainsString('Each task is worth ten points.', $kept);
+        $this->assertStringContainsString('Ten points per task.', $kept);
+    }
+
+    public function test_a_file_that_is_not_utf8_is_still_read(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $latin1 = mb_convert_encoding('Café réseau: analysez le trafic', 'ISO-8859-1', 'UTF-8');
+        $utf16 = "\xFF\xFE" . mb_convert_encoding("WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nUTF16WORDS", 'UTF-16LE', 'UTF-8');
+        $resource = $this->create_file_activity($course, ['handout.txt' => $latin1, 'caps.vtt' => $utf16]);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+
+        $content = resolver::get_content($cm, \context_module::instance($resource->cmid));
+
+        $this->assertStringContainsString('Café réseau', $content);
+        $this->assertStringContainsString('UTF16WORDS', $content);
+    }
+
+    public function test_a_label_does_not_borrow_the_transcript_of_the_lecture_before_it(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator();
+        $generator->create_module('label', ['course' => $course->id, 'intro' => self::VIDEO]);
+        $this->create_file_activity($course, ['first.trn.vtt' => self::cue('FIRSTLECTURE words')]);
+        $second = $generator->create_module('label', ['course' => $course->id, 'intro' => self::VIDEO]);
+        $cm = get_coursemodule_from_id('label', $second->cmid, 0, false, MUST_EXIST);
+
+        $this->assertFalse(resolver::has_content($cm, \context_module::instance($second->cmid)));
     }
 
     public function test_a_pdf_that_cannot_be_read_is_reported_not_silently_skipped(): void {

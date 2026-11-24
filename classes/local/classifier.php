@@ -61,7 +61,7 @@ final class classifier {
     public const MAX_CHUNKS = 12;
 
     /** Characters of content shown to the verification pass. */
-    private const VERIFY_BUDGET = 30000;
+    private const VERIFY_BUDGET = 60000;
 
     /** Words in a title that say nothing about the subject. */
     private const TITLE_STOPWORDS = [
@@ -112,9 +112,11 @@ final class classifier {
         $failure = null;
         $succeeded = 0;
         $skipped = 0;
+        $offered = 0;
 
         foreach ($chunks as $position => $chunk) {
             $prepared = utils::prepare($frameworkid, $shortname, $levels, $chunk, $title);
+            $offered += count($prepared['candidates']);
             $label = count($chunks) > 1
                 ? 'TEXT TO CLASSIFY (section ' . ($position + 1) . ' of ' . count($chunks) . "):\n"
                 : "TEXT TO CLASSIFY:\n";
@@ -133,19 +135,17 @@ final class classifier {
             $inner = self::decode($raw);
             if ($inner === []) {
                 $reply = self::reply_text($raw);
-                if ($reply === '') {
-                    // Some providers return only a reasoning block first, which core reads as no text at all.
-                    $failure ??= new \moodle_exception('aiclassifyempty', 'aiplacement_competency');
-                    $skipped++;
-                    continue;
-                }
                 if (placement::looks_like_refusal($reply . ' ' . self::finish_reason($raw))) {
                     $failure ??= new \moodle_exception('aiclassifyrefused', 'aiplacement_competency');
-                    $skipped++;
-                    continue;
+                } else if ($reply === '') {
+                    // Some providers return only a reasoning block first, which core reads as no text at all.
+                    $failure ??= new \moodle_exception('aiclassifyempty', 'aiplacement_competency');
+                } else {
+                    // Text that is not an answer at all.
+                    $failure ??= new \moodle_exception('aiclassifyunusable', 'aiplacement_competency');
                 }
-                // Text that is not an answer at all: nothing was learned from this section.
                 $skipped++;
+                continue;
             }
             $succeeded++;
 
@@ -158,9 +158,10 @@ final class classifier {
             foreach (utils::resolve_competencies($returned, $prepared['candidates']) as $found) {
                 $id = $found['id'];
                 if (!isset($tally[$id])) {
-                    $tally[$id] = $found + ['count' => 0, 'first' => count($tally)];
+                    $tally[$id] = $found + ['count' => 0, 'first' => count($tally), 'sections' => []];
                 }
                 $tally[$id]['count']++;
+                $tally[$id]['sections'][$position] = true;
                 if ($tally[$id]['reason'] === '' && $found['reason'] !== '') {
                     $tally[$id]['reason'] = $found['reason'];
                 }
@@ -169,6 +170,9 @@ final class classifier {
 
         if ($succeeded === 0 && $failure !== null) {
             throw $failure;
+        }
+        if ($offered === 0) {
+            $warnings[] = get_string('nocandidates', 'aiplacement_competency');
         }
         if ($skipped > 0) {
             $warnings[] = get_string('sectionsskipped', 'aiplacement_competency', (object)[
@@ -185,7 +189,7 @@ final class classifier {
         $found = array_slice($found, 0, utils::max_tags());
 
         if ($verify && !empty($found)) {
-            [$found, $removed, $verified] = self::verify($placement, $context, $found, $text, $title, $shortname);
+            [$found, $removed, $verified] = self::verify($placement, $context, $found, $chunks, $title, $shortname);
             if (!$verified) {
                 $warnings[] = get_string('verifyfailed', 'aiplacement_competency');
             }
@@ -215,7 +219,7 @@ final class classifier {
      * @param placement $placement The placement to send through.
      * @param context $context The context of the request.
      * @param array[] $found The tags so far.
-     * @param string $text The content.
+     * @param string[] $chunks The sections that were classified, by position.
      * @param string $title The activity title.
      * @param string $shortname The framework shortname.
      * @return array The kept tags, how many were removed, and whether the review gave a usable answer.
@@ -225,7 +229,7 @@ final class classifier {
         placement $placement,
         context $context,
         array $found,
-        string $text,
+        array $chunks,
         string $title,
         string $shortname
     ): array {
@@ -234,16 +238,25 @@ final class classifier {
             $lines[] = '[' . $tag['idnumber'] . '] ' . $tag['label'] . ' -- reason given: ' . ($tag['reason'] ?: 'none');
         }
 
-        $chunks = self::split($text);
-        if (count($chunks) > 1) {
-            $chunks = self::sample($chunks, max(1, intdiv(self::VERIFY_BUDGET, self::CHUNK_SIZE)));
+        // Show the reviewer the sections that back the tags, wherever in the content they are, so a tag
+        // taught only in the middle of a lecture is judged against that part of it.
+        $positions = [];
+        foreach ($found as $tag) {
+            $positions += $tag['sections'] ?? [];
+        }
+        $positions = array_keys($positions);
+        sort($positions);
+        $evidence = array_values(array_intersect_key($chunks, array_flip($positions)));
+        $evidence = $evidence ?: $chunks;
+        if (count($evidence) > intdiv(self::VERIFY_BUDGET, self::CHUNK_SIZE)) {
+            $evidence = self::sample($evidence, intdiv(self::VERIFY_BUDGET, self::CHUNK_SIZE));
         }
 
         $prompt = get_string('verify_instruction', 'aiplacement_competency', (object)[
             'frameworkshortname' => $shortname,
             'activitytitle' => $title,
             'tags' => implode("\n", $lines),
-        ]) . "\n\nCONTENT:\n" . implode("\n\n", $chunks);
+        ]) . "\n\nCONTENT:\n" . implode("\n\n", $evidence);
 
         try {
             $inner = self::decode($placement->send($context, $prompt, ['verify' => 1]));
@@ -254,12 +267,17 @@ final class classifier {
             return [$found, 0, false];
         }
 
+        // The reviewer may answer "CODE - Name" or "[CODE]" for an idnumber.
         $keep = array_map(static function ($k) {
-            return \core_text::strtolower(trim((string)$k, "[] \t"));
+            return \core_text::strtolower(trim(explode(' - ', trim((string)$k, "[] \t"), 2)[0], "[] \t"));
         }, $inner['keep']);
         $kept = array_values(array_filter($found, static function ($tag) use ($keep) {
             return in_array(\core_text::strtolower($tag['idnumber']), $keep, true);
         }));
+        if (empty($kept) && !empty($keep)) {
+            // It named things, and none of them is a tag. That is not an answer about these tags.
+            return [$found, 0, false];
+        }
 
         return [$kept, count($found) - count($kept), true];
     }

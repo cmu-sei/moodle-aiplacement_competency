@@ -521,7 +521,11 @@ define([
             });
 
             const showverify = document.getElementById('ai-classify-drawer')?.dataset.verify === '1';
-            const finalHtml = await Templates.render('aiplacement_competency/levels', { options, showverify });
+            const finalHtml = await Templates.render('aiplacement_competency/levels', {
+                options,
+                showverify,
+                verifychecked: !!this._verify,
+            });
             this.aiDrawerBodyElement.innerHTML = finalHtml;
 
             if (loadfailed) {
@@ -552,7 +556,11 @@ define([
             updateContinue();
 
             // Select all / Clear all handlers
-            this.aiDrawerBodyElement.addEventListener('click', e => {
+            // One handler at a time: this step is shown again on Back, and each pass used to add another.
+            if (this._levelsClickHandler) {
+                this.aiDrawerBodyElement.removeEventListener('click', this._levelsClickHandler);
+            }
+            this._levelsClickHandler = e => {
                 const selectAllBtn = e.target.closest('[data-action="selectall"]');
                 if (selectAllBtn) {
                     e.preventDefault();
@@ -576,7 +584,8 @@ define([
                         updateContinue();
                     }
                 }
-            });
+            };
+            this.aiDrawerBodyElement.addEventListener('click', this._levelsClickHandler);
 
             if (continueBtn) {
                 continueBtn.addEventListener('click', e => {
@@ -691,7 +700,8 @@ define([
                         frameworkid,
                         frameworkshortname,
                         usedlevels,
-                        competencies,
+                        // Each tag carries its idnumber, so applying it never has to guess from the label.
+                        competencies: competencies.map((label, i) => ({label, idnumber: suggestions[i]?.idnumber || ''})),
                         warnings,
                         suggestions,
                         hasreasons: suggestions.some(c => c.reason),
