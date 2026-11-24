@@ -77,7 +77,7 @@ Site administration → AI → Placements → Competency:
 | Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
 | Time budget (seconds) | 40 | No further section or verification request starts once this much time has passed plus the longest request so far, to stay inside the web server's 60 second limit. |
 | Most tags per framework | 3 | The most competencies one classification returns. |
-| Candidates shown to the model | 400 | Frameworks with more competencies than this are narrowed to the closest keyword matches. |
+| Candidates shown to the model | 400 | Frameworks with more competencies than this are narrowed to the closest keyword matches. A site that saved this page under the old default of 80 keeps 80, as it trades cost for reach; raise it to 400 to reach more of a large framework. |
 | Offer a verification pass | on | Adds the verify checkbox to the drawer. |
 | Tag a lecture's transcript with its video | on | Applying a competency to a label also applies it to the transcript file activities beside it. |
 | PDF conversion time limit (seconds) | 20 | pdftotext is stopped after this long on one file, which is then reported as unreadable. |
