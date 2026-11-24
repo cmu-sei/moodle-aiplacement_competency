@@ -223,7 +223,10 @@ final class classifier {
         $found = array_slice($found, 0, utils::max_tags());
 
         // The review is one more request: skipped when the time left would not cover it.
-        $verify = $verify && microtime(true) - $started + $longest < $budget;
+        if ($verify && !empty($found) && microtime(true) - $started + $longest >= $budget) {
+            $warnings[] = get_string('verifyskipped', 'aiplacement_competency');
+            $verify = false;
+        }
         if ($verify && !empty($found)) {
             [$found, $removed, $verified] = self::verify($placement, $context, $found, $chunks, $title, $shortname);
             if (!$verified) {

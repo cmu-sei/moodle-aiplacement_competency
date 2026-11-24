@@ -185,3 +185,4 @@ in the square brackets above. An empty array removes everything.
 $string['verifyfailed'] = 'The verification pass did not give a usable answer, so these tags have not been double-checked.';
 $string['verifyoption'] = 'Verify the suggested tags with a second check before showing them';
 $string['verifyoption_help'] = 'Sends the tags and their reasons back to the model, asked only to remove ones the content does not support. Slower and costs one more request, but usually removes weak tags.';
+$string['verifyskipped'] = 'There was not enough time left in the server\'s time limit to double-check these tags, so they have not been double-checked.';

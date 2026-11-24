@@ -1105,4 +1105,33 @@ final class classifytext_test extends \advanced_testcase {
         $this->assertCount(1, $this->sentprompts);
         $this->assertStringContainsString('Stopped after 1 of', implode(' ', $result['warnings']));
     }
+
+    /**
+     * When time is short the verification pass is skipped, and the result says the tags were not checked.
+     */
+    public function test_execute_says_when_there_was_no_time_to_verify(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        set_config('timebudget', '0.2', 'aiplacement_competency');
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $response = new response_generate_text(success: true);
+        $response->set_response_data(['generatedcontent' => json_encode(['competencies' => ['T1']]), 'finishreason' => 'stop']);
+        $mockmanager = $this->createMock(\core_ai\manager::class);
+        $mockmanager->method('process_action')->willReturnCallback(function () use ($response) {
+            $this->sentprompts[] = 'request';
+            usleep(300000);
+            return $response;
+        });
+        $mockmanager->method('is_action_available')->willReturn(true);
+        $mockmanager->method('is_action_enabled')->willReturn(true);
+        \core\di::set(\core_ai\manager::class, function () use ($mockmanager) {
+            return $mockmanager;
+        });
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks'], true);
+
+        $this->assertCount(1, $this->sentprompts);
+        $this->assertSame(['T1 - One'], $result['competencies']);
+        $this->assertStringContainsString('not enough time left', implode(' ', $result['warnings']));
+    }
 }

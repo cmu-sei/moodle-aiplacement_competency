@@ -42,8 +42,6 @@ DM26-0017
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Clears the shortlist size when it holds exactly the old default.
  *
