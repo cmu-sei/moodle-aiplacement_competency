@@ -138,6 +138,51 @@ class utils {
     }
 
     /**
+     * The framework the administrator chose as the default, by its idnumber or shortname.
+     *
+     * The idnumber is tried first, since it is meant to be unique, then the shortname, with case ignored. A hidden
+     * framework is not offered by the drawer, so it is not a default either.
+     *
+     * @return int The framework id, or 0 when none is set or none matches.
+     */
+    public static function default_framework_id(): int {
+        return self::framework_id_for((string)get_config('aiplacement_competency', 'defaultframework'));
+    }
+
+    /**
+     * The visible framework a name picks: its idnumber or its shortname, an exact match with case ignored.
+     *
+     * @param string $name The idnumber or shortname. Not a prefix: 'DCWF' does not pick 'DCWF-5.1'.
+     * @return int The framework id, or 0 when none matches.
+     */
+    public static function framework_id_for(string $name): int {
+        global $DB;
+
+        $wanted = \core_text::strtolower(trim($name));
+        if ($wanted === '') {
+            return 0;
+        }
+
+        // Two small queries, the idnumber first, with the lowest id winning if a shortname is shared.
+        foreach (['idnumber', 'shortname'] as $field) {
+            $found = $DB->get_records_select(
+                'competency_framework',
+                'visible = 1 AND ' . $DB->sql_equal($field, ':wanted', false, true),
+                ['wanted' => $wanted],
+                'id ASC',
+                'id',
+                0,
+                1
+            );
+            if ($found) {
+                return (int)array_key_first($found);
+            }
+        }
+
+        return 0;
+    }
+
+    /**
      * The most competencies one classification should return per framework.
      *
      * @return int The cap, at least one.

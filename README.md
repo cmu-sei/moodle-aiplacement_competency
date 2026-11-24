@@ -73,6 +73,7 @@ Site administration → AI → Placements → Competency:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
+| Default framework | empty | The idnumber or shortname of the framework the Classify drawer pre-selects, such as `DCWF-5.1`. An exact match, case ignored, not a prefix. The field says which framework it picks, or that it matches none. Builders can still choose another. |
 | Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
 | Time budget (seconds) | 40 | No further section or verification request starts after this, to stay inside the web server's 60 second limit. |
 | Most tags per framework | 3 | The most competencies one classification returns. |

@@ -399,6 +399,21 @@ define([
                 Notification.exception(error);
             }
 
+            // Come back to the framework already chosen, else the site's default. Either may be gone from the list,
+            // because the framework was hidden or deleted since, and then the next one is tried, and at the end
+            // nothing is selected.
+            if (select) {
+                const offered = new Set(Array.from(select.options).filter(o => o.value && !o.disabled).map(o => o.value));
+                const candidates = [
+                    this._selectedFrameworkId,
+                    document.getElementById('ai-classify-drawer')?.dataset.defaultframework,
+                ].map(id => String(id || '')).filter(id => id && id !== '0');
+                const wanted = candidates.find(id => offered.has(id));
+                if (wanted) {
+                    select.value = wanted;
+                }
+            }
+
             const continueBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CONTINUE);
             const sel        = this.aiDrawerBodyElement.querySelector(SELECTOR_PRESELECT);
             const backBtn    = this.aiDrawerBodyElement.querySelector(SELECTOR_BACK);

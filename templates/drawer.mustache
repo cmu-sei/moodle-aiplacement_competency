@@ -42,7 +42,8 @@
     {
         "userid": 123,
         "contextid": 456,
-        "verify": 1
+        "verify": 1,
+        "defaultframework": 0
     }
 
     Notes:
@@ -54,7 +55,7 @@
     - The close button is expected to be wired up by the AMD module.
 }}
 
-<div class="ai-drawer" id="ai-classify-drawer" tabindex="-1" data-verify="{{verify}}">
+<div class="ai-drawer" id="ai-classify-drawer" tabindex="-1" data-verify="{{verify}}" data-defaultframework="{{defaultframework}}">
     <div class="ai-drawer-header">
         <button id="ai-classify-drawer-close" class="btn ai-drawer-button" type="button">
             {{#pix}} e/cancel, core {{/pix}}
