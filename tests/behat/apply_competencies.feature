@@ -30,6 +30,24 @@ Feature: Apply AI-suggested competencies
     And I wait "1" seconds
     And "#ai-classify-drawer" "css_element" should not be visible
 
+  Scenario: The default framework is selected in the drawer, and nothing is without one
+    Given the following "core_competency > frameworks" exist:
+      | shortname       | idnumber |
+      | Other framework | OTHER    |
+      | DoD Workforce   | DCWF     |
+    And the following config values are set as admin:
+      | defaultframework | dcwf | aiplacement_competency |
+    When I am on the "PageName1" "page activity editing" page logged in as "admin"
+    And I expand all fieldsets
+    And I click on "Classify Text" "button"
+    Then the field "classify-preselect" matches value "DoD Workforce"
+    And the following config values are set as admin:
+      | defaultframework | | aiplacement_competency |
+    And I reload the page
+    And I expand all fieldsets
+    And I click on "Classify Text" "button"
+    And the field "classify-preselect" does not match value "DoD Workforce"
+
   Scenario: The classify button is not shown when the placement is disabled
     Given the following config values are set as admin:
       | enabled | | aiplacement_competency |

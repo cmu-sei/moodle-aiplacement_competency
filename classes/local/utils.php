@@ -153,12 +153,19 @@ class utils {
             return 0;
         }
 
-        $frameworks = $DB->get_records('competency_framework', ['visible' => 1], 'id ASC', 'id, idnumber, shortname');
+        // Two small queries, the idnumber first, with the lowest id winning if a shortname is shared.
         foreach (['idnumber', 'shortname'] as $field) {
-            foreach ($frameworks as $framework) {
-                if (\core_text::strtolower(trim((string)$framework->{$field})) === $wanted) {
-                    return (int)$framework->id;
-                }
+            $found = $DB->get_records_select(
+                'competency_framework',
+                'visible = 1 AND ' . $DB->sql_equal($field, ':wanted', false, false),
+                ['wanted' => $wanted],
+                'id ASC',
+                'id',
+                0,
+                1
+            );
+            if ($found) {
+                return (int)array_key_first($found);
             }
         }
 

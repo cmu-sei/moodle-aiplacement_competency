@@ -399,15 +399,17 @@ define([
                 Notification.exception(error);
             }
 
-            // Come back to the framework already chosen, else the site's default. A default that is no longer on
-            // the list, because the framework was hidden or deleted, selects nothing.
+            // Come back to the framework already chosen, else the site's default. Either may be gone from the list,
+            // because the framework was hidden or deleted since, and then the next one is tried, and at the end
+            // nothing is selected.
             if (select) {
-                const wanted = String(
-                    this._selectedFrameworkId
-                    || document.getElementById('ai-classify-drawer')?.dataset.defaultframework
-                    || ''
-                );
-                if (wanted && wanted !== '0' && Array.from(select.options).some(o => o.value === wanted && !o.disabled)) {
+                const offered = new Set(Array.from(select.options).filter(o => o.value && !o.disabled).map(o => o.value));
+                const candidates = [
+                    this._selectedFrameworkId,
+                    document.getElementById('ai-classify-drawer')?.dataset.defaultframework,
+                ].map(id => String(id || '')).filter(id => id && id !== '0');
+                const wanted = candidates.find(id => offered.has(id));
+                if (wanted) {
                     select.value = wanted;
                 }
             }
