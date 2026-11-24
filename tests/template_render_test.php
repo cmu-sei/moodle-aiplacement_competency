@@ -106,6 +106,26 @@ final class template_render_test extends \advanced_testcase {
         $this->assertStringNotContainsString('Because', $competencies);
     }
 
+    public function test_response_template_offers_a_back_button_with_no_results(): void {
+        global $PAGE, $OUTPUT;
+
+        $PAGE->set_context(\context_system::instance());
+        $PAGE->set_url(new \moodle_url('/'));
+
+        $html = $OUTPUT->render_from_template(self::COMPONENT . '/response', [
+            'action' => 'classify',
+            'heading' => 'AI Classification',
+            'uniqid' => 'abc123',
+            'frameworkid' => 1,
+            'frameworkshortname' => 'DCWF',
+            'usedlevels' => ['Tasks'],
+            'competencies' => [],
+        ]);
+
+        $this->assertStringContainsString('data-action="back"', $html);
+        $this->assertStringContainsString('data-action="regenerate"', $html);
+    }
+
     public function test_levels_template_offers_verification_only_when_enabled(): void {
         global $PAGE, $OUTPUT;
 

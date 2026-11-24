@@ -700,6 +700,14 @@ define([
 
                 this.aiDrawerBodyElement.innerHTML = responseHtml;
 
+                const back = this.aiDrawerBodyElement.querySelector('[data-action="back"]');
+                if (back) {
+                    back.addEventListener('click', e => {
+                        e.preventDefault();
+                        this.showLevels(prompt, fw);
+                    });
+                }
+
                 const regen = this.aiDrawerBodyElement.querySelector('[data-action="regenerate"]');
                 if (regen) {
                     regen.addEventListener('click', e => {
