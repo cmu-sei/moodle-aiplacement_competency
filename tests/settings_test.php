@@ -130,4 +130,23 @@ final class settings_test extends \advanced_testcase {
         $this->assertStringContainsString('No default', $setting->resolution(''));
         $this->assertStringContainsString('Matches no visible framework', $setting->output_html('DCWF'));
     }
+
+    public function test_the_shortlist_setting_registers_the_default_of_400(): void {
+        global $CFG;
+        $this->resetAfterTest();
+
+        $ADMIN = new \stdClass();
+        $ADMIN->fulltree = true;
+        $settings = new \admin_settingpage('aiplacement_competency_test', 'Test');
+        require($CFG->dirroot . '/ai/placement/competency/settings.php');
+
+        $found = null;
+        foreach ((array)$settings->settings as $setting) {
+            if ($setting->name === 'maxcandidates') {
+                $found = $setting;
+            }
+        }
+        $this->assertNotNull($found);
+        $this->assertSame(400, (int)$found->get_defaultsetting());
+    }
 }
