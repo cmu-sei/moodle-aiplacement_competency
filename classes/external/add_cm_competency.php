@@ -40,6 +40,9 @@ namespace aiplacement_competency\external;
 
 use core_external\external_api;
 use core_external\external_function_parameters;
+use aiplacement_competency\local\content\transcripts;
+use core_external\external_multiple_structure;
+use core_external\external_single_structure;
 use core_external\external_value;
 
 /**
@@ -71,9 +74,9 @@ class add_cm_competency extends external_api {
      *
      * @param int $cmid Course module ID.
      * @param int $competencyid Competency ID.
-     * @return bool True if competency was added, false if already linked.
+     * @return array With 'added' (false if already linked) and 'failedtranscripts' (names).
      */
-    public static function execute($cmid, $competencyid): bool {
+    public static function execute($cmid, $competencyid): array {
         $params = self::validate_parameters(self::execute_parameters(), [
             'cmid' => $cmid,
             'competencyid' => $competencyid,
@@ -83,18 +86,60 @@ class add_cm_competency extends external_api {
         $context = \context_module::instance($cm->id);
         self::validate_context($context);
 
-        return (bool) \core_competency\api::add_competency_to_course_module(
+        // Moodle refuses an activity competency the course does not already list, and a
+        // caller that skipped the course step would stop partway. Adding is harmless
+        // when the course has it. A user who may manage competencies on this activity but
+        // not on the course cannot add it: the activity link below then succeeds only if
+        // the course already had it, as it always did.
+        try {
+            \core_competency\api::add_competency_to_course($cm->course, $params['competencyid']);
+        } catch (\required_capability_exception $e) {
+            debugging('Could not add the competency to the course: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+
+        $added = (bool) \core_competency\api::add_competency_to_course_module(
             $params['cmid'],
             $params['competencyid']
         );
+
+        // A lecture video and its transcript are one lesson: what the video teaches, the transcript file next to
+        // it teaches too. The link the caller asked for is already made, so a transcript that cannot be tagged does
+        // not fail the call. It is returned, so the teacher is told rather than left to find it untagged.
+        $failed = [];
+        if ($cm->modname === 'label' && get_config('aiplacement_competency', 'pairtranscripts') !== '0') {
+            foreach (transcripts::for_label($cm) as $pair) {
+                $name = format_string($pair->name, true, ['context' => \context_module::instance($pair->id), 'escape' => false]);
+                try {
+                    $managed = has_capability('moodle/competency:coursecompetencymanage', \context_module::instance($pair->id));
+                    if (!$pair->uservisible || !$managed) {
+                        $failed[] = $name;
+                        continue;
+                    }
+                    \core_competency\api::add_competency_to_course_module($pair->id, $params['competencyid']);
+                } catch (\moodle_exception $e) {
+                    debugging('Could not tag the transcript: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                    $failed[] = $name;
+                }
+            }
+        }
+
+        return ['added' => $added, 'failedtranscripts' => $failed];
     }
 
     /**
      * Describes the return value for the external function.
      *
-     * @return external_value True if added, false if already linked.
+     * @return external_single_structure Whether the activity was linked, and the transcripts that could not be.
      */
-    public static function execute_returns(): external_value {
-        return new external_value(PARAM_BOOL, 'True if added, false if already linked');
+    public static function execute_returns(): external_single_structure {
+        return new external_single_structure([
+            'added' => new external_value(PARAM_BOOL, 'True if added, false if already linked'),
+            'failedtranscripts' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Name of a transcript activity that could not be tagged'),
+                'Transcript activities beside a lecture label that did not get the competency',
+                VALUE_DEFAULT,
+                []
+            ),
+        ]);
     }
 }

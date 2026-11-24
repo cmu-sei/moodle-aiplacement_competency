@@ -16,7 +16,14 @@ It adds a **“Classify Text”** button to supported course/activity editing pa
 ## Key features
 
 - **Framework + level constrained classification** to reduce irrelevant suggestions.
-- **Structured AI output** (JSON) with competencies listed as `"CODE - Name"` or `"Name"`.
+- **Structured AI output** (JSON): the model returns competency **idnumbers** with a one line **reason** quoting the content. Anything that is not in the selected framework and levels is dropped on the server, and the reasons are shown in the drawer.
+- **Reads lecture content**: WebVTT transcripts and chapter files (`.vtt`, `.trn.vtt`, `.chp.vtt`), text and HTML files, and PDFs (when `pdftotext` is configured). A lecture **label** with an embedded video is read through the transcript file activities next to it in its section.
+- **Reads all of it**: long content is sent in sections and the answers merged, rather than cut at the first 20,000 characters.
+- **Short candidate lists**: frameworks with hundreds of statements (DCWF, NICE) are narrowed by keyword match to the closest 80 before the model chooses.
+- **Fewer, better tags**: tags only what the activity teaches, capped per classification (default 3), with ATT&CK and D3FEND only where the content really explains the technique.
+- **Optional verification pass**: a checkbox in the drawer has the model review its own tags and remove weak ones.
+- **Warnings**: content that does not look like its activity title (a video carrying another lecture's transcript) is flagged before you apply.
+- **Refusals are reported as refusals**: when the model declines on safety grounds the drawer says so. Solution guides and walkthroughs are never sent.
 - **One-click apply**:
   - Adds selected competencies to the **course**
   - Links them to the **activity module** when editing an existing activity
@@ -55,14 +62,34 @@ It adds a **“Classify Text”** button to supported course/activity editing pa
 4. The browser calls the AJAX webservice:
    - `aiplacement_competency_classify_text`
 5. Server-side, the placement runs `core_ai\aiactions\generate_text` with an instruction prompt that asks for **JSON-only** output.
-6. The UI renders results and offers **Regenerate**, **Copy**, and **Apply** actions.
+   Content is read from the activity itself (see Content sources), split into sections of about 12,000 characters, and each section is classified against the closest candidates in the framework. Sections' answers are merged, ranked by how many sections back each tag, and trimmed to the cap.
+6. The UI renders results, the reason for each, and any warnings, and offers **Regenerate**, **Copy**, and **Apply** actions.
+
+### Content sources
+Each activity type contributes the text its author wrote. New in this version: **label** (captions attached to it, plus the transcript and chapter file activities that follow it in the same section, up to the next label) and **file** (`.vtt` transcripts and chapter lists, `.txt`, `.md`, `.html`, `.csv`, and `.pdf` when `pdftotext` is configured). Files and headings that look like solution guides (`solution`, `walkthrough`, `answer key`, `write-up`) are skipped.
+
+### Settings
+Site administration → AI → Placements → Competency:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
+| Time budget (seconds) | 40 | No further section or verification request starts after this, to stay inside the web server's 60 second limit. |
+| Most tags per framework | 3 | The most competencies one classification returns. |
+| Candidates shown to the model | 80 | Frameworks with more competencies than this are narrowed to the closest keyword matches. |
+| Offer a verification pass | on | Adds the verify checkbox to the drawer. |
+| Tag a lecture's transcript with its video | on | Applying a competency to a label also applies it to the transcript file activities beside it. |
+| PDF conversion time limit (seconds) | 20 | pdftotext is stopped after this long on one file, which is then reported as unreadable. |
+| Path to pdftotext | empty | Program from poppler-utils; PDFs are skipped when empty. |
+
+The verification pass uses the same AI provider as classification: Moodle's AI subsystem picks the provider and model per action, not per request, so a different model for the review means configuring a second provider for **Generate text**.
 
 ### Applying competencies
 When the user clicks **Apply**:
 - The plugin opens a modal with checkboxes for the suggested competencies.
 - It matches the suggestions back to real competencies in the selected framework (by idnumber/shortname/heuristics).
-- It adds them to the course.
-- If editing an existing activity, it also links them to the module.
+- It adds them to the course. The server also adds the course link before the activity link, so an activity never stops partway because the course did not list a competency yet.
+- If editing an existing activity, it also links them to the module. On a lecture label, the transcript file activities beside it get the same tags.
 
 After applying, the page reloads and shows success/warning/error notices.
 
@@ -70,18 +97,20 @@ After applying, the page reloads and shows success/warning/error notices.
 
 ## AI output format (expected)
 
-The instruction asks the provider to return **JSON only**:
+The instruction asks the provider to return **JSON only**. Each candidate is offered as `[idnumber] CODE - Name`:
 
 ```json
 {
   "framework": { "shortname": "FRAMEWORK-SHORTNAME" },
   "levels": ["Level A", "Level B"],
+  "matches_title": true,
   "competencies": [
-    "CODE - Name",
-    "CODE2 - Name2"
+    { "idnumber": "T1586", "reason": "Short sentence quoting the content." }
   ]
 }
 ```
+
+Plain strings (an idnumber or `"CODE - Name"`) are still accepted. `matches_title: false` raises the content warning.
 
 ## License
 

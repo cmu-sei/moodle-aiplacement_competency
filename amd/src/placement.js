@@ -107,6 +107,14 @@ define([
             if (this.isAIDrawerOpen()) {
                 return;
             }
+            // Moodle's block drawer is open by default on an edit page and sits on the same edge, in front of
+            // this one. Close it first so the drawer is not opened out of sight behind it.
+            const blockDrawerClose = document.querySelector(
+                '#theme_boost-drawers-blocks.show [data-action="closedrawer"]'
+            );
+            if (blockDrawerClose) {
+                blockDrawerClose.click();
+            }
             this.aiDrawerElement.classList.add('show');
             this.aiDrawerElement.setAttribute('tabindex', 0);
             this.aiDrawerBodyElement.setAttribute('aria-live', 'polite');
@@ -512,7 +520,12 @@ define([
             };
             });
 
-            const finalHtml = await Templates.render('aiplacement_competency/levels', { options });
+            const showverify = document.getElementById('ai-classify-drawer')?.dataset.verify === '1';
+            const finalHtml = await Templates.render('aiplacement_competency/levels', {
+                options,
+                showverify,
+                verifychecked: !!this._verify,
+            });
             this.aiDrawerBodyElement.innerHTML = finalHtml;
 
             if (loadfailed) {
@@ -543,7 +556,11 @@ define([
             updateContinue();
 
             // Select all / Clear all handlers
-            this.aiDrawerBodyElement.addEventListener('click', e => {
+            // One handler at a time: this step is shown again on Back, and each pass used to add another.
+            if (this._levelsClickHandler) {
+                this.aiDrawerBodyElement.removeEventListener('click', this._levelsClickHandler);
+            }
+            this._levelsClickHandler = e => {
                 const selectAllBtn = e.target.closest('[data-action="selectall"]');
                 if (selectAllBtn) {
                     e.preventDefault();
@@ -567,7 +584,8 @@ define([
                         updateContinue();
                     }
                 }
-            });
+            };
+            this.aiDrawerBodyElement.addEventListener('click', this._levelsClickHandler);
 
             if (continueBtn) {
                 continueBtn.addEventListener('click', e => {
@@ -581,6 +599,7 @@ define([
                         .map(b => b.value);
 
                     this._selectedLevels = selectedLevels;
+                    this._verify = !!this.aiDrawerBodyElement.querySelector('input[name="classify-verify"]:checked');
 
                     this.sendClassification(prompt, framework, selectedLevels);
                 });
@@ -656,6 +675,7 @@ define([
                         selectedframeworkid: fw?.id || 0,
                         selectedframeworkshortname: fw?.shortname || '',
                         levels: selectedLevels,
+                        verify: !!this._verify,
                     }
                 }]);
 
@@ -665,7 +685,9 @@ define([
                     return;
                 }
 
-                const {frameworkid, frameworkshortname, usedlevels = [], competencies = []} = result;
+                const {
+                    frameworkid, frameworkshortname, usedlevels = [], competencies = [], suggestions = [], warnings = [],
+                } = result;
                 const uniqid  = 'resp-' + Math.random().toString(36).slice(2, 11);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_competency');
 
@@ -678,11 +700,23 @@ define([
                         frameworkid,
                         frameworkshortname,
                         usedlevels,
-                        competencies,
+                        // Each tag carries its idnumber, so applying it never has to guess from the label.
+                        competencies: competencies.map((label, i) => ({label, idnumber: suggestions[i]?.idnumber || ''})),
+                        warnings,
+                        suggestions,
+                        hasreasons: suggestions.some(c => c.reason),
                     }
                 );
 
                 this.aiDrawerBodyElement.innerHTML = responseHtml;
+
+                const back = this.aiDrawerBodyElement.querySelector('[data-action="back"]');
+                if (back) {
+                    back.addEventListener('click', e => {
+                        e.preventDefault();
+                        this.showLevels(prompt, fw);
+                    });
+                }
 
                 const regen = this.aiDrawerBodyElement.querySelector('[data-action="regenerate"]');
                 if (regen) {
@@ -693,7 +727,7 @@ define([
                 }
             } catch (error) {
                 if (!this.isRequestCancelled()) {
-                    const errorHtml = await Templates.render('aiplacement_competency/error', {});
+                    const errorHtml = await Templates.render('aiplacement_competency/error', {message: error?.message || ''});
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
                     Notification.exception(error);
                 }

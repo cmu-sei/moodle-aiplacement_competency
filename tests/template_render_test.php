@@ -79,6 +79,66 @@ final class template_render_test extends \advanced_testcase {
         $this->assertNotSame('', trim($html), "Rendered HTML is empty for {$templatename}");
     }
 
+    public function test_response_template_shows_warnings_and_reasons_outside_the_competency_list(): void {
+        global $PAGE, $OUTPUT;
+
+        $PAGE->set_context(\context_system::instance());
+        $PAGE->set_url(new \moodle_url('/'));
+
+        $html = $OUTPUT->render_from_template(self::COMPONENT . '/response', [
+            'action' => 'classify',
+            'heading' => 'AI Classification',
+            'uniqid' => 'abc123',
+            'frameworkid' => 1,
+            'frameworkshortname' => 'NICE',
+            'usedlevels' => ['Tasks'],
+            'competencies' => [['label' => 'T1 - One', 'idnumber' => 'T1']],
+            'warnings' => ['Check the <transcript>'],
+            'hasreasons' => true,
+            'suggestions' => [['idnumber' => 'T1', 'reason' => 'Because <b>of this</b>']],
+        ]);
+
+        $this->assertStringContainsString('Check the &lt;transcript&gt;', $html);
+        $this->assertStringContainsString('Because &lt;b&gt;of this&lt;/b&gt;', $html);
+        // The apply flow reads every li inside the competencies list, so a reason there would be applied as one.
+        $start = strpos($html, 'data-section="competencies"');
+        $competencies = substr($html, $start, strpos($html, '</dd>', $start) - $start);
+        $this->assertStringNotContainsString('Because', $competencies);
+    }
+
+    public function test_response_template_offers_a_back_button_with_no_results(): void {
+        global $PAGE, $OUTPUT;
+
+        $PAGE->set_context(\context_system::instance());
+        $PAGE->set_url(new \moodle_url('/'));
+
+        $html = $OUTPUT->render_from_template(self::COMPONENT . '/response', [
+            'action' => 'classify',
+            'heading' => 'AI Classification',
+            'uniqid' => 'abc123',
+            'frameworkid' => 1,
+            'frameworkshortname' => 'DCWF',
+            'usedlevels' => ['Tasks'],
+            'competencies' => [],
+        ]);
+
+        $this->assertStringContainsString('data-action="back"', $html);
+        $this->assertStringContainsString('data-action="regenerate"', $html);
+    }
+
+    public function test_levels_template_offers_verification_only_when_enabled(): void {
+        global $PAGE, $OUTPUT;
+
+        $PAGE->set_context(\context_system::instance());
+        $PAGE->set_url(new \moodle_url('/'));
+
+        $off = $OUTPUT->render_from_template(self::COMPONENT . '/levels', ['options' => []]);
+        $on = $OUTPUT->render_from_template(self::COMPONENT . '/levels', ['options' => [], 'showverify' => true]);
+
+        $this->assertStringNotContainsString('classify-verify', $off);
+        $this->assertStringContainsString('classify-verify', $on);
+    }
+
     public function test_levels_template_escapes_author_text_and_pairs_its_labels(): void {
         global $PAGE, $OUTPUT;
 
@@ -156,8 +216,8 @@ final class template_render_test extends \advanced_testcase {
                 'frameworkshortname' => 'NICE-1.0.0',
                 'usedlevels' => ['Analyze', 'Detect'],
                 'competencies' => [
-                    'T1119 - Recommend vulnerability remediation strategies',
-                    'T1059 - Command and Scripting Interpreter',
+                    ['label' => 'T1119 - Recommend vulnerability remediation strategies', 'idnumber' => 'T1119'],
+                    ['label' => 'T1059 - Command and Scripting Interpreter', 'idnumber' => 'T1059'],
                 ],
             ]],
         ];

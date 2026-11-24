@@ -50,6 +50,6 @@ class assign_source extends source {
     public function get_content(): string {
         $instance = $this->get_instance('id, activity');
 
-        return $instance ? self::clean($instance->activity) : '';
+        return $instance ? self::clean_body($instance->activity) : '';
     }
 }

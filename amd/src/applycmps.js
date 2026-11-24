@@ -152,6 +152,9 @@ define([
     });
   }
 
+  // Idnumber of each suggested competency, by the label the person ticked.
+  var idnumberByLabel = new Map();
+
   // Get the AI response
   var extractFromResponse = function(root) {
     var out = { competencies: [] };
@@ -164,8 +167,16 @@ define([
       return out;
     }
 
+    // The idnumber the server validated for each label, so applying never re-guesses a competency from its words.
+    idnumberByLabel = new Map();
     out.competencies = toArray(dd.querySelectorAll('li'))
-      .map(function(li) { return (li.innerText || '').trim(); })
+      .map(function(li) {
+        var label = (li.innerText || '').trim();
+        if (label && li.dataset.idnumber) {
+          idnumberByLabel.set(label, li.dataset.idnumber);
+        }
+        return label;
+      })
       .filter(Boolean)
       .filter(function(s) { return s.toLowerCase() !== 'none'; });
 
@@ -243,7 +254,13 @@ define([
           var name = norm(parts.slice(1).join(' - '));
           var comp = null;
 
-          if (code && byIdnumber.has(code)) {
+          // The server already validated which competency this is. Trust that over the words.
+          var known = norm(idnumberByLabel.get(original) || '');
+          if (known && byIdnumber.has(known)) {
+            comp = byIdnumber.get(known);
+          }
+
+          if (!comp && code && byIdnumber.has(code)) {
             comp = byIdnumber.get(code);
           }
 
@@ -298,7 +315,7 @@ define([
    *
    * @param {number} cmid The course module id
    * @param {number} competencyId The competency id
-   * @returns {Promise} Resolves true when linked, false when the module already had it
+   * @returns {Promise} Resolves {added, failedtranscripts}: added is false when the module already had it
    */
   function addToModule(cmid, competencyId) {
     return Ajax.call([{
@@ -392,11 +409,17 @@ define([
                       var m = byId.get(id);
                       return m ? (m.shortname || m.input || ('ID ' + id)) : ('ID ' + id);
                     };
-                    stashCourseNotices(added.map(nameOf), exists.map(nameOf), failed.map(nameOf).concat(unmatchedLabels));
-
                     // Also link to CM if we're editing a module
                     var cmid = getCmidFromUrl();
-                    var toLink = Array.from(new Set([].concat(added, exists)));
+
+                    // On an activity page the server adds the course link itself before the activity
+                    // link, so a course add that failed here is retried there, and reported once, as
+                    // an activity failure if it fails again. Stopping at the course step left the
+                    // activity with no tags and nothing to say why.
+                    var courseFailed = cmid > 0 ? [] : failed;
+                    stashCourseNotices(added.map(nameOf), exists.map(nameOf), courseFailed.map(nameOf).concat(unmatchedLabels));
+
+                    var toLink = Array.from(new Set([].concat(added, exists, cmid > 0 ? failed : [])));
                     var linkPromise = Promise.resolve();
                     if (cmid > 0 && toLink.length) {
                       var byIdName = new Map();
@@ -406,11 +429,21 @@ define([
                         }
                       });
                       linkPromise = Promise.all(toLink.map(function(id){
-                        return addToModule(cmid, id).then(function(ok){ return { id:id, status: ok ? 'added' : 'exists' }; })
+                        return addToModule(cmid, id).then(function(res){
+                          return {
+                            id: id,
+                            status: res && res.added ? 'added' : 'exists',
+                            transcripts: (res && res.failedtranscripts) || []
+                          };
+                        })
                           .catch(function(){ return { id:id, status:'failed' }; });
                       })).then(function(results){
-                        var addedIds=[], existsIds=[], failedIds=[];
+                        var addedIds=[], existsIds=[], failedIds=[], transcriptFailures=[];
                         results.forEach(function(r){
+                          // A lecture's transcript the competency could not be put on: say so, by competency.
+                          (r.transcripts || []).forEach(function(name){
+                            transcriptFailures.push((byIdName.get(r.id) || ('ID ' + r.id)) + ' → ' + name);
+                          });
                           if (r.status === 'added') {
                             addedIds.push(r.id);
                           } else if (r.status === 'exists') {
@@ -422,7 +455,7 @@ define([
                         stashCmNotices(
                           addedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }),
                           existsIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }),
-                          failedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); })
+                          failedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }).concat(transcriptFailures)
                         );
                       });
                     }

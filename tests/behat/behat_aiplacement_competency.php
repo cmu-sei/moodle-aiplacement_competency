@@ -67,7 +67,10 @@ class behat_aiplacement_competency extends behat_base {
             'frameworkid' => 1,
             'frameworkshortname' => 'NICE',
             'usedlevels' => ['basic'],
-            'competencies' => array_map(fn($row) => $row[0], $table->getRows()),
+            'competencies' => array_map(
+                fn($row) => ['label' => $row[0], 'idnumber' => explode(' - ', $row[0], 2)[0]],
+                $table->getRows()
+            ),
         ];
         $json = json_encode($context);
         $this->execute_script(<<<JS

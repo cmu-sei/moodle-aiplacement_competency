@@ -52,13 +52,50 @@ namespace aiplacement_competency\local\content;
  */
 final class resolver {
     /**
-     * Ceiling on the characters of activity content added to one prompt.
+     * Ceiling on the characters of activity content read for one classification.
      *
-     * A book or lesson can hold far more text than a model will accept, and the
-     * provider rejects the whole request rather than truncating it. Cut on a
-     * word boundary and say so, rather than sending something that fails.
+     * The classifier sends content to the model in sections, so a long lecture
+     * transcript is read whole. This is only a guard against a runaway file, and
+     * is far beyond any real transcript or chapter set.
      */
-    public const MAX_CONTENT_LENGTH = 20000;
+    public const MAX_CONTENT_LENGTH = 400000;
+
+    /**
+     * Words in a heading that mark a solution guide or walkthrough.
+     *
+     * Models stop on these: CTF solution guides read as attack instructions.
+     * They teach nothing the lab's own tasks do not, so they are not sent.
+     */
+    private const SOLUTION_PATTERN =
+        '/\b(solutions?|walk[- ]?throughs?|answer[ _-]?keys?|write[- ]?ups?|spoilers?|cheat[ _-]?sheets?)\b/iu';
+
+    /**
+     * A line that is nothing but a solution heading: 'Solution guide', 'Lab walkthrough', 'Answer key'.
+     *
+     * Deliberately narrow. 'Endpoint Security Solutions' and 'Design a solution for the network' are about
+     * solutions, and cutting the rest of a description at them would lose real content.
+     */
+    private const HEADING_PATTERN = '/^\W*' .
+        '(?:(?:lab|ctf|full|complete|instructors?|exercise|task|challenge|part|step|question|problem|level|detailed|' .
+        'step[- ]by[- ]step|\#?\d+)\s+)*' .
+        '(?:solutions?|walk[- ]?throughs?|answer[ _-]?keys?|write[- ]?ups?|spoilers?|cheat[ _-]?sheets?)' .
+        '(?:\s+(?:guide|guides|notes|steps|sheet|key|manual|only|section)|' .
+        '\s+to\s+(?:(?:lab|task|challenge|exercise|question|problem)\s+)?\#?\d+)?\W*$/iu';
+
+    /**
+     * The words that open a guide even with its first sentence after the colon: 'Walkthrough: start by...'.
+     */
+    private const LEADIN_PATTERN = '/^\W*(?:(?:lab|ctf|full|complete|instructors?|exercise|task|challenge|\#?\d+)\s+)*' .
+        '(?:walk[- ]?throughs?|answer[ _-]?keys?|spoilers?|solutions?\s+(?:guide|guides|notes|steps|manual|key))\W*$/iu';
+
+    /**
+     * Headings that are a guide however they are used: the lead-in words plus the ones that are ordinary with a body.
+     *
+     * A heading of just 'Write-up' is a guide, where 'Write-up: submit a PDF' is an assignment.
+     */
+    private const STRONG_HEADING_PATTERN = '/^\W*(?:(?:lab|ctf|full|complete|instructors?|exercise|task|challenge|\#?\d+)\s+)*' .
+        '(?:walk[- ]?throughs?|answer[ _-]?keys?|write[- ]?ups?|cheat[ _-]?sheets?|spoilers?|' .
+        'solutions?\s+(?:guide|guides|notes|steps|manual|key))\W*$/iu';
 
     /**
      * Returns the content source for an activity, or null when it has none.
@@ -93,7 +130,7 @@ final class resolver {
             return '';
         }
 
-        return self::truncate($source->get_content());
+        return self::truncate(self::drop_solutions($source->get_content(), true));
     }
 
     /**
@@ -134,6 +171,8 @@ final class resolver {
         if ($prompttext === '') {
             $prompttext = self::get_intro($cm);
         }
+        // Whatever the caller sent may hold a solution section pasted into the description.
+        $prompttext = trim(self::drop_solutions($prompttext));
         if ($prompttext !== '') {
             $parts[] = $prompttext;
         }
@@ -142,13 +181,262 @@ final class resolver {
         if ($source !== null) {
             // Dropped before truncating, so the prompt budget is spent on
             // content the caller has not already sent.
-            $content = self::truncate(self::strip_duplicates($prompttext, $source->get_content()));
+            $content = self::truncate(self::drop_solutions(self::strip_duplicates($prompttext, $source->get_content()), true));
             if ($content !== '') {
                 $parts[] = $content;
             }
         }
 
         return implode("\n\n", $parts);
+    }
+
+    /**
+     * Removes the chunks of content that are solution guides.
+     *
+     * A chunk reads 'Heading (Title): body', so a solution is recognised by its heading.
+     *
+     * @param string $content The content.
+     * @return string The content without solution guides.
+     */
+    public static function drop_solutions(string $content, bool $labelled = false): string {
+        if ($content === '') {
+            return $content;
+        }
+
+        if ($labelled) {
+            return self::drop_labelled_solutions($content);
+        }
+
+        $withoutsections = self::drop_solution_html($content);
+        $content = $withoutsections === $content ? $content : rtrim($withoutsections);
+
+        // Lines, not blank line paragraphs: a description is usually written without blank lines, and as markup it
+        // arrives as <p> after <p>. Each block closing tag ends a line.
+        $lines = preg_split(
+            '/\R|(?<=<\/p>|<\/div>|<\/li>|<\/h1>|<\/h2>|<\/h3>|<\/h4>|<\/h5>|<\/h6>|<br>|<br\/>|<br \/>)/iu',
+            $content
+        ) ?: [$content];
+
+        foreach ($lines as $i => $line) {
+            if (self::is_solution_heading($line)) {
+                // A guide is written last and runs on past its heading, with sub headings of its own, so
+                // once one starts the rest of this text goes. Losing a section after it costs less than sending it.
+                return trim(implode("\n", array_slice($lines, 0, $i)));
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * Drops the chunks of a content source whose label says they are a solution.
+     *
+     * A source writes 'Label (Title): body' chunks separated by blank lines, and each stands alone. Only the label
+     * and the title are judged, each as a heading: a chapter called 'Endpoint Security Solutions' is kept.
+     *
+     * @param string $content The content a source returned.
+     * @return string The content without those chunks.
+     */
+    private static function drop_labelled_solutions(string $content): string {
+        $kept = [];
+        foreach (preg_split('/\R{2,}/u', $content) ?: [] as $chunk) {
+            $label = self::source_label($chunk);
+            if ($label !== null) {
+                $parts = [trim(preg_replace('/\([^)]*\)/u', '', $label)), ...self::parenthesised($label)];
+                foreach ($parts as $part) {
+                    if (preg_match(self::HEADING_PATTERN, $part)) {
+                        continue 2;
+                    }
+                }
+            }
+            $kept[] = $chunk;
+        }
+
+        return implode("\n\n", $kept);
+    }
+
+    /**
+     * The text inside the brackets of a label.
+     *
+     * @param string $label The label, such as 'Chapter 2 (Solution guide)'.
+     * @return string[] The bracketed parts.
+     */
+    private static function parenthesised(string $label): array {
+        preg_match_all('/\(([^)]*)\)/u', $label, $m);
+
+        return array_map('trim', $m[1]);
+    }
+
+    /**
+     * Removes HTML sections that open with a solution heading.
+     *
+     * A description scraped from the editor can arrive as one line of markup, so the heading is found by its tag. A
+     * heading tag's section runs to the next heading of the same or a higher level. A bold lead-in such as
+     * '<p><strong>Walkthrough:</strong> start by...' has no level, so its section runs to the end.
+     *
+     * @param string $content The content.
+     * @return string The content without those sections.
+     */
+    private static function drop_solution_html(string $content): string {
+        $cuts = [];
+
+        if (preg_match_all('/<h([1-6])\b[^>]*>(.*?)<\/h\1>/isu', $content, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            foreach ($found as $i => $heading) {
+                if (!preg_match(self::HEADING_PATTERN, self::heading_text($heading[2][0]))) {
+                    continue;
+                }
+                $end = strlen($content);
+                for ($j = $i + 1; $j < count($found); $j++) {
+                    if ((int)$found[$j][1][0] <= (int)$heading[1][0]) {
+                        $end = $found[$j][0][1];
+                        break;
+                    }
+                }
+                $cuts[] = [$heading[0][1], $end];
+            }
+        }
+
+        // A paragraph that opens in bold. When the bold is the whole paragraph it is a heading, and when text follows it
+        // is a lead-in such as 'Solution: use parameterised queries', which only the guide words count as.
+        $boldpattern = '/<p\b[^>]*>\s*<(strong|b)\b[^>]*>(.*?)<\/\1>(.*?)<\/p>/isu';
+        if (preg_match_all($boldpattern, $content, $bold, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            foreach ($bold as $i => $para) {
+                $text = self::heading_text($para[2][0]);
+                $hasbody = self::heading_text($para[3][0]) !== '';
+                if ($hasbody ? !preg_match(self::LEADIN_PATTERN, rtrim($text, ': ')) : !preg_match(self::HEADING_PATTERN, $text)) {
+                    continue;
+                }
+                $end = strlen($content);
+                if (!$hasbody && !preg_match(self::STRONG_HEADING_PATTERN, $text)) {
+                    // A bare 'Solution' is as likely a lesson's own sub heading as a guide: it runs to the next heading.
+                    $end = self::next_heading($content, $para[0][1] + strlen($para[0][0]), $bold, $i);
+                }
+                $cuts[] = [$para[0][1], $end];
+            }
+        }
+
+        if (empty($cuts)) {
+            return $content;
+        }
+
+        // Merge the ranges, then cut from the last to the first so the offsets of those still to cut hold.
+        usort($cuts, static fn($a, $b) => $a[0] <=> $b[0]);
+        $merged = [array_shift($cuts)];
+        foreach ($cuts as [$start, $end]) {
+            $last = count($merged) - 1;
+            if ($start <= $merged[$last][1]) {
+                $merged[$last][1] = max($merged[$last][1], $end);
+            } else {
+                $merged[] = [$start, $end];
+            }
+        }
+        foreach (array_reverse($merged) as [$start, $end]) {
+            $content = substr($content, 0, $start) . substr($content, $end);
+        }
+
+        return $content;
+    }
+
+    /**
+     * The label of a chunk a content source wrote, 'Label (Title): body', or null for any other text.
+     *
+     * Sources write short labels such as 'Chapter 2' or 'Transcript', so a long run of words before a colon
+     * is a sentence of a description and not a label.
+     *
+     * @param string $chunk The chunk.
+     * @return string|null The label with its title, or null.
+     */
+    private static function source_label(string $chunk): ?string {
+        if (!preg_match('/^([^\n:()]{1,40}?)(\s*\([^\n)]{0,120}\))?: /u', trim($chunk), $m)) {
+            return null;
+        }
+
+        return str_word_count($m[1]) <= 3 ? $m[1] . ($m[2] ?? '') : null;
+    }
+
+    /**
+     * Where the next heading begins after a position: a heading tag or a paragraph that is bold throughout.
+     *
+     * @param string $content The markup.
+     * @param int $from The offset to look from.
+     * @param array $bold The bold lead paragraphs found, as preg_match_all returned them with offsets.
+     * @param int $index The position in $bold of the paragraph the section opens with.
+     * @return int The offset, or the end of the content.
+     */
+    private static function next_heading(string $content, int $from, array $bold, int $index): int {
+        $next = strlen($content);
+        if (preg_match('/<h[1-6]\b/i', $content, $m, PREG_OFFSET_CAPTURE, $from)) {
+            $next = $m[0][1];
+        }
+        for ($j = $index + 1; $j < count($bold); $j++) {
+            if (self::heading_text($bold[$j][3][0]) === '') {
+                return min($next, $bold[$j][0][1]);
+            }
+        }
+
+        return $next;
+    }
+
+    /**
+     * The text of a heading's markup, tags removed and entities and non breaking spaces turned into what they stand for.
+     *
+     * @param string $html The heading's inner markup.
+     * @return string The text.
+     */
+    private static function heading_text(string $html): string {
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim(str_replace("\u{00A0}", ' ', $text));
+    }
+
+    /**
+     * Whether a line of a description is, or opens with, a heading that introduces a solution.
+     *
+     * 'Walkthrough:' and 'Solution guide' qualify, with or without a body after the colon.
+     *
+     * @param string $line The line.
+     * @return bool True when it is such a heading.
+     */
+    private static function is_solution_heading(string $line): bool {
+        $line = self::heading_text($line);
+        if (preg_match(self::HEADING_PATTERN, rtrim($line, ':'))) {
+            return true;
+        }
+
+        // A line like 'Walkthrough: start by running nmap' opens a guide as much as a heading does. Only words
+        // that are not ordinary teaching wording count with a body after the colon: 'Solution: use parameterised
+        // queries' follows 'Problem:' in any lesson, and 'Write-up: submit a PDF' is an assignment instruction.
+        $head = explode(': ', $line, 2);
+
+        return count($head) === 2 && preg_match(self::LEADIN_PATTERN, $head[0]);
+    }
+
+    /**
+     * Whether a file name is that of a solution guide.
+     *
+     * @param string $filename The file name.
+     * @return bool True when it should not be sent.
+     */
+    public static function is_solution_file(string $filename): bool {
+        $name = trim((string)preg_replace('/[\s._\-]+/u', ' ', pathinfo($filename, PATHINFO_FILENAME)));
+        // The file 'Endpoint Security Solutions.txt' is a lesson about solutions, and 'lab3-solution.pdf' is a guide.
+        // A short name is a guide if it says so anywhere, a longer one only if the whole name is a solution heading.
+        if (!preg_match(self::SOLUTION_PATTERN, $name)) {
+            return false;
+        }
+
+        // The one exception: a name that is about solutions in the plural, as a lesson is, and says nothing of a lab,
+        // task or answers, as 'Endpoint Security Solutions' does.
+        $guidewords = '/\b(?:lab|ctf|task|challenge|exercise|module|answers?|instructors?|full|complete|homework|' .
+            'exam|quiz|test|midterm|final|assignment|worksheet|problems?|sets?)\b/iu';
+        $others = trim((string)preg_replace('/\bsolutions\b/iu', '', $name));
+        $othersguide = preg_match('/\b(?:solution|walk[- ]?through|answer|write[- ]?up|spoiler|cheat)/iu', $others);
+        $lesson = preg_match('/\bsolutions\b/iu', $name) && !$othersguide && !preg_match($guidewords, $others);
+        if ($lesson && str_word_count($others) >= 2) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

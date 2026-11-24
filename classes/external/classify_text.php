@@ -43,8 +43,9 @@ use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_multiple_structure;
+use aiplacement_competency\local\content\filetext;
 use aiplacement_competency\local\content\resolver;
-use aiplacement_competency\local\utils;
+use aiplacement_competency\local\classifier;
 
 /**
  * External function to classify text against a competency framework.
@@ -75,6 +76,7 @@ class classify_text extends external_api {
                 VALUE_DEFAULT,
                 []
             ),
+            'verify' => new external_value(PARAM_BOOL, 'Run the verification pass', VALUE_DEFAULT, false),
         ]);
     }
 
@@ -86,6 +88,7 @@ class classify_text extends external_api {
      * @param int $selectedframeworkid Framework ID (optional).
      * @param string $selectedframeworkshortname Framework shortname (optional).
      * @param array $levels Selected level names (optional).
+     * @param bool $verify Whether to run the verification pass (optional).
      * @return array The classification result containing framework info,
      *               levels used, and matched competencies.
      */
@@ -94,7 +97,8 @@ class classify_text extends external_api {
         string $prompttext,
         int $selectedframeworkid = 0,
         string $selectedframeworkshortname = '',
-        array $levels = []
+        array $levels = [],
+        bool $verify = false
     ): array {
         $params = self::validate_parameters(self::execute_parameters(), [
             'contextid' => $contextid,
@@ -102,11 +106,14 @@ class classify_text extends external_api {
             'selectedframeworkid' => $selectedframeworkid,
             'selectedframeworkshortname' => $selectedframeworkshortname,
             'levels' => $levels,
+            'verify' => $verify,
         ]);
 
         $context = \context::instance_by_id($params['contextid']);
         self::validate_context($context);
         require_capability('aiplacement/competency:classify_text', $context);
+
+        filetext::take_omitted();
 
         // In an activity context, add whatever content that kind of activity holds.
         if ($context->contextlevel == CONTEXT_MODULE) {
@@ -124,70 +131,35 @@ class classify_text extends external_api {
             $params['levels'] ?? []
         ))));
 
-        $placement = new \aiplacement_competency\placement();
-        $rawjson = $placement->classify(
+        $title = '';
+        if (isset($cm)) {
+            $title = trim(format_string($cm->name, true, ['context' => $context, 'escape' => false]));
+        }
+
+        $result = classifier::classify(
             $context,
             $params['prompttext'],
             (int)$params['selectedframeworkid'],
             (string)$params['selectedframeworkshortname'],
-            $selectedlevels
+            $selectedlevels,
+            $title,
+            (bool)$params['verify'] && get_config('aiplacement_competency', 'verify') !== '0'
         );
 
-        $outer = json_decode($rawjson, true);
-        $inner = [];
-
-        $decodejsonmaybe = static function (string $s): ?array {
-            $s = trim($s);
-            if (preg_match('/^\x60{3}[a-zA-Z]*\s*(.*?)\s*\x60{3}$/s', $s, $m)) {
-                $s = $m[1];
-            }
-            $decoded = json_decode($s, true);
-            if (is_array($decoded)) {
-                return $decoded;
-            }
-            $p1 = strpos($s, '{');
-            $p2 = strrpos($s, '}');
-            if ($p1 !== false && $p2 !== false && $p2 > $p1) {
-                $slice = substr($s, $p1, $p2 - $p1 + 1);
-                $decoded = json_decode($slice, true);
-                if (is_array($decoded)) {
-                    return $decoded;
-                }
-            }
-            return null;
-        };
-
-        if (is_array($outer) && array_key_exists('generatedcontent', $outer)) {
-            $inner = is_string($outer['generatedcontent'])
-                ? ($decodejsonmaybe($outer['generatedcontent']) ?? [])
-                : (is_array($outer['generatedcontent']) ? $outer['generatedcontent'] : []);
-        } else {
-            $inner = is_array($outer) ? $outer : ($decodejsonmaybe((string)$rawjson) ?? []);
-        }
-
-        $fwshort = (string)($inner['framework']['shortname'] ?? $params['selectedframeworkshortname']);
-
-        $usedlevels = $selectedlevels;
-
-        $competencies = [];
-        if (!empty($inner['competencies']) && is_array($inner['competencies'])) {
-            $competencies = array_values(array_unique(array_filter(array_map(
-                static function ($s) {
-                    $s = trim((string)$s);
-                    return $s === '' ? null : $s;
-                },
-                $inner['competencies']
-            ))));
+        $omitted = filetext::take_omitted();
+        if (!empty($omitted)) {
+            $result['warnings'][] = get_string('filesomitted', 'aiplacement_competency', implode(', ', $omitted));
         }
 
         return [
             'frameworkid'        => (int)$params['selectedframeworkid'],
-            'frameworkshortname' => $fwshort,
-            'usedlevels'         => $usedlevels,
-            'competencies'       => $competencies,
-            // Commented out to hide debug information from users.
-            // 'prompttext'         => $params['prompttext'],
-            // 'promptlength'       => strlen($params['prompttext']),
+            'frameworkshortname' => $result['frameworkshortname'],
+            'usedlevels'         => $selectedlevels,
+            'competencies'       => array_column($result['competencies'], 'label'),
+            'suggestions'        => array_map(static function ($c) {
+                return ['idnumber' => $c['idnumber'], 'label' => $c['label'], 'reason' => $c['reason']];
+            }, $result['competencies']),
+            'warnings'           => $result['warnings'],
         ];
     }
 
@@ -218,19 +190,22 @@ class classify_text extends external_api {
                 VALUE_DEFAULT,
                 []
             ),
-            // Commented out to hide debug information from users.
-            // 'prompttext' => new external_value(
-            // PARAM_RAW,
-            // 'The full prompt text sent to AI',
-            // VALUE_DEFAULT,
-            // ''
-            // ),
-            // 'promptlength' => new external_value(
-            // PARAM_INT,
-            // 'Length of prompt text in characters',
-            // VALUE_DEFAULT,
-            // 0
-            // ),
+            'suggestions' => new external_multiple_structure(
+                new external_single_structure([
+                    'idnumber' => new external_value(PARAM_RAW, 'Competency idnumber'),
+                    'label' => new external_value(PARAM_TEXT, 'Competency "CODE - Name"'),
+                    'reason' => new external_value(PARAM_TEXT, 'Why the content supports it', VALUE_DEFAULT, ''),
+                ]),
+                'Classified competencies with the reason for each',
+                VALUE_DEFAULT,
+                []
+            ),
+            'warnings' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Something to check before applying'),
+                'Warnings about the content or the result',
+                VALUE_DEFAULT,
+                []
+            ),
         ]);
     }
 }

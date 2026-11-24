@@ -48,10 +48,14 @@
                 "label": "Level name",
                 "help": "Optional helper text shown under the level"
             }
-        ]
+        ],
+        "showverify": true,
+        "verifychecked": false
     }
 
     Context fields:
+    - showverify (bool, optional): offers the "verify the suggested tags" checkbox
+    - verifychecked (bool, optional): ticks it, as when returning from a result that was verified
     - options (array): list of selectable levels
         - value (string): value for the checkbox (typically an id or key used by JS)
         - label (string): label shown next to the checkbox, as plain text
@@ -110,6 +114,16 @@
       <div class="text-muted">{{#str}} levelsselection_empty, aiplacement_competency {{/str}}</div>
     {{/options}}
   </div>
+
+  {{#showverify}}
+    <div class="form-check mt-3">
+      <label class="form-check-label">
+        <input class="form-check-input" type="checkbox" name="classify-verify" value="1"{{#verifychecked}} checked{{/verifychecked}}>
+        {{#str}} verifyoption, aiplacement_competency {{/str}}
+      </label>
+      <div class="form-text text-muted small">{{#str}} verifyoption_help, aiplacement_competency {{/str}}</div>
+    </div>
+  {{/showverify}}
 
   <div class="mt-3 d-flex" style="gap:.5rem;">
     <button class="btn btn-primary" data-action="continue" disabled>
