@@ -90,6 +90,7 @@ Rules
 ';
 $string['aiclassification_help'] = 'Uses AI to classify this content against the competency framework you select.';
 $string['aiclassificationlabel'] = 'AI Classification';
+$string['aiclassifyempty'] = 'The AI model returned no text. Some models answer with a reasoning block first, which Moodle reads as an empty reply. Try again, or check the provider\'s model settings.';
 $string['aiclassifyfailed'] = 'AI classification failed. Please try again.';
 $string['aiclassifyrefused'] = 'The AI model declined to classify this content, most likely because its safety filters objected to the security subject matter. Try a different model, or trim the content (solution guides and exploit walkthroughs are the usual cause).';
 $string['applycmps_clearall'] = 'Clear all';

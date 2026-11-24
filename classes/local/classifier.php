@@ -131,7 +131,12 @@ final class classifier {
             $inner = self::decode($raw);
             if ($inner === []) {
                 $reply = self::reply_text($raw);
-                if ($reply !== '' && placement::looks_like_refusal($reply)) {
+                if ($reply === '') {
+                    // Some providers return only a reasoning block first, which core reads as no text at all.
+                    $failure ??= new \moodle_exception('aiclassifyempty', 'aiplacement_competency');
+                    continue;
+                }
+                if (placement::looks_like_refusal($reply . ' ' . self::finish_reason($raw))) {
                     $failure ??= new \moodle_exception('aiclassifyrefused', 'aiplacement_competency');
                     continue;
                 }
@@ -361,6 +366,18 @@ final class classifier {
     }
 
     /**
+     * Why the model stopped, as the provider reported it.
+     *
+     * @param string $rawjson The provider's response data, JSON encoded.
+     * @return string The reason, or an empty string.
+     */
+    private static function finish_reason(string $rawjson): string {
+        $outer = json_decode($rawjson, true);
+
+        return is_array($outer) && is_string($outer['finishreason'] ?? null) ? $outer['finishreason'] : '';
+    }
+
+    /**
      * The model's reply as text, for spotting a refusal.
      *
      * @param string $rawjson The provider's response data, JSON encoded.
@@ -368,16 +385,8 @@ final class classifier {
      */
     private static function reply_text(string $rawjson): string {
         $outer = json_decode($rawjson, true);
-        $parts = [];
-        if (is_array($outer)) {
-            foreach (['generatedcontent', 'finishreason'] as $key) {
-                if (isset($outer[$key]) && is_string($outer[$key])) {
-                    $parts[] = $outer[$key];
-                }
-            }
-        }
 
-        return trim(implode(' ', $parts));
+        return is_array($outer) && is_string($outer['generatedcontent'] ?? null) ? trim($outer['generatedcontent']) : '';
     }
 
     /**

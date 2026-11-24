@@ -718,4 +718,22 @@ final class classifytext_test extends \advanced_testcase {
         $this->assertNotEmpty($result['warnings']);
         $this->assertStringContainsString('Cryptography Lecture', $result['warnings'][0]);
     }
+
+    /**
+     * An empty reply, as when a reasoning block comes first, gets its own message.
+     */
+    public function test_execute_reports_an_empty_reply(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $response = new response_generate_text(success: true);
+        $response->set_response_data(['generatedcontent' => '', 'finishreason' => 'stop']);
+        $this->mock_ai_sequence([$response]);
+
+        try {
+            classify_text::execute($cmctx->id, 'Some text', 0, '', []);
+            $this->fail('An empty reply should throw.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiclassifyempty', $e->errorcode);
+        }
+    }
 }
