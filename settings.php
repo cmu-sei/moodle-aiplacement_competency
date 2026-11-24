@@ -54,6 +54,22 @@ if ($ADMIN->fulltree) {
     ));
 
     $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/maxsections',
+        get_string('setting_maxsections', 'aiplacement_competency'),
+        get_string('setting_maxsections_desc', 'aiplacement_competency'),
+        \aiplacement_competency\local\classifier::MAX_CHUNKS,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/timebudget',
+        get_string('setting_timebudget', 'aiplacement_competency'),
+        get_string('setting_timebudget_desc', 'aiplacement_competency'),
+        \aiplacement_competency\local\classifier::TIME_BUDGET,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'aiplacement_competency/maxcandidates',
         get_string('setting_maxcandidates', 'aiplacement_competency'),
         get_string('setting_maxcandidates_desc', 'aiplacement_competency'),

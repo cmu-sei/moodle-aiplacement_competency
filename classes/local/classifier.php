@@ -57,8 +57,16 @@ final class classifier {
     /** Characters of content sent in one request. */
     public const CHUNK_SIZE = 12000;
 
-    /** Most sections read for one activity. Beyond this, sections are sampled evenly. */
-    public const MAX_CHUNKS = 12;
+    /**
+     * Most sections read for one activity when the setting is unset. Beyond this, sections are sampled evenly.
+     *
+     * Each section is a model request of some 4 to 8 seconds, and they run one after another inside a single web
+     * request, so this and the time budget keep one click inside the web server's time limit (60 s in the Moodle image).
+     */
+    public const MAX_CHUNKS = 6;
+
+    /** Seconds after which no further section is started, when the setting is unset. */
+    public const TIME_BUDGET = 40;
 
     /** Characters of content shown to the verification pass. */
     private const VERIFY_BUDGET = 60000;
@@ -98,8 +106,11 @@ final class classifier {
 
         $chunks = self::split($text);
         $total = count($chunks);
-        if ($total > self::MAX_CHUNKS) {
-            $chunks = self::sample($chunks, self::MAX_CHUNKS);
+        $started = microtime(true);
+        $budget = self::time_budget();
+        $limit = self::max_sections();
+        if ($total > $limit) {
+            $chunks = self::sample($chunks, $limit);
             $warnings[] = get_string('contentpartial', 'aiplacement_competency', (object)[
                 'read' => count($chunks),
                 'total' => $total,
@@ -114,7 +125,14 @@ final class classifier {
         $skipped = 0;
         $offered = 0;
 
+        $unread = 0;
         foreach ($chunks as $position => $chunk) {
+            if ($position > 0 && microtime(true) - $started >= $budget) {
+                // Another request could carry the web server past its time limit, and the answer would be lost.
+                $unread = count($chunks) - $position;
+                $chunks = array_slice($chunks, 0, $position);
+                break;
+            }
             $prepared = utils::prepare($frameworkid, $shortname, $levels, $chunk, $title);
             $offered += count($prepared['candidates']);
             $label = count($chunks) > 1
@@ -175,6 +193,12 @@ final class classifier {
         if ($succeeded === 0 && $failure !== null) {
             throw $failure;
         }
+        if ($unread > 0) {
+            $warnings[] = get_string('timebudgetreached', 'aiplacement_competency', (object)[
+                'read' => count($chunks),
+                'total' => $total,
+            ]);
+        }
         if ($offered === 0) {
             $warnings[] = get_string('nocandidates', 'aiplacement_competency');
         }
@@ -192,6 +216,8 @@ final class classifier {
         });
         $found = array_slice($found, 0, utils::max_tags());
 
+        // The review is one more request: skipped when the time left would not cover it.
+        $verify = $verify && microtime(true) - $started < $budget;
         if ($verify && !empty($found)) {
             [$found, $removed, $verified] = self::verify($placement, $context, $found, $chunks, $title, $shortname);
             if (!$verified) {
@@ -237,6 +263,28 @@ final class classifier {
             'warnings' => $warnings,
             'frameworkshortname' => $fwshort,
         ];
+    }
+
+    /**
+     * The most sections to read, from the setting.
+     *
+     * @return int At least one.
+     */
+    private static function max_sections(): int {
+        $max = (int)get_config('aiplacement_competency', 'maxsections');
+
+        return $max > 0 ? $max : self::MAX_CHUNKS;
+    }
+
+    /**
+     * Seconds after which no further request is started, from the setting.
+     *
+     * @return float The budget.
+     */
+    private static function time_budget(): float {
+        $budget = (float)get_config('aiplacement_competency', 'timebudget');
+
+        return $budget > 0 ? $budget : (float)self::TIME_BUDGET;
     }
 
     /**

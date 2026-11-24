@@ -798,7 +798,7 @@ final class classifytext_test extends \advanced_testcase {
         $this->assertCount(\aiplacement_competency\local\classifier::MAX_CHUNKS, $this->sentprompts);
         $this->assertStringContainsString('STARTMARK', $this->sentprompts[0]);
         $this->assertStringContainsString('ENDMARK', end($this->sentprompts));
-        $this->assertStringContainsString('read in 12 of', implode(' ', $result['warnings']));
+        $this->assertStringContainsString('read in 6 of', implode(' ', $result['warnings']));
     }
 
     /**
@@ -1056,5 +1056,24 @@ final class classifytext_test extends \advanced_testcase {
         $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Skills']);
 
         $this->assertCount(3, array_unique(array_map('strtolower', $result['competencies'])));
+    }
+
+    /**
+     * Once the time budget is spent no further section is sent, and the result says so.
+     */
+    public function test_execute_stops_starting_sections_when_the_time_budget_is_spent(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        set_config('timebudget', '0.0001', 'aiplacement_competency');
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $this->mock_ai_manager(['competencies' => ['T1']]);
+        $text = str_repeat("Some lecture material about routing.\n\n", 800);
+
+        $result = classify_text::execute($cmctx->id, $text, $fw, 'TESTFW', ['Tasks'], true);
+
+        // The first section is always sent. A second would pass the budget, and so would the review.
+        $this->assertCount(1, $this->sentprompts);
+        $this->assertSame(['T1 - One'], $result['competencies']);
+        $this->assertStringContainsString('Stopped after 1 of', implode(' ', $result['warnings']));
     }
 }

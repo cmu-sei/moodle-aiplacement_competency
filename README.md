@@ -73,6 +73,8 @@ Site administration → AI → Placements → Competency:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
+| Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
+| Time budget (seconds) | 40 | No further section or verification request starts after this, to stay inside the web server's 60 second limit. |
 | Most tags per framework | 3 | The most competencies one classification returns. |
 | Candidates shown to the model | 80 | Frameworks with more competencies than this are narrowed to the closest keyword matches. |
 | Offer a verification pass | on | Adds the verify checkbox to the drawer. |
