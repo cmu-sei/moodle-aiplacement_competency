@@ -46,7 +46,7 @@ Feature: Apply AI-suggested competencies
     And I reload the page
     And I expand all fieldsets
     And I click on "Classify Text" "button"
-    And the field "classify-preselect" does not match value "DoD Workforce"
+    And the field "classify-preselect" matches value "Please choose a framework…"
 
   Scenario: The classify button is not shown when the placement is disabled
     Given the following config values are set as admin:

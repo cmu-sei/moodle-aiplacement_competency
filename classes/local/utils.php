@@ -157,7 +157,7 @@ class utils {
         foreach (['idnumber', 'shortname'] as $field) {
             $found = $DB->get_records_select(
                 'competency_framework',
-                'visible = 1 AND ' . $DB->sql_equal($field, ':wanted', false, false),
+                'visible = 1 AND ' . $DB->sql_equal($field, ':wanted', false, true),
                 ['wanted' => $wanted],
                 'id ASC',
                 'id',

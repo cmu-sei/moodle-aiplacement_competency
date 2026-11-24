@@ -99,4 +99,15 @@ final class settings_test extends \advanced_testcase {
         }
         $this->assertInstanceOf(\admin_setting_configtext::class, $found);
     }
+
+    public function test_the_default_framework_match_ignores_case_but_not_accents(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $generator->create_framework(['shortname' => 'Défense', 'idnumber' => 'DEF-1']);
+        $plain = $generator->create_framework(['shortname' => 'Defense', 'idnumber' => 'DEF-2']);
+
+        set_config('defaultframework', 'defense', 'aiplacement_competency');
+
+        $this->assertSame((int)$plain->get('id'), utils::default_framework_id());
+    }
 }
