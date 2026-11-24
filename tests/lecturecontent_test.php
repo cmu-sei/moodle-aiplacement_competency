@@ -184,7 +184,7 @@ final class lecturecontent_test extends \advanced_testcase {
 
         $this->assertStringContainsString('Learners scan a network.', $content);
         $this->assertStringNotContainsString('SECRETEXPLOIT', $content);
-        $this->assertSame("Intro: kept\n\nBody", resolver::drop_solutions("Intro: kept\n\nSolution guide: dropped\n\nBody"));
+        $this->assertSame("Intro: kept\n\nBody", resolver::drop_solutions("Intro: kept\n\nSolution guide: dropped\n\nBody", true));
     }
 
     /**
@@ -349,5 +349,57 @@ final class lecturecontent_test extends \advanced_testcase {
 
         $this->assertTrue($DB->record_exists('competency_modulecomp', ['cmid' => $label1->cmid]));
         $this->assertFalse($DB->record_exists('competency_modulecomp', ['cmid' => $trn1->cmid]));
+    }
+
+    public function test_a_walkthrough_that_opens_with_its_label_is_dropped_to_the_end(): void {
+        $content = "Intro text about Kerberos.\n\nWalkthrough: Start by running nmap\n\n" .
+            "Then run SECRETEXPLOIT\n\nFinally dump hashes";
+
+        $this->assertSame('Intro text about Kerberos.', resolver::drop_solutions($content));
+    }
+
+    public function test_headings_that_only_mention_solutions_are_kept(): void {
+        $plain = "Overview of the lab\n\nEndpoint Security Solutions\n\nYou will compare EDR products in detail.";
+        $html = '<h1>Lab 4: Designing a Network Solution</h1><p>Build a segmented network.</p>' .
+            '<h2>Tasks</h2><p>Configure it.</p>';
+
+        $this->assertSame($plain, resolver::drop_solutions($plain));
+        $this->assertSame($html, resolver::drop_solutions($html));
+    }
+
+    public function test_a_bold_paragraph_used_as_a_solution_heading_is_dropped_to_the_end(): void {
+        $html = '<p>Scan the network.</p><p><strong>Walkthrough</strong></p><p>Run SECRETCOMMAND.</p>';
+
+        $this->assertSame('<p>Scan the network.</p>', resolver::drop_solutions($html));
+    }
+
+    public function test_a_solution_inside_a_file_is_dropped(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $resource = $this->create_file_activity($course, [
+            'lab.txt' => "Scan the network.\n\nSolution guide\n\nRun SECRETCOMMAND.",
+            'lab.html' => '<p>Review the logs.</p><h3>Solution guide</h3><p>Run OTHERSECRET.</p>',
+        ]);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+
+        $content = resolver::get_content($cm, \context_module::instance($resource->cmid));
+
+        $this->assertStringContainsString('Scan the network.', $content);
+        $this->assertStringContainsString('Review the logs.', $content);
+        $this->assertStringNotContainsString('SECRETCOMMAND', $content);
+        $this->assertStringNotContainsString('OTHERSECRET', $content);
+    }
+
+    public function test_utf16_without_a_byte_order_mark_is_read_and_an_empty_result_is_reported(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $utf16 = mb_convert_encoding("WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nNOBOMWORDS", 'UTF-16LE', 'UTF-8');
+        $empty = "WEBVTT\n\nNOTE nothing here\n";
+        $resource = $this->create_file_activity($course, ['caps.vtt' => $utf16, 'empty.vtt' => $empty]);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+        filetext::take_omitted();
+
+        $content = resolver::get_content($cm, \context_module::instance($resource->cmid));
+
+        $this->assertStringContainsString('NOBOMWORDS', $content);
+        $this->assertSame(['empty.vtt'], filetext::take_omitted());
     }
 }

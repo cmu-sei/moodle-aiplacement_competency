@@ -133,8 +133,12 @@ final class classifier {
             }
 
             $inner = self::decode($raw);
-            if ($inner === []) {
+            if (!is_array($inner['competencies'] ?? null)) {
                 $reply = self::reply_text($raw);
+                if ($reply !== '' && $inner !== []) {
+                    // Valid JSON that is not the requested answer, such as a message from the model.
+                    $reply = $reply . ' ' . json_encode($inner);
+                }
                 if (placement::looks_like_refusal($reply . ' ' . self::finish_reason($raw))) {
                     $failure ??= new \moodle_exception('aiclassifyrefused', 'aiplacement_competency');
                 } else if ($reply === '') {
@@ -202,6 +206,18 @@ final class classifier {
             $warnings[] = get_string('contentmismatch', 'aiplacement_competency', $title !== '' ? $title : '?');
         }
 
+        // Two competencies can read alike in full. The apply step is told which is which by the idnumber, and
+        // the person ticking them needs to be able to tell them apart too.
+        $seen = [];
+        foreach ($found as &$tag) {
+            $key = \core_text::strtolower($tag['label']);
+            if (isset($seen[$key])) {
+                $tag['label'] .= ' (' . $tag['idnumber'] . ')';
+            }
+            $seen[$key] = true;
+        }
+        unset($tag);
+
         $competencies = array_map(static function ($c) {
             return array_intersect_key($c, array_flip(['id', 'idnumber', 'label', 'reason']));
         }, $found);
@@ -238,19 +254,34 @@ final class classifier {
             $lines[] = '[' . $tag['idnumber'] . '] ' . $tag['label'] . ' -- reason given: ' . ($tag['reason'] ?: 'none');
         }
 
-        // Show the reviewer the sections that back the tags, wherever in the content they are, so a tag
-        // taught only in the middle of a lecture is judged against that part of it.
-        $positions = [];
+        // Show the reviewer the sections that back the tags, wherever in the content they are. Every tag gets
+        // the first section that backs it, so none is judged against content that does not contain it, and
+        // what room is left goes to the other sections that back them.
+        $required = [];
+        $others = [];
         foreach ($found as $tag) {
-            $positions += $tag['sections'] ?? [];
+            $backing = array_keys($tag['sections'] ?? []);
+            sort($backing);
+            if ($backing) {
+                $required[$backing[0]] = true;
+                foreach (array_slice($backing, 1) as $position) {
+                    $others[$position] = true;
+                }
+            }
         }
-        $positions = array_keys($positions);
+        $room = max(count($required), intdiv(self::VERIFY_BUDGET, self::CHUNK_SIZE));
+        $positions = array_keys($required);
+        foreach (array_keys($others) as $position) {
+            if (count($positions) >= $room) {
+                break;
+            }
+            if (!isset($required[$position])) {
+                $positions[] = $position;
+            }
+        }
         sort($positions);
         $evidence = array_values(array_intersect_key($chunks, array_flip($positions)));
-        $evidence = $evidence ?: $chunks;
-        if (count($evidence) > intdiv(self::VERIFY_BUDGET, self::CHUNK_SIZE)) {
-            $evidence = self::sample($evidence, intdiv(self::VERIFY_BUDGET, self::CHUNK_SIZE));
-        }
+        $evidence = $evidence ?: array_slice($chunks, 0, $room);
 
         $prompt = get_string('verify_instruction', 'aiplacement_competency', (object)[
             'frameworkshortname' => $shortname,
@@ -267,12 +298,19 @@ final class classifier {
             return [$found, 0, false];
         }
 
-        // The reviewer may answer "CODE - Name" or "[CODE]" for an idnumber.
+        // The reviewer may answer with an idnumber, "[CODE] Name", "CODE - Name" or "CODE: Name".
         $keep = array_map(static function ($k) {
-            return \core_text::strtolower(trim(explode(' - ', trim((string)$k, "[] \t"), 2)[0], "[] \t"));
+            return \core_text::strtolower(ltrim(trim((string)$k), '[ '));
         }, $inner['keep']);
         $kept = array_values(array_filter($found, static function ($tag) use ($keep) {
-            return in_array(\core_text::strtolower($tag['idnumber']), $keep, true);
+            $code = preg_quote(\core_text::strtolower($tag['idnumber']), '/');
+            foreach ($keep as $entry) {
+                if (preg_match('/^' . $code . '(?![\p{L}\p{N}_])/u', $entry)) {
+                    return true;
+                }
+            }
+
+            return false;
         }));
         if (empty($kept) && !empty($keep)) {
             // It named things, and none of them is a tag. That is not an answer about these tags.

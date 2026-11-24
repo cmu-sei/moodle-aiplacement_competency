@@ -115,13 +115,19 @@ final class filetext {
 
         $raw = self::to_utf8($file->get_content());
         if ($ext === 'vtt') {
-            return self::parse_vtt($raw, self::is_chapter_file($file->get_filename()));
+            $text = self::parse_vtt($raw, self::is_chapter_file($file->get_filename()));
+        } else {
+            // A handout can carry its own solution section, which has to go before the markup does.
+            $raw = resolver::drop_solutions($raw);
+            $text = $ext === 'html' || $ext === 'htm'
+                ? trim(html_entity_decode(strip_tags($raw), ENT_QUOTES | ENT_HTML5, 'UTF-8'))
+                : trim($raw);
         }
-        if ($ext === 'html' || $ext === 'htm') {
-            return trim(html_entity_decode(strip_tags($raw), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($text === '' && trim($raw) !== '') {
+            self::$omitted[] = $file->get_filename();
         }
 
-        return trim($raw);
+        return $text;
     }
 
     /**
@@ -203,6 +209,10 @@ final class filetext {
     private static function to_utf8(string $raw): string {
         if (str_starts_with($raw, "\xFF\xFE") || str_starts_with($raw, "\xFE\xFF")) {
             return (string)mb_convert_encoding($raw, 'UTF-8', 'UTF-16');
+        }
+        // UTF-16 text without a byte order mark: every other byte is NUL, which is valid UTF-8 and so goes unnoticed.
+        if (strlen($raw) > 1 && substr_count($raw, "\0") >= strlen($raw) / 4) {
+            return (string)mb_convert_encoding($raw, 'UTF-8', ($raw[0] === "\0") ? 'UTF-16BE' : 'UTF-16LE');
         }
         $raw = (string)preg_replace('/^\xEF\xBB\xBF/', '', $raw);
 

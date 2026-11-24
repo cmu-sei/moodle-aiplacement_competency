@@ -70,6 +70,16 @@ final class resolver {
         '/\b(solutions?|walk-?throughs?|answer[ _-]?keys?|write-?ups?|spoilers?|cheat[ _-]?sheets?)\b/iu';
 
     /**
+     * A line that is nothing but a solution heading: 'Solution guide', 'Lab walkthrough', 'Answer key'.
+     *
+     * Deliberately narrow. 'Endpoint Security Solutions' and 'Design a solution for the network' are about
+     * solutions, and cutting the rest of a description at them would lose real content.
+     */
+    private const HEADING_PATTERN = '/^\W*(?:(?:lab|full|complete|instructors?|exercise|task|detailed|step[- ]by[- ]step)\s+)?' .
+        '(?:solutions?|walk-?throughs?|answer[ _-]?keys?|write-?ups?|spoilers?|cheat[ _-]?sheets?)' .
+        '(?:\s+(?:guide|guides|notes|steps|sheet|key|manual|only|section))?\W*$/iu';
+
+    /**
      * Returns the content source for an activity, or null when it has none.
      *
      * Sources are found by name: mod_book is served by book_source. A module
@@ -102,7 +112,7 @@ final class resolver {
             return '';
         }
 
-        return self::truncate(self::drop_solutions($source->get_content()));
+        return self::truncate(self::drop_solutions($source->get_content(), true));
     }
 
     /**
@@ -153,7 +163,7 @@ final class resolver {
         if ($source !== null) {
             // Dropped before truncating, so the prompt budget is spent on
             // content the caller has not already sent.
-            $content = self::truncate(self::drop_solutions(self::strip_duplicates($prompttext, $source->get_content())));
+            $content = self::truncate(self::drop_solutions(self::strip_duplicates($prompttext, $source->get_content()), true));
             if ($content !== '') {
                 $parts[] = $content;
             }
@@ -170,7 +180,7 @@ final class resolver {
      * @param string $content The content.
      * @return string The content without solution guides.
      */
-    public static function drop_solutions(string $content): string {
+    public static function drop_solutions(string $content, bool $labelled = false): string {
         if ($content === '') {
             return $content;
         }
@@ -184,10 +194,10 @@ final class resolver {
                 continue;
             }
 
-            $label = self::source_label($chunk);
-            if ($label !== null) {
-                // A source's own chunk is labelled, and each chunk stands alone.
-                if (preg_match(self::SOLUTION_PATTERN, $label)) {
+            if ($labelled) {
+                // A source's own chunks are 'Label (Title): body', and each stands alone.
+                $label = self::source_label($chunk);
+                if ($label !== null && preg_match(self::SOLUTION_PATTERN, $label)) {
                     continue;
                 }
             } else if (self::is_solution_heading($chunk)) {
@@ -205,38 +215,51 @@ final class resolver {
     /**
      * Removes HTML sections that open with a solution heading.
      *
-     * A description scraped from the editor can arrive as one line of markup, so the heading is found by its tag. The
-     * section runs to the next heading of the same or a higher level, or to the end.
+     * A description scraped from the editor can arrive as one line of markup, so the heading is found by its tag. A
+     * heading tag's section runs to the next heading of the same or a higher level. A bold paragraph used as a heading
+     * has no level, so its section runs to the end.
      *
      * @param string $content The content.
      * @return string The content without those sections.
      */
     private static function drop_solution_html(string $content): string {
-        if (!preg_match_all('/<h([1-6])\b[^>]*>(.*?)<\/h\1>/isu', $content, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
-            return $content;
-        }
-
         $cuts = [];
         $cutuntil = 0;
-        foreach ($found as $i => $heading) {
-            $start = $heading[0][1];
-            if ($start < $cutuntil || !preg_match(self::SOLUTION_PATTERN, strip_tags($heading[2][0]))) {
-                continue;
+
+        if (preg_match_all('/<h([1-6])\b[^>]*>(.*?)<\/h\1>/isu', $content, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            foreach ($found as $i => $heading) {
+                $start = $heading[0][1];
+                if ($start < $cutuntil || !preg_match(self::HEADING_PATTERN, trim(strip_tags($heading[2][0])))) {
+                    continue;
+                }
+                $end = strlen($content);
+                for ($j = $i + 1; $j < count($found); $j++) {
+                    if ((int)$found[$j][1][0] <= (int)$heading[1][0]) {
+                        $end = $found[$j][0][1];
+                        break;
+                    }
+                }
+                $cuts[] = [$start, $end];
+                $cutuntil = $end;
             }
-            $end = strlen($content);
-            for ($j = $i + 1; $j < count($found); $j++) {
-                if ((int)$found[$j][1][0] <= (int)$heading[1][0]) {
-                    $end = $found[$j][0][1];
+        }
+
+        $boldpattern = '/<p\b[^>]*>\s*<(strong|b)\b[^>]*>(.*?)<\/\1>\s*<\/p>/isu';
+        if (preg_match_all($boldpattern, $content, $bold, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            foreach ($bold as $para) {
+                if ($para[0][1] >= $cutuntil && preg_match(self::HEADING_PATTERN, trim(strip_tags($para[2][0])))) {
+                    $cuts[] = [$para[0][1], strlen($content)];
                     break;
                 }
             }
-            $cuts[] = [$start, $end];
-            $cutuntil = $end;
         }
 
         // From the last to the first, so the offsets of those still to cut hold.
-        foreach (array_reverse($cuts) as [$start, $end]) {
-            $content = substr($content, 0, $start) . substr($content, $end);
+        usort($cuts, static fn($a, $b) => $b[0] <=> $a[0]);
+        $last = PHP_INT_MAX;
+        foreach ($cuts as [$start, $end]) {
+            $content = substr($content, 0, $start) . substr($content, min($end, $last));
+            $last = $start;
         }
 
         return $content;
@@ -260,20 +283,20 @@ final class resolver {
     }
 
     /**
-     * Whether a chunk of plain text is a heading that introduces a solution.
+     * Whether a chunk of plain text opens with a heading that introduces a solution.
      *
-     * A heading is a short line with no sentence of its own: 'Solution guide', 'Walkthrough:', 'Answer key'.
-     * 'Design a solution for the network below.' is a sentence about solutions, and is kept.
+     * 'Walkthrough:' and 'Solution guide' qualify, with or without a body after the colon.
      *
      * @param string $chunk The chunk.
      * @return bool True when the chunk's first line is such a heading.
      */
     private static function is_solution_heading(string $chunk): bool {
         $line = trim(explode("\n", trim($chunk), 2)[0]);
-        $line = rtrim(trim(strip_tags($line)), ':');
+        $line = trim(strip_tags($line));
+        // The line 'Walkthrough: start by running nmap' opens a guide as much as a heading line on its own does.
+        $head = explode(': ', $line, 2)[0];
 
-        return \core_text::strlen($line) <= 60 && str_word_count($line) <= 5 && !preg_match('/[.!?,;]/u', $line)
-            && preg_match(self::SOLUTION_PATTERN, $line);
+        return (bool)preg_match(self::HEADING_PATTERN, rtrim($head, ':'));
     }
 
     /**

@@ -917,4 +917,88 @@ final class classifytext_test extends \advanced_testcase {
         $this->assertStringContainsString('"R&D Cryptography"', $this->sentprompts[0]);
         $this->assertStringNotContainsString('&amp;', $this->sentprompts[0]);
     }
+
+    /**
+     * Valid JSON that is not the answer asked for is not taken as "no competencies".
+     */
+    public function test_execute_reports_json_that_is_not_an_answer(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $this->mock_ai_manager(['message' => "I can't help with that request."]);
+
+        try {
+            classify_text::execute($cmctx->id, 'Some text', 0, '', []);
+            $this->fail('A non answer should throw.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiclassifyrefused', $e->errorcode);
+        }
+    }
+
+    /**
+     * The reviewer's keep list may carry the name too, in the form the verify prompt itself uses.
+     */
+    public function test_execute_verify_reads_bracketed_codes(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One', 'T2' => 'Two']]);
+        $this->mock_ai_sequence([
+            ['competencies' => ['T1', 'T2']],
+            ['keep' => ['T1', '[T2] Two', 'T3: not offered']],
+        ]);
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks'], true);
+
+        $this->assertCount(2, $result['competencies']);
+    }
+
+    /**
+     * Two competencies that read the same in full are told apart for the person ticking them.
+     */
+    public function test_execute_tells_apart_competencies_with_the_same_label(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $fw = (int)$generator->create_framework(['shortname' => 'TESTFW'])->get('id');
+        $parent = $generator->create_competency(['competencyframeworkid' => $fw, 'shortname' => 'Skills', 'idnumber' => 'Skills']);
+        foreach (['S001', 'S002'] as $idnumber) {
+            $generator->create_competency([
+                'competencyframeworkid' => $fw,
+                'parentid' => $parent->get('id'),
+                'shortname' => 'Network discovery',
+                'idnumber' => $idnumber,
+                'description' => 'Use nmap to find hosts.',
+            ]);
+        }
+        $this->mock_ai_manager(['competencies' => ['S001', 'S002']]);
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Skills']);
+
+        $this->assertCount(2, array_unique($result['competencies']));
+        $this->assertSame(['S001', 'S002'], array_column($result['suggestions'], 'idnumber'));
+    }
+
+    /**
+     * Each tag is judged against the first section that backs it, even when many sections back others.
+     */
+    public function test_execute_verify_always_shows_the_only_section_behind_a_tag(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        set_config('maxtags', 3, 'aiplacement_competency');
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One', 'T2' => 'Two']]);
+        $filler = str_repeat('filler words about nothing in particular. ', 200) . "\n\n";
+        $sections = [];
+        for ($i = 0; $i < 8; $i++) {
+            $sections[] = $i === 1 ? 'ONLYSECTIONMARK ' . $filler : $filler;
+        }
+        $answers = [];
+        for ($i = 0; $i < 8; $i++) {
+            $answers[] = ['competencies' => $i === 1 ? ['T2'] : ['T1']];
+        }
+        $answers[] = ['keep' => ['T1', 'T2']];
+        $this->mock_ai_sequence($answers);
+
+        classify_text::execute($cmctx->id, implode('', $sections), $fw, 'TESTFW', ['Tasks'], true);
+
+        $this->assertStringContainsString('ONLYSECTIONMARK', end($this->sentprompts));
+    }
 }
