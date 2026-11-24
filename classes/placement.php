@@ -63,15 +63,15 @@ class placement extends \core_ai\placement {
     }
 
     /**
-     * Run text classification via AI service.
+     * Classifies text against a competency framework.
      *
-     * @param context $context Moodle context object.
-     * @param string $prompttext The text to classify.
-     * @param int $selectedframeworkid Competency framework ID.
-     * @param string $selectedframeworkshortname Competency framework shortname.
-     * @param array $levels Selected levels.
-     * @return string JSON-encoded classification result.
-     * @throws \moodle_exception If AI classification fails.
+     * @param context $context The context the request is made in.
+     * @param string $prompttext The content to classify.
+     * @param int $selectedframeworkid The framework id.
+     * @param string $selectedframeworkshortname The framework shortname.
+     * @param array $levels The selected level names.
+     * @return string The provider's response data, as JSON.
+     * @throws \moodle_exception When the provider fails or declines.
      */
     public function classify(
         context $context,
@@ -80,24 +80,40 @@ class placement extends \core_ai\placement {
         string $selectedframeworkshortname = '',
         array $levels = []
     ): string {
-        global $USER;
-
         // Builds system instruction with course description.
-        $instruction = utils::build_instruction($selectedframeworkid, $selectedframeworkshortname, $levels);
-        $finalprompt = $instruction . "\n\nTEXT TO CLASSIFY:\n" . $prompttext;
+        $instruction = utils::build_instruction($selectedframeworkid, $selectedframeworkshortname, $levels, $prompttext);
+
+        return $this->send(
+            $context,
+            $instruction . "\n\nTEXT TO CLASSIFY:\n" . $prompttext,
+            [
+                'frameworkid'        => $selectedframeworkid,
+                'frameworkshortname' => $selectedframeworkshortname,
+                'levels'            => $levels,
+            ]
+        );
+    }
+
+    /**
+     * Sends a finished prompt to the AI subsystem.
+     *
+     * @param context $context The context the request is made in.
+     * @param string $prompt The whole prompt.
+     * @param array $meta Extra information to record against the action.
+     * @return string The provider's response data, as JSON.
+     * @throws \moodle_exception When the provider fails or declines.
+     */
+    public function send(context $context, string $prompt, array $meta = []): string {
+        global $USER;
 
         $action = new \core_ai\aiactions\generate_text(
             $context->id,
             (int)$USER->id,
-            $finalprompt
+            $prompt
         );
 
         if (method_exists($action, 'set_meta')) {
-            $action->set_meta([
-                'frameworkid'        => $selectedframeworkid,
-                'frameworkshortname' => $selectedframeworkshortname,
-                'levels'            => $levels,
-            ]);
+            $action->set_meta($meta);
         }
 
         $manager  = di::get(\core_ai\manager::class);
@@ -111,10 +127,32 @@ class placement extends \core_ai\placement {
             $msg = method_exists($response, 'get_errormessage')
                 ? (string)($response->get_errormessage() ?? '')
                 : 'Unknown AI error';
+            if (self::looks_like_refusal($msg)) {
+                throw new \moodle_exception('aiclassifyrefused', 'aiplacement_competency', '', null, $msg);
+            }
             throw new \moodle_exception('aiclassifyfailed', 'aiplacement_competency', '', null, $msg);
         }
 
         $rawdata = $response->get_response_data();
         return json_encode($rawdata, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Whether text from a provider reads as the model declining on safety grounds.
+     *
+     * Bedrock reports its cyber-content safeguards as an error or a stop reason,
+     * and a model may also answer in prose that it will not help. Either way the
+     * person needs to be told so rather than shown a generic failure.
+     *
+     * @param string $text An error message, stop reason or the start of a reply.
+     * @return bool True when it reads as a refusal.
+     */
+    public static function looks_like_refusal(string $text): bool {
+        return (bool)preg_match(
+            '/refus|safeguard|safety (filter|system|polic)|content[ _-]?(filter|polic)|guardrail|' .
+            'stop_reason.{0,6}(refusal|content)|' .
+            '\bI\s+(can\'?t|cannot|won\'?t|am unable to|\'m unable to)\s+(help|assist|provide|comply|classify)/iu',
+            $text
+        );
     }
 }

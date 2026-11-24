@@ -392,11 +392,17 @@ define([
                       var m = byId.get(id);
                       return m ? (m.shortname || m.input || ('ID ' + id)) : ('ID ' + id);
                     };
-                    stashCourseNotices(added.map(nameOf), exists.map(nameOf), failed.map(nameOf).concat(unmatchedLabels));
-
                     // Also link to CM if we're editing a module
                     var cmid = getCmidFromUrl();
-                    var toLink = Array.from(new Set([].concat(added, exists)));
+
+                    // On an activity page the server adds the course link itself before the activity
+                    // link, so a course add that failed here is retried there, and reported once, as
+                    // an activity failure if it fails again. Stopping at the course step left the
+                    // activity with no tags and nothing to say why.
+                    var courseFailed = cmid > 0 ? [] : failed;
+                    stashCourseNotices(added.map(nameOf), exists.map(nameOf), courseFailed.map(nameOf).concat(unmatchedLabels));
+
+                    var toLink = Array.from(new Set([].concat(added, exists, cmid > 0 ? failed : [])));
                     var linkPromise = Promise.resolve();
                     if (cmid > 0 && toLink.length) {
                       var byIdName = new Map();

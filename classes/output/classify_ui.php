@@ -84,7 +84,11 @@ class classify_ui {
 
         $html = $OUTPUT->render_from_template(
             'aiplacement_competency/drawer',
-            ['userid' => $USER->id, 'contextid' => $PAGE->context->id]
+            [
+                'userid' => $USER->id,
+                'contextid' => $PAGE->context->id,
+                'verify' => get_config('aiplacement_competency', 'verify') !== '0' ? 1 : 0,
+            ]
         );
         $hook->add_html($html);
 

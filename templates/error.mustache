@@ -34,10 +34,11 @@
     Template to display error message when AI placement fails.
 
     Context variables required for this template:
-    * none
+    * message (optional): why the request failed, as the server worded it
 
     Example context (json):
     {
+        "message": "The AI model declined to classify this content."
     }
 }}
 
@@ -48,6 +49,7 @@
             {{#str}} generatefailtitle, aiplacement_competency {{/str}}
         </h3>
         <div class="card-text content mt-3">
+            {{#message}}<p class="mb-2" data-region="error-message">{{message}}</p>{{/message}}
             <div class="d-block pt-3 course-assist-controls">
                 <button class="btn btn-sm btn-outline-secondary" data-action="retry">
                     {{#str}} tryagain, aiplacement_competency {{/str}}

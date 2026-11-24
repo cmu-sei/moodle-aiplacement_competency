@@ -171,8 +171,8 @@ final class contentresolver_test extends \advanced_testcase {
      */
     public function test_get_source_is_null_for_a_module_with_no_source(): void {
         $course = $this->getDataGenerator()->create_course();
-        $label = $this->getDataGenerator()->create_module('label', ['course' => $course->id]);
-        $cm = get_coursemodule_from_id('label', $label->cmid, 0, false, MUST_EXIST);
+        $label = $this->getDataGenerator()->create_module('url', ['course' => $course->id, 'externalurl' => 'https://example.com']);
+        $cm = get_coursemodule_from_id('url', $label->cmid, 0, false, MUST_EXIST);
 
         $this->assertNull(resolver::get_source($cm, \context_module::instance($label->cmid)));
         $this->assertSame('', resolver::get_content($cm, \context_module::instance($label->cmid)));

@@ -512,7 +512,8 @@ define([
             };
             });
 
-            const finalHtml = await Templates.render('aiplacement_competency/levels', { options });
+            const showverify = document.getElementById('ai-classify-drawer')?.dataset.verify === '1';
+            const finalHtml = await Templates.render('aiplacement_competency/levels', { options, showverify });
             this.aiDrawerBodyElement.innerHTML = finalHtml;
 
             if (loadfailed) {
@@ -581,6 +582,7 @@ define([
                         .map(b => b.value);
 
                     this._selectedLevels = selectedLevels;
+                    this._verify = !!this.aiDrawerBodyElement.querySelector('input[name="classify-verify"]:checked');
 
                     this.sendClassification(prompt, framework, selectedLevels);
                 });
@@ -656,6 +658,7 @@ define([
                         selectedframeworkid: fw?.id || 0,
                         selectedframeworkshortname: fw?.shortname || '',
                         levels: selectedLevels,
+                        verify: !!this._verify,
                     }
                 }]);
 
@@ -665,7 +668,9 @@ define([
                     return;
                 }
 
-                const {frameworkid, frameworkshortname, usedlevels = [], competencies = []} = result;
+                const {
+                    frameworkid, frameworkshortname, usedlevels = [], competencies = [], suggestions = [], warnings = [],
+                } = result;
                 const uniqid  = 'resp-' + Math.random().toString(36).slice(2, 11);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_competency');
 
@@ -679,6 +684,9 @@ define([
                         frameworkshortname,
                         usedlevels,
                         competencies,
+                        warnings,
+                        suggestions,
+                        hasreasons: suggestions.some(c => c.reason),
                     }
                 );
 
@@ -693,7 +701,7 @@ define([
                 }
             } catch (error) {
                 if (!this.isRequestCancelled()) {
-                    const errorHtml = await Templates.render('aiplacement_competency/error', {});
+                    const errorHtml = await Templates.render('aiplacement_competency/error', {message: error?.message || ''});
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
                     Notification.exception(error);
                 }

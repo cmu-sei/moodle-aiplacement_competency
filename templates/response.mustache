@@ -48,6 +48,11 @@
         "competencies": [
             "C1 - Communicate effectively",
             "C2 - Analyze requirements"
+        ],
+        "warnings": ["The content does not appear to be about this activity."],
+        "hasreasons": true,
+        "suggestions": [
+            {"idnumber": "C1", "reason": "The instructor demonstrates writing for an audience."}
         ]
     }
 
@@ -59,6 +64,9 @@
     - frameworkshortname (string, optional): framework shortname; shows "none" if missing
     - usedlevels (array of string, optional): level names used for classification; shows "none" if empty
     - competencies (array of string, optional): suggested competencies; shows "none" if empty
+    - warnings (array of string, optional): things to check before applying, shown above the reasons
+    - suggestions (array, optional): idnumber and reason for each competency, listed outside the
+      competencies region so that the apply flow, which reads that region, never sees them
 
     JS hooks:
     - data-action regenerate: reruns the AI classification
@@ -126,6 +134,21 @@
           </dd>
         </dl>
       </div>
+
+      {{#warnings}}
+        <div class="alert alert-warning py-2 mb-3" role="alert">{{.}}</div>
+      {{/warnings}}
+
+      {{#hasreasons}}
+        <div class="mb-3" data-section="reasons">
+          <h4 class="h6">{{#str}} reasonheading, aiplacement_competency {{/str}}</h4>
+          <ul class="small mb-0">
+            {{#suggestions}}
+              {{#reason}}<li><strong>{{idnumber}}</strong>: {{reason}}</li>{{/reason}}
+            {{/suggestions}}
+          </ul>
+        </div>
+      {{/hasreasons}}
 
       <div class="course-assist-response-watermark">
         <small class="text-muted">

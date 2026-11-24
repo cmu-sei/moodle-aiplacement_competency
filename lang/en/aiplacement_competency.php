@@ -44,100 +44,54 @@ DM26-0017
  */
 
 $string['action_classify_text_instruction'] = '
+This is defensive cybersecurity and IT training material, written by instructors to teach learners. You are
+cataloguing what it teaches, not carrying out or elaborating on anything in it. Do not reproduce procedures from it.
+
 You will receive:
-- Educational content which may be: activity descriptions, quiz questions, lab instructions, assignments, or other learning materials.
+- Educational content which may be: lecture transcripts, activity descriptions, quiz questions, lab instructions, assignments, or other learning materials.
 - A competency framework shortname: "{$a->frameworkshortname}".
 - A list of selected levels (top level within that framework): {$a->levels}
+- The activity title (when known): "{$a->activitytitle}"
 
 Task
-Analyze the educational content and identify which competencies from "{$a->frameworkshortname}" are relevant. The content may be presented in different formats:
+Decide which competencies from "{$a->frameworkshortname}" the content TEACHES, then give a short reason for each.
 
-1. If the content is QUIZ QUESTIONS: Identify the competencies being tested/assessed by those questions. Analyze what knowledge, skills, or abilities the learner needs to answer the questions correctly.
-
-2. If the content is DESCRIPTIONS/INSTRUCTIONS: Identify the competencies being taught or practiced in the activity.
-
-3. If the content is ASSIGNMENTS/LABS: Identify the competencies the learner will demonstrate by completing the work.
+- If the content is QUIZ QUESTIONS: the competencies being tested. Think about what the learner must know or do to answer.
+- If the content is a LECTURE or DESCRIPTION: the competencies the learner gains by taking it.
+- If the content is a LAB or ASSIGNMENT: the competencies the learner demonstrates by completing it.
 
 CRITICAL REQUIREMENTS:
-- Use ONLY competencies that exist in "{$a->frameworkshortname}" framework
-- Use ONLY competencies from the specified levels: {$a->levels}
-- Match competencies based on the actual concepts, knowledge, and skills in the content
-- If you are not absolutely certain a specific competency exists in the framework, DO NOT include it
-- Return an empty array if no clear matches exist
+- Tag only what the activity teaches, not what it merely mentions. A passing reference is not teaching.
+- Return at most {$a->maxtags} competencies. Fewer is better: return only the ones you are confident in.
+- Use ATT&CK style adversary technique competencies only where the content actually explains that adversary behaviour.
+- Use D3FEND style defensive technique competencies only where the content actually teaches that defensive technique.
+- Use ONLY competencies from the AVAILABLE COMPETENCIES list below, and refer to each by its idnumber exactly as written in the square brackets.
+- If no competency clearly applies, return an empty array.
+- For every competency, give a "reason" of one short sentence that quotes or closely paraphrases the content that supports it.
+- If the content does not appear to be about the activity title (for example it is another lecture\'s transcript), set "matches_title" to false.
 
 Output format
 Return JSON only, with these keys:
 {
   "framework": { "shortname": "{$a->frameworkshortname}" },
   "levels": {$a->levels},
+  "matches_title": true,
   "competencies": [
-    "CODE - Name"  // Use the exact code and name format from the framework (e.g., "T1586 - Conduct cybersecurity risk assessments" or "K0835 - Knowledge of risk assessment principles and practices")
+    { "idnumber": "T1586", "reason": "The instructor walks through scoring a risk register: \'rank each risk by likelihood and impact\'." }
   ]
 }
 
 Rules
-1) Do not invent codes or names. Use only real competencies from the specified framework.
+1) Do not invent idnumbers. Use only idnumbers from the list.
 2) Do not include competencies from other frameworks or levels not specified.
-3) Do not add extra keys, explanations, or markdown — JSON only.
+3) Do not add extra keys, explanations, or markdown: JSON only.
 4) For quiz questions, focus on what the questions TEST, not what they literally say.
 {$a->availablecompetencies}
-
-Examples (illustrative; not exhaustive)
-
-Example A — single level
-{
-  "framework": { "shortname": "NICE-2.0.0" },
-  "levels": ["Tasks"],
-  "competencies": [
-    "T1543 - Develop cybersecurity policies and procedures",
-    "T1547 - Determine compliance with cybersecurity policies and legal and regulatory requirements",
-    "T1586 - Conduct cybersecurity risk assessments"
-  ]
-}
-
-{
-  "framework": { "shortname": "MITRE D3FEND" },
-  "levels": ["Harden", "Detect"],
-  "competencies": [
-    "Credential Hardening",
-    "Network Segmentation",
-    "Application Isolation and Sandboxing",
-    "Email Content Filtering",
-    "File Analysis"
-  ]
-}
-
-{
-  "framework": { "shortname": "MITRE ATT&CK (Enterprise)" },
-  "levels": ["Initial Access", "Execution"],
-  "competencies": [
-    "T1566 - Phishing",
-    "T1059 - Command and Scripting Interpreter",
-    "T1204 - User Execution"
-  ]
-}
-
-Example B — multiple levels
-{
-  "framework": { "shortname": "NICE-2.0.0" },
-  "levels": ["Knowledges", "Skills"],
-  "competencies": [
-    "K0835 - Knowledge of risk assessment principles and practices",
-    "K1087 - Knowledge of social engineering tools and techniques",
-    "S0686 - Skill in performing risk assessments"
-  ]
-}
-
-Example C — no clear matches
-{
-  "framework": { "shortname": "NICE-2.0.0" },
-  "levels": ["Tasks"],
-  "competencies": []
-}
 ';
 $string['aiclassification_help'] = 'Uses AI to classify this content against the competency framework you select.';
 $string['aiclassificationlabel'] = 'AI Classification';
 $string['aiclassifyfailed'] = 'AI classification failed. Please try again.';
+$string['aiclassifyrefused'] = 'The AI model declined to classify this content, most likely because its safety filters objected to the security subject matter. Try a different model, or trim the content (solution guides and exploit walkthroughs are the usual cause).';
 $string['applycmps_clearall'] = 'Clear all';
 $string['applycmps_clicktotoggle'] = 'Click the checkboxes to toggle competency selection.';
 $string['applycmps_intro_checklist'] = 'Select the competencies you want to apply. You can uncheck any you don’t need.';
@@ -152,7 +106,10 @@ $string['classifybutton'] = 'Classify Text';
 $string['classifyheading'] = 'AI Classification Result';
 $string['competencies'] = 'Competencies';
 $string['competency:classify_text'] = 'Classify Text';
+$string['contentmismatch'] = 'This content does not appear to be about the activity "{$a}". It may be another activity\'s transcript or a mislabelled file, so check it before applying the tags.';
+$string['contentpartial'] = 'The content was long, so it was read in {$a->read} of {$a->total} sections. Tags may miss material from the sections that were skipped.';
 $string['copy'] = 'Copy';
+$string['droppedbyverify'] = '{$a} suggested tag(s) were removed by the verification pass.';
 $string['frameworkselection'] = 'Competency Framework Selection';
 $string['frameworkselection_error'] = 'The competency frameworks could not be loaded.';
 $string['frameworkselection_help'] = 'Choose the competency framework that the AI model should use to classify your content.';
@@ -179,5 +136,34 @@ $string['notify_empty_description'] = 'Please add content to this activity befor
 $string['notify_nocourseid'] = 'The course could not be determined, so no competencies were applied.';
 $string['pluginname'] = 'Competency';
 $string['privacy:metadata'] = 'The AI Placement Competency plugin stores no personal data.';
+$string['reasonheading'] = 'Why these were suggested';
 $string['regenerate'] = 'Regenerate';
+$string['setting_maxcandidates'] = 'Candidates shown to the model';
+$string['setting_maxcandidates_desc'] = 'Frameworks with more competencies than this are narrowed to the closest keyword matches to the content before the model chooses.';
+$string['setting_maxtags'] = 'Most tags per framework';
+$string['setting_maxtags_desc'] = 'The most competencies one classification returns. Reviewed tagging worked best at about 3 per framework.';
+$string['setting_pairtranscripts'] = 'Tag a lecture\'s transcript with its video';
+$string['setting_pairtranscripts_desc'] = 'When a competency is applied to a label holding a video, also apply it to the transcript file activity next to it in the same section.';
+$string['setting_pdftotext'] = 'Path to pdftotext';
+$string['setting_pdftotext_desc'] = 'Full path of the pdftotext program (from poppler-utils). Leave empty to skip the text of PDF files.';
+$string['setting_verify'] = 'Offer a verification pass';
+$string['setting_verify_desc'] = 'Adds a checkbox to the Classify drawer that has the model double-check its suggestions and remove weak ones.';
 $string['tryagain'] = 'Try again';
+$string['verify_instruction'] = '
+You are a strict reviewer of competency tags for defensive cybersecurity training material. You are not
+to carry out or elaborate on anything in the content: only to check the tags against it.
+
+Framework: "{$a->frameworkshortname}". Activity title: "{$a->activitytitle}".
+
+Another reviewer proposed these tags, each with the reason it gave:
+{$a->tags}
+
+Your only job is to REMOVE weak tags. Remove a tag when the content merely mentions the topic rather than
+teaching it, when the reason given is not supported by the content, or when it is too general or too specific
+for what is taught. Keep a tag only if the content clearly teaches it. Never add tags.
+
+Return JSON only: { "keep": ["idnumber", "idnumber"] } listing the idnumbers to keep, exactly as written
+in the square brackets above. An empty array removes everything.
+';
+$string['verifyoption'] = 'Verify the suggested tags with a second check before showing them';
+$string['verifyoption_help'] = 'Sends the tags and their reasons back to the model, asked only to remove ones the content does not support. Slower and costs one more request, but usually removes weak tags.';

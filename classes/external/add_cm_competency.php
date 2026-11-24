@@ -40,6 +40,7 @@ namespace aiplacement_competency\external;
 
 use core_external\external_api;
 use core_external\external_function_parameters;
+use aiplacement_competency\local\content\transcripts;
 use core_external\external_value;
 
 /**
@@ -83,10 +84,27 @@ class add_cm_competency extends external_api {
         $context = \context_module::instance($cm->id);
         self::validate_context($context);
 
-        return (bool) \core_competency\api::add_competency_to_course_module(
+        // Moodle refuses an activity competency the course does not already list, and a
+        // caller that skipped the course step would stop partway. Adding is harmless
+        // when the course has it.
+        \core_competency\api::add_competency_to_course($cm->course, $params['competencyid']);
+
+        $added = (bool) \core_competency\api::add_competency_to_course_module(
             $params['cmid'],
             $params['competencyid']
         );
+
+        // A lecture video and its transcript are one lesson: what the video teaches,
+        // the transcript file next to it teaches too.
+        if ($cm->modname === 'label' && get_config('aiplacement_competency', 'pairtranscripts') !== '0') {
+            foreach (transcripts::for_label($cm) as $pair) {
+                if (has_capability('moodle/competency:coursecompetencymanage', \context_module::instance($pair->id))) {
+                    \core_competency\api::add_competency_to_course_module($pair->id, $params['competencyid']);
+                }
+            }
+        }
+
+        return $added;
     }
 
     /**

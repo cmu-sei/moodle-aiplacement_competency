@@ -103,6 +103,74 @@ final class classifytext_test extends \advanced_testcase {
     }
 
     /**
+     * Replaces core_ai\manager with a mock that answers each request with the next response.
+     *
+     * The last response repeats once the list runs out. Each item is a payload array
+     * or a ready made response_generate_text.
+     *
+     * @param array $responses The responses to give, in order.
+     */
+    private function mock_ai_sequence(array $responses): void {
+        $queue = [];
+        foreach ($responses as $item) {
+            if (is_array($item)) {
+                $item = new response_generate_text(success: true);
+                $item->set_response_data([
+                    'generatedcontent' => json_encode($responses[count($queue)]),
+                    'finishreason' => 'stop',
+                ]);
+            }
+            $queue[] = $item;
+        }
+
+        $calls = 0;
+        $mockmanager = $this->createMock(\core_ai\manager::class);
+        $mockmanager->method('process_action')->willReturnCallback(
+            function (\core_ai\aiactions\base $action) use ($queue, &$calls) {
+                $this->sentprompts[] = (string)$action->get_configuration('prompttext');
+                return $queue[min($calls++, count($queue) - 1)];
+            }
+        );
+        $mockmanager->method('is_action_available')->willReturn(true);
+        $mockmanager->method('is_action_enabled')->willReturn(true);
+
+        \core\di::set(\core_ai\manager::class, function () use ($mockmanager) {
+            return $mockmanager;
+        });
+    }
+
+    /**
+     * Creates a framework of top level competencies, each with children, idnumbered by shortname.
+     *
+     * @param array $levels Level shortname => [child shortname => child description].
+     * @return int The framework id.
+     */
+    private function create_framework(array $levels): int {
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $frameworkid = (int)$generator->create_framework(['shortname' => 'TESTFW'])->get('id');
+
+        foreach ($levels as $shortname => $children) {
+            $parent = $generator->create_competency([
+                'competencyframeworkid' => $frameworkid,
+                'shortname' => $shortname,
+                'idnumber' => $shortname,
+                'description' => '',
+            ]);
+            foreach ($children as $childshortname => $description) {
+                $generator->create_competency([
+                    'competencyframeworkid' => $frameworkid,
+                    'parentid' => $parent->get('id'),
+                    'shortname' => $childshortname,
+                    'idnumber' => explode(' - ', $childshortname)[0],
+                    'description' => $description,
+                ]);
+            }
+        }
+
+        return $frameworkid;
+    }
+
+    /**
      * Creates an activity and returns its module context.
      *
      * @return \context_module The context of a new assignment.
@@ -120,6 +188,7 @@ final class classifytext_test extends \advanced_testcase {
     public function test_execute_success_parses_and_dedupes(): void {
         $cmctx = $this->create_module_context();
         $this->setAdminUser();
+        $fw = $this->create_framework(['Analyze' => ['T1119' => 'Recommend vulnerability remediation strategies']]);
 
         $this->mock_ai_manager([
             'framework' => ['shortname' => 'NICE-1.0.0'],
@@ -133,12 +202,12 @@ final class classifytext_test extends \advanced_testcase {
         $result = classify_text::execute(
             $cmctx->id,
             'Any prompt here',
-            7,
+            $fw,
             'NICE-1.0.0',
             ['Analyze', 'Detect', 'Detect']
         );
 
-        $this->assertSame(7, $result['frameworkid']);
+        $this->assertSame($fw, $result['frameworkid']);
         $this->assertSame('NICE-1.0.0', $result['frameworkshortname']);
         $this->assertEquals(['Analyze', 'Detect'], $result['usedlevels']);
         $this->assertEquals(
@@ -153,6 +222,7 @@ final class classifytext_test extends \advanced_testcase {
     public function test_execute_falls_back_to_selectedlevels_when_response_missing_levels(): void {
         $cmctx = $this->create_module_context();
         $this->setAdminUser();
+        $fw = $this->create_framework(['Analyze' => ['T1119' => 'Recommend vulnerability remediation strategies']]);
 
         $this->mock_ai_manager([
             'framework' => ['shortname' => 'NICE-1.0.0'],
@@ -166,12 +236,12 @@ final class classifytext_test extends \advanced_testcase {
         $result = classify_text::execute(
             $cmctx->id,
             'Any prompt here',
-            99,
+            $fw,
             'NICE-1.0.0',
             $selected
         );
 
-        $this->assertSame(99, $result['frameworkid']);
+        $this->assertSame($fw, $result['frameworkid']);
         $this->assertSame('NICE-1.0.0', $result['frameworkshortname']);
         $this->assertEquals($selected, $result['usedlevels']);
         $this->assertEquals(
@@ -186,6 +256,7 @@ final class classifytext_test extends \advanced_testcase {
     public function test_execute_falls_back_to_selected_framework_shortname(): void {
         $cmctx = $this->create_module_context();
         $this->setAdminUser();
+        $fw = $this->create_framework(['Analyze' => ['T1059' => 'Command and Scripting Interpreter']]);
 
         $this->mock_ai_manager([
             'competencies' => ['T1059 - Command and Scripting Interpreter'],
@@ -194,7 +265,7 @@ final class classifytext_test extends \advanced_testcase {
         $result = classify_text::execute(
             $cmctx->id,
             'Any prompt here',
-            42,
+            $fw,
             'DCWF-1.0.0',
             ['Analyze']
         );
@@ -464,7 +535,7 @@ final class classifytext_test extends \advanced_testcase {
 
         $response = new response_generate_text(success: true);
         $response->set_response_data([
-            'generatedcontent' => 'I am afraid I cannot help with that.',
+            'generatedcontent' => 'Here are some thoughts, but nothing structured.',
             'finishreason' => 'stop',
         ]);
 
@@ -501,5 +572,150 @@ final class classifytext_test extends \advanced_testcase {
             '',
             []
         );
+    }
+
+    /**
+     * The competencies the model names are checked against the framework, reasons are kept.
+     */
+    public function test_execute_drops_competencies_the_framework_does_not_have_and_keeps_reasons(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'Triage intrusions', 'T2' => 'Audit payroll']]);
+        $this->mock_ai_manager(['competencies' => [
+            ['idnumber' => 'T1', 'reason' => 'Learners triage an intrusion.'],
+            ['idnumber' => 'T777', 'reason' => 'Invented.'],
+        ]]);
+
+        $result = classify_text::execute($cmctx->id, 'Triage a live intrusion.', $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertSame(['T1 - Triage intrusions'], $result['competencies']);
+        $this->assertSame('T1', $result['suggestions'][0]['idnumber']);
+        $this->assertSame('Learners triage an intrusion.', $result['suggestions'][0]['reason']);
+    }
+
+    /**
+     * No more than the configured number of tags come back.
+     */
+    public function test_execute_caps_the_number_of_tags(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        set_config('maxtags', 2, 'aiplacement_competency');
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One', 'T2' => 'Two', 'T3' => 'Three']]);
+        $this->mock_ai_manager(['competencies' => ['T1', 'T2', 'T3']]);
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertCount(2, $result['competencies']);
+        $this->assertStringContainsString('at most 2', $this->sentprompts[0]);
+    }
+
+    /**
+     * Long content is read whole, in sections, and the sections' tags are merged.
+     */
+    public function test_execute_reads_the_whole_of_long_content_in_sections(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'First', 'T2' => 'Second', 'T3' => 'Third']]);
+        $this->mock_ai_sequence([
+            ['competencies' => ['T1', 'T2']],
+            ['competencies' => ['T2', 'T3']],
+        ]);
+        $text = str_repeat("Opening material about routing.\n\n", 400) . 'ENDOFTRANSCRIPTMARKER';
+
+        $result = classify_text::execute($cmctx->id, $text, $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertGreaterThan(1, count($this->sentprompts));
+        $this->assertStringContainsString('ENDOFTRANSCRIPTMARKER', end($this->sentprompts));
+        // T2 was backed by both sections, so it comes first.
+        $this->assertSame('T2', explode(' - ', $result['competencies'][0])[0]);
+        $this->assertCount(3, $result['competencies']);
+    }
+
+    /**
+     * A model that declines on safety grounds is reported as such, not as a failure.
+     */
+    public function test_execute_reports_a_refusal(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $response = new response_generate_text(
+            success: false,
+            errorcode: 400,
+            errormessage: 'The model stopped: content filter safeguards triggered'
+        );
+        $this->mock_ai_sequence([$response]);
+
+        try {
+            classify_text::execute($cmctx->id, 'Some text', 0, '', []);
+            $this->fail('A refusal should throw.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiclassifyrefused', $e->errorcode);
+        }
+    }
+
+    /**
+     * A reply in prose that says the model will not help counts as a refusal.
+     */
+    public function test_execute_reports_a_prose_refusal(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $response = new response_generate_text(success: true);
+        $response->set_response_data(['generatedcontent' => "I can't help with that request.", 'finishreason' => 'stop']);
+        $this->mock_ai_sequence([$response]);
+
+        $this->expectException(\moodle_exception::class);
+        $this->expectExceptionMessage(get_string('aiclassifyrefused', 'aiplacement_competency'));
+
+        classify_text::execute($cmctx->id, 'Some text', 0, '', []);
+    }
+
+    /**
+     * The verification pass removes tags the reviewer does not keep.
+     */
+    public function test_execute_verify_removes_tags_the_reviewer_drops(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One', 'T2' => 'Two']]);
+        $this->mock_ai_sequence([
+            ['competencies' => [['idnumber' => 'T1', 'reason' => 'a'], ['idnumber' => 'T2', 'reason' => 'b']]],
+            ['keep' => ['T2']],
+        ]);
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks'], true);
+
+        $this->assertSame(['T2 - Two'], $result['competencies']);
+        $this->assertCount(2, $this->sentprompts);
+        $this->assertStringContainsString('strict reviewer', $this->sentprompts[1]);
+        $this->assertNotEmpty($result['warnings']);
+    }
+
+    /**
+     * Verification is skipped when it is not asked for.
+     */
+    public function test_execute_does_not_verify_unless_asked(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $this->mock_ai_manager(['competencies' => ['T1']]);
+
+        classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertCount(1, $this->sentprompts);
+    }
+
+    /**
+     * Content that shares nothing with the title is flagged.
+     */
+    public function test_execute_warns_when_the_content_does_not_match_the_title(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $cm = $this->getDataGenerator()->create_module('assign', ['course' => $course->id, 'name' => 'Cryptography Lecture']);
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $this->mock_ai_manager(['competencies' => ['T1']]);
+        $text = str_repeat('The instructor explains how routers forward packets between subnets. ', 40);
+
+        $result = classify_text::execute(\context_module::instance($cm->cmid)->id, $text, $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertNotEmpty($result['warnings']);
+        $this->assertStringContainsString('Cryptography Lecture', $result['warnings'][0]);
     }
 }

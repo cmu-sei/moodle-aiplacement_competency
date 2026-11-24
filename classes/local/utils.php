@@ -49,12 +49,112 @@ namespace aiplacement_competency\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class utils {
+    /** The most competencies shown the model at once. Longer lists are narrowed to the best matches. */
+    public const DEFAULT_MAX_CANDIDATES = 80;
+
     /**
      * Build the instruction text for the model.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string $shortname The framework shortname.
+     * @param array $levels The selected level names.
+     * @param string $text The content being classified, used to narrow a long list of competencies.
+     * @return string The instruction.
      */
-    public static function build_instruction(int $frameworkid, string $shortname, array $levels): string {
-        global $DB;
+    public static function build_instruction(int $frameworkid, string $shortname, array $levels, string $text = ''): string {
+        return self::prepare($frameworkid, $shortname, $levels, $text)['instruction'];
+    }
 
+    /**
+     * Builds the instruction and works out which competencies the model may choose from.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string $shortname The framework shortname.
+     * @param array $levels The selected level names.
+     * @param string $text The content being classified. Narrows the list when it is long,
+     *                     and is searched for codes the activity's author already stated.
+     * @param string $title The activity's title, empty when there is none.
+     * @return array With 'instruction' (string) and 'candidates' (competencies by id,
+     *               each with a 'line' property), the ones the model was shown.
+     */
+    public static function prepare(
+        int $frameworkid,
+        string $shortname,
+        array $levels,
+        string $text = '',
+        string $title = ''
+    ): array {
+        $normlevels = self::normalise_levels($levels);
+        $set = self::get_candidates($frameworkid, $normlevels);
+        $candidates = $set['candidates'];
+
+        $max = (int)get_config('aiplacement_competency', 'maxcandidates');
+        if ($max <= 0) {
+            $max = self::DEFAULT_MAX_CANDIDATES;
+        }
+        $total = count($candidates);
+        $candidates = narrower::top($candidates, $text, $max);
+
+        $availablecompetencies = '';
+        if (!empty($candidates)) {
+            $lines = [];
+            foreach ($candidates as $candidate) {
+                $lines[] = '[' . $candidate->idnumber . '] ' . $candidate->line;
+            }
+            $availablecompetencies = "\n\nAVAILABLE COMPETENCIES (one per line, as [idnumber] name):\n" .
+                implode("\n", $lines) .
+                "\n\nYou MUST only use idnumbers from the list above.";
+            if ($total > count($candidates)) {
+                $availablecompetencies .= " The list is the " . count($candidates) . " closest matches to the content," .
+                    " chosen from {$total} in the selected levels.";
+            }
+            if ($set['linked']) {
+                $availablecompetencies .= " Some of them sit outside the selected levels in the framework," .
+                    " but are listed because a competency in a selected level groups them, the way a work role" .
+                    " groups its tasks, knowledge and skills. They count as part of the selected levels.";
+            }
+
+            $stated = self::stated_codes($candidates, $text);
+            if (!empty($stated)) {
+                $availablecompetencies .= "\n\nCODES NAMED IN THE CONTENT ITSELF: " . implode(', ', $stated) .
+                    ". If the content presents these as the activity's own mapping, the author's mapping is the" .
+                    " strongest evidence there is: include them. If it only mentions them in passing, do not.";
+            }
+        }
+
+        $a = (object)[
+            'frameworkid'        => $frameworkid,
+            'frameworkshortname' => $shortname,
+            'levels'            => implode(', ', $set['displaylevels']),
+            'availablecompetencies' => $availablecompetencies,
+            'maxtags'            => self::max_tags(),
+            'activitytitle'      => trim($title),
+        ];
+
+        return [
+            'instruction' => get_string('action_classify_text_instruction', 'aiplacement_competency', $a),
+            'candidates' => $candidates,
+        ];
+    }
+
+    /**
+     * The most competencies one classification should return per framework.
+     *
+     * @return int The cap, at least one.
+     */
+    public static function max_tags(): int {
+        $max = (int)get_config('aiplacement_competency', 'maxtags');
+
+        return $max > 0 ? $max : 3;
+    }
+
+    /**
+     * Trims and de-duplicates the level names a caller sent.
+     *
+     * @param array $levels The level names.
+     * @return string[] The cleaned names.
+     */
+    private static function normalise_levels(array $levels): array {
         $seen = [];
         $normlevels = [];
         foreach ($levels as $d) {
@@ -73,9 +173,24 @@ class utils {
             $normlevels[] = $t;
         }
 
-        // Fetch available competencies from the framework to provide to the AI.
-        $availablecompetencies = '';
+        return $normlevels;
+    }
+
+    /**
+     * The competencies of a framework that the selected levels cover.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string[] $normlevels The selected level names, already cleaned.
+     * @return array With 'candidates' (competencies by id, each with a 'line'), 'displaylevels'
+     *               (the level names to show) and 'linked' (whether any were reached through a grouping).
+     */
+    public static function get_candidates(int $frameworkid, array $normlevels): array {
+        global $DB;
+
+        $competencylist = [];
         $displaylevels = $normlevels;
+        $linked = false;
+
         if ($frameworkid > 0) {
             try {
                 // Get parent competencies (levels) that match the selected levels.
@@ -92,9 +207,6 @@ class utils {
                 if (!empty($normlevels) && !empty($matchedparents)) {
                     $named = [];
                     foreach ($matchedparents as $parent) {
-                        // Deliberately not $shortname: that is the framework's own, and
-                        // reusing it here told the model the framework was called after
-                        // the last matched level.
                         $parentname = trim((string)($parent->shortname ?? ''));
                         if ($parentname !== '') {
                             $named[] = $parentname;
@@ -106,10 +218,7 @@ class utils {
                 }
 
                 // Keyed by competency id, so a competency reached twice is listed once.
-                $competencylist = [];
-                $linked = false;
                 foreach ($matchedparents as $parent) {
-                    // Get all child competencies under this parent.
                     $children = $DB->get_records('competency', [
                         'competencyframeworkid' => $frameworkid,
                         'parentid' => $parent->id,
@@ -118,31 +227,18 @@ class utils {
                     foreach ($children as $child) {
                         $line = self::competency_line($child);
                         if ($line !== '') {
-                            $competencylist[$child->id] = $line;
+                            $child->line = $line;
+                            $competencylist[$child->id] = $child;
                         }
                     }
 
                     foreach (self::get_grouped_competencies($frameworkid, array_keys($children)) as $grouped) {
                         $line = self::competency_line($grouped);
                         if ($line !== '' && !isset($competencylist[$grouped->id])) {
-                            $competencylist[$grouped->id] = $line;
+                            $grouped->line = $line;
+                            $competencylist[$grouped->id] = $grouped;
                             $linked = true;
                         }
-                    }
-                }
-
-                if (!empty($competencylist)) {
-                    // The whole list, however long. Cutting it short used to leave the
-                    // model to choose from whatever sorted first: the first 200 of
-                    // NICE's 942 tasks, and no knowledge or skill at all when every
-                    // level was selected.
-                    $availablecompetencies = "\n\nAVAILABLE COMPETENCIES IN THIS FRAMEWORK/LEVEL:\n" .
-                                           implode("\n", $competencylist) .
-                                           "\n\nYou MUST only use competencies from the list above.";
-                    if ($linked) {
-                        $availablecompetencies .= " Some of them sit outside the selected levels in the framework," .
-                            " but are listed because a competency in a selected level groups them, the way a work role" .
-                            " groups its tasks, knowledge and skills. They count as part of the selected levels.";
                     }
                 }
             } catch (\Exception $e) {
@@ -151,14 +247,90 @@ class utils {
             }
         }
 
-        $a = (object)[
-            'frameworkid'        => $frameworkid,
-            'frameworkshortname' => $shortname,
-            'levels'            => implode(', ', $displaylevels),
-            'availablecompetencies' => $availablecompetencies,
-        ];
+        return ['candidates' => $competencylist, 'displaylevels' => $displaylevels, 'linked' => $linked];
+    }
 
-        return get_string('action_classify_text_instruction', 'aiplacement_competency', $a);
+    /**
+     * Codes of the offered competencies that the content itself contains.
+     *
+     * Lab authors sometimes publish their own task mapping alongside the lab.
+     * Spotting the codes lets the prompt call that out as the strongest evidence.
+     *
+     * @param \stdClass[] $candidates The offered competencies.
+     * @param string $text The content.
+     * @return string[] The idnumbers found.
+     */
+    private static function stated_codes(array $candidates, string $text): array {
+        if (trim($text) === '') {
+            return [];
+        }
+        $lower = \core_text::strtolower($text);
+        $found = [];
+        foreach ($candidates as $candidate) {
+            $code = narrower::code($candidate);
+            if ($code !== '' && preg_match('/(?<![a-z0-9])' . preg_quote($code, '/') . '(?![a-z0-9])/u', $lower)) {
+                $found[] = $candidate->idnumber;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * Turns what the model returned into competencies the framework really has.
+     *
+     * The model is asked for idnumbers, but may give "CODE - Name" or a bare name.
+     * Anything that is not one of the competencies it was offered is dropped,
+     * rather than trusting the prompt's "only use these".
+     *
+     * @param array $returned The model's list: idnumber strings, "CODE - Name" strings,
+     *                        or arrays with 'idnumber' and optionally 'reason'.
+     * @param \stdClass[] $candidates The competencies the model was offered, by id.
+     * @return array[] Each with 'id', 'idnumber', 'label' (the "CODE - Name" line) and 'reason'.
+     */
+    public static function resolve_competencies(array $returned, array $candidates): array {
+        $index = [];
+        foreach ($candidates as $candidate) {
+            foreach ([$candidate->idnumber ?? '', $candidate->shortname ?? '', $candidate->line ?? ''] as $key) {
+                $key = self::level_key((string)$key);
+                if ($key !== '' && !isset($index[$key])) {
+                    $index[$key] = $candidate;
+                }
+            }
+        }
+
+        $resolved = [];
+        foreach ($returned as $item) {
+            $reason = '';
+            if (is_array($item)) {
+                $reason = trim((string)($item['reason'] ?? ''));
+                $item = $item['idnumber'] ?? ($item['id'] ?? ($item['competency'] ?? ''));
+            }
+            $item = trim((string)$item);
+            if ($item === '') {
+                continue;
+            }
+            $item = trim($item, "[] \t");
+
+            $candidate = $index[self::level_key($item)] ?? null;
+            if ($candidate === null) {
+                // The model gave "CODE - Name": try the code on its own.
+                $code = trim(explode(' - ', $item, 2)[0], "[] \t");
+                $candidate = $index[self::level_key($code)] ?? null;
+            }
+            if ($candidate === null || isset($resolved[$candidate->id])) {
+                continue;
+            }
+
+            $resolved[$candidate->id] = [
+                'id' => (int)$candidate->id,
+                'idnumber' => (string)$candidate->idnumber,
+                'label' => (string)$candidate->line,
+                'reason' => clean_param($reason, PARAM_TEXT),
+            ];
+        }
+
+        return array_values($resolved);
     }
 
     /**
@@ -170,7 +342,7 @@ class utils {
      *
      * Substring matching, which is what this did for every level unconditionally,
      * is kept only as a per level fallback for a caller that sent something other
-     * than a shortname. On its own it matches far too much, because a short level
+     * than a shortname, and only when it picks out a single group. On its own it matches far too much, because a short level
      * name turns up inside unrelated ones: 'IT' is inside 'Monitoring', and the
      * competencies of a level nobody asked for would then be sent to the model.
      *
@@ -200,14 +372,22 @@ class utils {
                 continue;
             }
 
+            // A level that is no shortname is matched as part of one only when it
+            // picks out a single top level group. 'IT' sits inside both 'Monitoring'
+            // and 'Security', and guessing between them offers the model competencies
+            // of a level nobody selected.
+            $partial = [];
             foreach ($parents as $id => $parent) {
                 $shortname = trim((string)($parent->shortname ?? ''));
                 if ($shortname === '') {
                     continue;
                 }
                 if (stripos($shortname, $level) !== false || stripos($level, $shortname) !== false) {
-                    $matched[$id] = $parent;
+                    $partial[$id] = $parent;
                 }
+            }
+            if (count($partial) === 1) {
+                $matched += $partial;
             }
         }
 

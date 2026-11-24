@@ -156,8 +156,9 @@ final class utils_test extends \advanced_testcase {
         $this->assertStringContainsString('PD-1 - Respond to incidents', $instruction);
     }
 
-    public function test_build_instruction_lists_every_competency_in_a_long_level(): void {
+    public function test_build_instruction_lists_a_long_level_whole_when_it_is_short_enough(): void {
         $this->setAdminUser();
+        set_config('maxcandidates', 300, 'aiplacement_competency');
         $tasks = [];
         for ($i = 1; $i <= 250; $i++) {
             $tasks[sprintf('T%04d', $i)] = "Perform task {$i}";
@@ -166,9 +167,73 @@ final class utils_test extends \advanced_testcase {
 
         $instruction = utils::build_instruction($framework, 'TESTFW', ['Tasks']);
 
-        // The list used to stop at 200, so nothing sorting after T0200 was offered.
-        $this->assertStringContainsString('T0001 - Perform task 1', $instruction);
-        $this->assertStringContainsString('T0250 - Perform task 250', $instruction);
+        $this->assertStringContainsString('[T0001] T0001 - Perform task 1', $instruction);
+        $this->assertStringContainsString('[T0250] T0250 - Perform task 250', $instruction);
+    }
+
+    public function test_build_instruction_narrows_a_long_level_to_the_closest_matches(): void {
+        $this->setAdminUser();
+        set_config('maxcandidates', 5, 'aiplacement_competency');
+        $tasks = [];
+        for ($i = 1; $i <= 100; $i++) {
+            $tasks[sprintf('T%04d', $i)] = "Maintain the payroll ledger {$i}";
+        }
+        $tasks['T0500'] = 'Analyze phishing emails for malicious attachments';
+        $tasks['T0501'] = 'Detect lateral movement with network sensors';
+        $framework = $this->create_framework(['Tasks' => $tasks]);
+
+        $instruction = utils::build_instruction(
+            $framework,
+            'TESTFW',
+            ['Tasks'],
+            'In this lab learners examine a phishing email and its malicious attachment.'
+        );
+
+        $this->assertStringContainsString('[T0500]', $instruction);
+        $this->assertStringNotContainsString('[T0501]', $instruction);
+        $this->assertSame(5, substr_count($instruction, "\n[T"));
+        $this->assertStringContainsString('closest matches', $instruction);
+    }
+
+    public function test_build_instruction_calls_out_codes_the_content_states(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework(['Tasks' => ['T1102' => 'Identify intrusions', 'T2000' => 'Audit']]);
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['Tasks'], 'Task mapping for this lab: T1102.');
+
+        $this->assertStringContainsString('CODES NAMED IN THE CONTENT ITSELF: T1102', $instruction);
+        $this->assertStringNotContainsString('ITSELF: T1102, T2000', $instruction);
+    }
+
+    public function test_resolve_competencies_keeps_only_what_the_framework_offered(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework(['Tasks' => ['T1102' => 'Identify intrusions', 'T2000' => 'Audit payroll']]);
+        $set = utils::get_candidates($framework, ['Tasks']);
+
+        $resolved = utils::resolve_competencies([
+            ['idnumber' => 't1102', 'reason' => 'Walks through intrusion triage.'],
+            'T2000 - Audit payroll',
+            'T9999',
+            ['idnumber' => 'T1102', 'reason' => 'again'],
+            'Made up competency',
+        ], $set['candidates']);
+
+        $this->assertSame(['T1102', 'T2000'], array_column($resolved, 'idnumber'));
+        $this->assertSame('Walks through intrusion triage.', $resolved[0]['reason']);
+        $this->assertSame('T1102 - Identify intrusions', $resolved[0]['label']);
+    }
+
+    public function test_build_instruction_does_not_guess_between_levels_a_partial_name_could_mean(): void {
+        $this->setAdminUser();
+        $framework = $this->create_framework([
+            'Network Monitoring' => ['NM-1' => 'Watch sensors'],
+            'Network Defense' => ['ND-1' => 'Block attacks'],
+        ]);
+
+        $instruction = utils::build_instruction($framework, 'TESTFW', ['Network']);
+
+        $this->assertStringNotContainsString('NM-1', $instruction);
+        $this->assertStringNotContainsString('ND-1', $instruction);
     }
 
     public function test_build_instruction_does_not_repeat_a_name_the_shortname_carries(): void {
@@ -266,6 +331,7 @@ final class utils_test extends \advanced_testcase {
             $parent = $generator->create_competency([
                 'competencyframeworkid' => $frameworkid,
                 'shortname' => $shortname,
+                'idnumber' => $shortname,
                 'description' => '',
             ]);
 
@@ -274,6 +340,7 @@ final class utils_test extends \advanced_testcase {
                     'competencyframeworkid' => $frameworkid,
                     'parentid' => $parent->get('id'),
                     'shortname' => $childshortname,
+                    'idnumber' => explode(' - ', $childshortname)[0],
                     'description' => $description,
                 ]);
             }

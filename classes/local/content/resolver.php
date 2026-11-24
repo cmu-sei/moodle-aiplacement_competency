@@ -52,13 +52,22 @@ namespace aiplacement_competency\local\content;
  */
 final class resolver {
     /**
-     * Ceiling on the characters of activity content added to one prompt.
+     * Ceiling on the characters of activity content read for one classification.
      *
-     * A book or lesson can hold far more text than a model will accept, and the
-     * provider rejects the whole request rather than truncating it. Cut on a
-     * word boundary and say so, rather than sending something that fails.
+     * The classifier sends content to the model in sections, so a long lecture
+     * transcript is read whole. This is only a guard against a runaway file, and
+     * is far beyond any real transcript or chapter set.
      */
-    public const MAX_CONTENT_LENGTH = 20000;
+    public const MAX_CONTENT_LENGTH = 400000;
+
+    /**
+     * Words in a heading that mark a solution guide or walkthrough.
+     *
+     * Models stop on these: CTF solution guides read as attack instructions.
+     * They teach nothing the lab's own tasks do not, so they are not sent.
+     */
+    private const SOLUTION_PATTERN =
+        '/\b(solutions?|walk-?throughs?|answer[ _-]?keys?|write-?ups?|spoilers?|cheat[ _-]?sheets?)\b/iu';
 
     /**
      * Returns the content source for an activity, or null when it has none.
@@ -93,7 +102,7 @@ final class resolver {
             return '';
         }
 
-        return self::truncate($source->get_content());
+        return self::truncate(self::drop_solutions($source->get_content()));
     }
 
     /**
@@ -142,13 +151,48 @@ final class resolver {
         if ($source !== null) {
             // Dropped before truncating, so the prompt budget is spent on
             // content the caller has not already sent.
-            $content = self::truncate(self::strip_duplicates($prompttext, $source->get_content()));
+            $content = self::truncate(self::drop_solutions(self::strip_duplicates($prompttext, $source->get_content())));
             if ($content !== '') {
                 $parts[] = $content;
             }
         }
 
         return implode("\n\n", $parts);
+    }
+
+    /**
+     * Removes the chunks of content that are solution guides.
+     *
+     * A chunk reads 'Heading (Title): body', so a solution is recognised by its heading.
+     *
+     * @param string $content The content.
+     * @return string The content without solution guides.
+     */
+    public static function drop_solutions(string $content): string {
+        if ($content === '') {
+            return $content;
+        }
+
+        $kept = [];
+        foreach (preg_split('/\R{2,}/u', $content) ?: [] as $chunk) {
+            $heading = explode(': ', $chunk, 2)[0];
+            if (\core_text::strlen($heading) < 200 && preg_match(self::SOLUTION_PATTERN, $heading)) {
+                continue;
+            }
+            $kept[] = $chunk;
+        }
+
+        return implode("\n\n", $kept);
+    }
+
+    /**
+     * Whether a file name is that of a solution guide.
+     *
+     * @param string $filename The file name.
+     * @return bool True when it should not be sent.
+     */
+    public static function is_solution_file(string $filename): bool {
+        return (bool)preg_match(self::SOLUTION_PATTERN, str_replace(['.', '_'], ' ', $filename));
     }
 
     /**
