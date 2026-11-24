@@ -146,9 +146,19 @@ class utils {
      * @return int The framework id, or 0 when none is set or none matches.
      */
     public static function default_framework_id(): int {
+        return self::framework_id_for((string)get_config('aiplacement_competency', 'defaultframework'));
+    }
+
+    /**
+     * The visible framework a name picks: its idnumber or its shortname, an exact match with case ignored.
+     *
+     * @param string $name The idnumber or shortname. Not a prefix: 'DCWF' does not pick 'DCWF-5.1'.
+     * @return int The framework id, or 0 when none matches.
+     */
+    public static function framework_id_for(string $name): int {
         global $DB;
 
-        $wanted = \core_text::strtolower(trim((string)get_config('aiplacement_competency', 'defaultframework')));
+        $wanted = \core_text::strtolower(trim($name));
         if ($wanted === '') {
             return 0;
         }

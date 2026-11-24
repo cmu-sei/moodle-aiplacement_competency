@@ -110,4 +110,24 @@ final class settings_test extends \advanced_testcase {
 
         $this->assertSame((int)$plain->get('id'), utils::default_framework_id());
     }
+
+    public function test_the_setting_says_which_framework_a_value_picks_or_that_it_picks_none(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $name = 'DoD Cyber Workforce Framework (DCWF) v5.1';
+        $generator->create_framework(['shortname' => $name, 'idnumber' => 'DCWF-5.1']);
+        $setting = new \aiplacement_competency\admin\defaultframework_setting(
+            'aiplacement_competency/defaultframework',
+            'Default',
+            'Desc',
+            ''
+        );
+
+        $this->assertStringContainsString("Picks the framework {$name}", $setting->resolution('dcwf-5.1'));
+        $this->assertStringContainsString('idnumber DCWF-5.1', $setting->resolution('DCWF-5.1'));
+        // An exact match, not a prefix.
+        $this->assertStringContainsString('Matches no visible framework', $setting->resolution('DCWF'));
+        $this->assertStringContainsString('No default', $setting->resolution(''));
+        $this->assertStringContainsString('Matches no visible framework', $setting->output_html('DCWF'));
+    }
 }

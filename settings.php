@@ -45,7 +45,7 @@ DM26-0017
 defined('MOODLE_INTERNAL') || die();
 
 if ($ADMIN->fulltree) {
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new \aiplacement_competency\admin\defaultframework_setting(
         'aiplacement_competency/defaultframework',
         get_string('setting_defaultframework', 'aiplacement_competency'),
         get_string('setting_defaultframework_desc', 'aiplacement_competency'),
