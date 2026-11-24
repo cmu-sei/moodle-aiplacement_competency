@@ -524,4 +524,38 @@ final class lecturecontent_test extends \advanced_testcase {
 
         $this->assertStringContainsString('LONGBEWORDS', resolver::get_content($cm, \context_module::instance($resource->cmid)));
     }
+
+    public function test_a_user_who_cannot_manage_the_course_can_still_tag_an_activity_the_course_already_lists(): void {
+        global $DB;
+        set_config('enableccompetency', 1);
+        [$course, $label1] = $this->create_two_lectures();
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $framework = $generator->create_framework();
+        $competency = $generator->create_competency(['competencyframeworkid' => $framework->get('id')]);
+        $generator->create_course_competency(['courseid' => $course->id, 'competencyid' => $competency->get('id')]);
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $roleid = $DB->get_field('role', 'id', ['shortname' => 'editingteacher'], MUST_EXIST);
+        // May manage on the activity, not on the course.
+        assign_capability(
+            'moodle/competency:coursecompetencymanage',
+            CAP_PREVENT,
+            $roleid,
+            \context_course::instance($course->id)->id,
+            true
+        );
+        assign_capability(
+            'moodle/competency:coursecompetencymanage',
+            CAP_ALLOW,
+            $roleid,
+            \context_module::instance($label1->cmid)->id,
+            true
+        );
+        accesslib_clear_all_caches_for_unit_testing();
+        $this->setUser($teacher);
+
+        $result = add_cm_competency::execute($label1->cmid, $competency->get('id'));
+
+        $this->assertTrue($result);
+        $this->assertDebuggingCalledCount(1);
+    }
 }
