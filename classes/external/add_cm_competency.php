@@ -98,7 +98,8 @@ class add_cm_competency extends external_api {
         // the transcript file next to it teaches too.
         if ($cm->modname === 'label' && get_config('aiplacement_competency', 'pairtranscripts') !== '0') {
             foreach (transcripts::for_label($cm) as $pair) {
-                if (has_capability('moodle/competency:coursecompetencymanage', \context_module::instance($pair->id))) {
+                $managed = has_capability('moodle/competency:coursecompetencymanage', \context_module::instance($pair->id));
+                if ($pair->uservisible && $managed) {
                     \core_competency\api::add_competency_to_course_module($pair->id, $params['competencyid']);
                 }
             }

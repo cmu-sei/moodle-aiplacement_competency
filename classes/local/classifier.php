@@ -111,6 +111,7 @@ final class classifier {
         $fwshort = $shortname;
         $failure = null;
         $succeeded = 0;
+        $skipped = 0;
 
         foreach ($chunks as $position => $chunk) {
             $prepared = utils::prepare($frameworkid, $shortname, $levels, $chunk, $title);
@@ -125,6 +126,7 @@ final class classifier {
                 ]);
             } catch (\moodle_exception $e) {
                 $failure ??= $e;
+                $skipped++;
                 continue;
             }
 
@@ -134,12 +136,16 @@ final class classifier {
                 if ($reply === '') {
                     // Some providers return only a reasoning block first, which core reads as no text at all.
                     $failure ??= new \moodle_exception('aiclassifyempty', 'aiplacement_competency');
+                    $skipped++;
                     continue;
                 }
                 if (placement::looks_like_refusal($reply . ' ' . self::finish_reason($raw))) {
                     $failure ??= new \moodle_exception('aiclassifyrefused', 'aiplacement_competency');
+                    $skipped++;
                     continue;
                 }
+                // Text that is not an answer at all: nothing was learned from this section.
+                $skipped++;
             }
             $succeeded++;
 
@@ -164,6 +170,12 @@ final class classifier {
         if ($succeeded === 0 && $failure !== null) {
             throw $failure;
         }
+        if ($skipped > 0) {
+            $warnings[] = get_string('sectionsskipped', 'aiplacement_competency', (object)[
+                'skipped' => $skipped,
+                'total' => count($chunks),
+            ]);
+        }
 
         // Backed by the most sections first, then in the order they were found.
         $found = array_values($tally);
@@ -173,7 +185,10 @@ final class classifier {
         $found = array_slice($found, 0, utils::max_tags());
 
         if ($verify && !empty($found)) {
-            [$found, $removed] = self::verify($placement, $context, $found, $text, $title, $shortname);
+            [$found, $removed, $verified] = self::verify($placement, $context, $found, $text, $title, $shortname);
+            if (!$verified) {
+                $warnings[] = get_string('verifyfailed', 'aiplacement_competency');
+            }
             if ($removed > 0) {
                 $warnings[] = get_string('droppedbyverify', 'aiplacement_competency', $removed);
             }
@@ -203,7 +218,8 @@ final class classifier {
      * @param string $text The content.
      * @param string $title The activity title.
      * @param string $shortname The framework shortname.
-     * @return array The kept tags, and how many were removed. All are kept when the answer is unusable.
+     * @return array The kept tags, how many were removed, and whether the review gave a usable answer.
+     *               All tags are kept when it did not.
      */
     private static function verify(
         placement $placement,
@@ -232,10 +248,10 @@ final class classifier {
         try {
             $inner = self::decode($placement->send($context, $prompt, ['verify' => 1]));
         } catch (\moodle_exception $e) {
-            return [$found, 0];
+            return [$found, 0, false];
         }
         if (!isset($inner['keep']) || !is_array($inner['keep'])) {
-            return [$found, 0];
+            return [$found, 0, false];
         }
 
         $keep = array_map(static function ($k) {
@@ -245,7 +261,7 @@ final class classifier {
             return in_array(\core_text::strtolower($tag['idnumber']), $keep, true);
         }));
 
-        return [$kept, count($found) - count($kept)];
+        return [$kept, count($found) - count($kept), true];
     }
 
     /**

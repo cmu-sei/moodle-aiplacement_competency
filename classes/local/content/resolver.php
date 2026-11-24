@@ -143,6 +143,8 @@ final class resolver {
         if ($prompttext === '') {
             $prompttext = self::get_intro($cm);
         }
+        // Whatever the caller sent may hold a solution section pasted into the description.
+        $prompttext = trim(self::drop_solutions($prompttext));
         if ($prompttext !== '') {
             $parts[] = $prompttext;
         }

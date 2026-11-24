@@ -736,4 +736,74 @@ final class classifytext_test extends \advanced_testcase {
             $this->assertSame('aiclassifyempty', $e->errorcode);
         }
     }
+
+    /**
+     * When some sections fail and others succeed, the result says it may be incomplete.
+     */
+    public function test_execute_warns_when_some_sections_fail(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $failed = new response_generate_text(success: false, errorcode: 500, errormessage: 'Provider timeout');
+        $ok = new response_generate_text(success: true);
+        $ok->set_response_data(['generatedcontent' => json_encode(['competencies' => ['T1']]), 'finishreason' => 'stop']);
+        $this->mock_ai_sequence([$failed, $ok]);
+        $text = str_repeat("Some lecture material about routing.\n\n", 400);
+
+        $result = classify_text::execute($cmctx->id, $text, $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertSame(['T1 - One'], $result['competencies']);
+        $this->assertStringContainsString('sections of the content could not be classified', implode(' ', $result['warnings']));
+    }
+
+    /**
+     * A verification pass that gives no usable answer keeps the tags and says it did not check them.
+     */
+    public function test_execute_warns_when_verification_gives_no_answer(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $this->mock_ai_sequence([
+            ['competencies' => ['T1']],
+            ['unexpected' => true],
+        ]);
+
+        $result = classify_text::execute($cmctx->id, 'Anything', $fw, 'TESTFW', ['Tasks'], true);
+
+        $this->assertSame(['T1 - One'], $result['competencies']);
+        $this->assertStringContainsString('not been double-checked', implode(' ', $result['warnings']));
+    }
+
+    /**
+     * Content past the section limit is sampled, with the first and last sections kept, and says so.
+     */
+    public function test_execute_samples_sections_beyond_the_limit(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
+        $this->mock_ai_manager(['competencies' => ['T1']]);
+        $paragraph = str_repeat('x', 5900) . "\n\n";
+        $text = 'STARTMARK ' . str_repeat($paragraph, 60) . 'ENDMARK';
+
+        $result = classify_text::execute($cmctx->id, $text, $fw, 'TESTFW', ['Tasks']);
+
+        $this->assertCount(\aiplacement_competency\local\classifier::MAX_CHUNKS, $this->sentprompts);
+        $this->assertStringContainsString('STARTMARK', $this->sentprompts[0]);
+        $this->assertStringContainsString('ENDMARK', end($this->sentprompts));
+        $this->assertStringContainsString('read in 12 of', implode(' ', $result['warnings']));
+    }
+
+    /**
+     * Solution guides in the description are not sent either.
+     */
+    public function test_execute_does_not_send_a_solution_section_from_the_description(): void {
+        $cmctx = $this->create_module_context();
+        $this->setAdminUser();
+        $this->mock_ai_manager(['competencies' => []]);
+
+        classify_text::execute($cmctx->id, "Learners scan a host.\n\nSolution guide: run SECRETCOMMAND", 0, '', []);
+
+        $this->assertStringContainsString('Learners scan a host.', $this->sentprompts[0]);
+        $this->assertStringNotContainsString('SECRETCOMMAND', $this->sentprompts[0]);
+    }
 }

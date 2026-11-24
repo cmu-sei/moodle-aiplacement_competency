@@ -139,6 +139,7 @@ $string['pluginname'] = 'Competency';
 $string['privacy:metadata'] = 'The AI Placement Competency plugin stores no personal data.';
 $string['reasonheading'] = 'Why these were suggested';
 $string['regenerate'] = 'Regenerate';
+$string['sectionsskipped'] = '{$a->skipped} of {$a->total} sections of the content could not be classified, so the tags may be incomplete. Try again.';
 $string['setting_maxcandidates'] = 'Candidates shown to the model';
 $string['setting_maxcandidates_desc'] = 'Frameworks with more competencies than this are narrowed to the closest keyword matches to the content before the model chooses.';
 $string['setting_maxtags'] = 'Most tags per framework';
@@ -166,5 +167,6 @@ for what is taught. Keep a tag only if the content clearly teaches it. Never add
 Return JSON only: { "keep": ["idnumber", "idnumber"] } listing the idnumbers to keep, exactly as written
 in the square brackets above. An empty array removes everything.
 ';
+$string['verifyfailed'] = 'The verification pass did not give a usable answer, so these tags have not been double-checked.';
 $string['verifyoption'] = 'Verify the suggested tags with a second check before showing them';
 $string['verifyoption_help'] = 'Sends the tags and their reasons back to the model, asked only to remove ones the content does not support. Slower and costs one more request, but usually removes weak tags.';

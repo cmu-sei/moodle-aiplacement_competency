@@ -59,6 +59,10 @@ class label_source extends source {
         }
 
         foreach (transcripts::for_label($this->cm) as $pair) {
+            // The request was authorised for the label only. A neighbour the user cannot see is not read.
+            if (!$pair->uservisible) {
+                continue;
+            }
             $source = new resource_source($pair->get_course_module_record(), \context_module::instance($pair->id));
             $out .= $source->get_content() . "\n\n";
         }
@@ -74,6 +78,12 @@ class label_source extends source {
             }
         }
 
-        return !empty(transcripts::for_label($this->cm));
+        foreach (transcripts::for_label($this->cm) as $pair) {
+            if ($pair->uservisible) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

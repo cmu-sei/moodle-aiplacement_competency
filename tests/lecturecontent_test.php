@@ -244,4 +244,20 @@ final class lecturecontent_test extends \advanced_testcase {
         $this->assertTrue($DB->record_exists('competency_modulecomp', ['cmid' => $trn1->cmid]));
         $this->assertFalse($DB->record_exists('competency_modulecomp', ['cmid' => $trn2->cmid]));
     }
+
+    public function test_a_label_does_not_read_a_transcript_the_user_cannot_see(): void {
+        global $DB;
+        [$course, $label1, $trn1] = $this->create_two_lectures();
+        $DB->set_field('course_modules', 'visible', 0, ['id' => $trn1->cmid]);
+        $DB->set_field('course_modules', 'visibleold', 0, ['id' => $trn1->cmid]);
+        rebuild_course_cache((int)$course->id, true);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+
+        $cm = get_coursemodule_from_id('label', $label1->cmid, 0, false, MUST_EXIST);
+        $context = \context_module::instance($label1->cmid);
+
+        $this->assertStringNotContainsString('FIRSTLECTURE', resolver::get_content($cm, $context));
+        $this->assertFalse(resolver::has_content($cm, $context));
+    }
 }
