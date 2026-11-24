@@ -22,7 +22,8 @@ DM26-0017
     right: calc(-315px + -10px);
     width: 315px;
     background-color: #f8f9fa;
-    z-index: 1016;
+    /* In front of Moodle's own right hand drawers (1035 in Boost), behind modals (1050). */
+    z-index: 1040;
     transition: right 0.2s ease, top 0.2s ease, bottom 0.2s ease, visibility 0.2s ease, transform 0.5s ease;
     visibility: hidden;
 }

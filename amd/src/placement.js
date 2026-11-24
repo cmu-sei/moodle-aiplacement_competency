@@ -107,6 +107,14 @@ define([
             if (this.isAIDrawerOpen()) {
                 return;
             }
+            // Moodle's block drawer is open by default on an edit page and sits on the same edge, in front of
+            // this one. Close it first so the drawer is not opened out of sight behind it.
+            const blockDrawerClose = document.querySelector(
+                '#theme_boost-drawers-blocks.show [data-action="closedrawer"]'
+            );
+            if (blockDrawerClose) {
+                blockDrawerClose.click();
+            }
             this.aiDrawerElement.classList.add('show');
             this.aiDrawerElement.setAttribute('tabindex', 0);
             this.aiDrawerBodyElement.setAttribute('aria-live', 'polite');
