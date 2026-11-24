@@ -315,7 +315,7 @@ define([
    *
    * @param {number} cmid The course module id
    * @param {number} competencyId The competency id
-   * @returns {Promise} Resolves true when linked, false when the module already had it
+   * @returns {Promise} Resolves {added, failedtranscripts}: added is false when the module already had it
    */
   function addToModule(cmid, competencyId) {
     return Ajax.call([{
@@ -429,11 +429,17 @@ define([
                         }
                       });
                       linkPromise = Promise.all(toLink.map(function(id){
-                        return addToModule(cmid, id).then(function(ok){ return { id:id, status: ok ? 'added' : 'exists' }; })
+                        return addToModule(cmid, id).then(function(res){
+                          return { id:id, status: res && res.added ? 'added' : 'exists', transcripts: (res && res.failedtranscripts) || [] };
+                        })
                           .catch(function(){ return { id:id, status:'failed' }; });
                       })).then(function(results){
-                        var addedIds=[], existsIds=[], failedIds=[];
+                        var addedIds=[], existsIds=[], failedIds=[], transcriptFailures=[];
                         results.forEach(function(r){
+                          // A lecture's transcript the competency could not be put on: say so, by competency.
+                          (r.transcripts || []).forEach(function(name){
+                            transcriptFailures.push((byIdName.get(r.id) || ('ID ' + r.id)) + ' → ' + name);
+                          });
                           if (r.status === 'added') {
                             addedIds.push(r.id);
                           } else if (r.status === 'exists') {
@@ -445,7 +451,7 @@ define([
                         stashCmNotices(
                           addedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }),
                           existsIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }),
-                          failedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); })
+                          failedIds.map(function(id){ return byIdName.get(id) || ('ID ' + id); }).concat(transcriptFailures)
                         );
                       });
                     }

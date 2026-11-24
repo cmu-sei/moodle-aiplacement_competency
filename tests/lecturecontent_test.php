@@ -345,10 +345,12 @@ final class lecturecontent_test extends \advanced_testcase {
         accesslib_clear_all_caches_for_unit_testing();
         $this->setUser($teacher);
 
-        add_cm_competency::execute($label1->cmid, $competency->get('id'));
+        $result = add_cm_competency::execute($label1->cmid, $competency->get('id'));
 
         $this->assertTrue($DB->record_exists('competency_modulecomp', ['cmid' => $label1->cmid]));
         $this->assertFalse($DB->record_exists('competency_modulecomp', ['cmid' => $trn1->cmid]));
+        // The teacher is told which transcript was left untagged.
+        $this->assertCount(1, $result['failedtranscripts']);
     }
 
     public function test_a_walkthrough_that_opens_with_its_label_is_dropped_to_the_end(): void {
@@ -555,7 +557,7 @@ final class lecturecontent_test extends \advanced_testcase {
 
         $result = add_cm_competency::execute($label1->cmid, $competency->get('id'));
 
-        $this->assertTrue($result);
+        $this->assertTrue($result['added']);
         $this->assertDebuggingCalledCount(1);
     }
 
@@ -574,5 +576,25 @@ final class lecturecontent_test extends \advanced_testcase {
         foreach (['Problem Set Solutions.pdf', 'Midterm Exam Solutions.pdf', 'Kerberos Homework Solutions.pdf'] as $name) {
             $this->assertTrue(resolver::is_solution_file($name), $name);
         }
+    }
+
+    public function test_pdftotext_is_stopped_when_it_takes_too_long(): void {
+        $stub = sys_get_temp_dir() . '/pdftotext_slow_' . uniqid();
+        file_put_contents($stub, "#!/bin/sh\nsleep 10\nprintf 'TOOLATE'\n");
+        chmod($stub, 0755);
+        set_config('pdftotext', $stub, 'aiplacement_competency');
+        set_config('pdftimeout', 1, 'aiplacement_competency');
+        $course = $this->getDataGenerator()->create_course();
+        $resource = $this->create_file_activity($course, ['handout.pdf' => '%PDF-1.4']);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+        filetext::take_omitted();
+
+        $started = microtime(true);
+        $content = resolver::get_content($cm, \context_module::instance($resource->cmid));
+        unlink($stub);
+
+        $this->assertLessThan(5, microtime(true) - $started);
+        $this->assertStringNotContainsString('TOOLATE', $content);
+        $this->assertSame(['handout.pdf'], filetext::take_omitted());
     }
 }

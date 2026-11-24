@@ -79,6 +79,7 @@ Site administration → AI → Placements → Competency:
 | Candidates shown to the model | 80 | Frameworks with more competencies than this are narrowed to the closest keyword matches. |
 | Offer a verification pass | on | Adds the verify checkbox to the drawer. |
 | Tag a lecture's transcript with its video | on | Applying a competency to a label also applies it to the transcript file activities beside it. |
+| PDF conversion time limit (seconds) | 20 | pdftotext is stopped after this long on one file, which is then reported as unreadable. |
 | Path to pdftotext | empty | Program from poppler-utils; PDFs are skipped when empty. |
 
 The verification pass uses the same AI provider as classification: Moodle's AI subsystem picks the provider and model per action, not per request, so a different model for the review means configuring a second provider for **Generate text**.

@@ -55,6 +55,9 @@ final class filetext {
     /** @var string[] Names of files that were meant to be read and could not be, since the last take_omitted(). */
     private static array $omitted = [];
 
+    /** Seconds pdftotext may take on one file when the setting is unset. */
+    private const PDF_TIMEOUT = 20;
+
     /** Extensions whose content is read directly. */
     private const PLAIN = ['txt', 'md', 'html', 'htm', 'csv'];
 
@@ -245,13 +248,57 @@ final class filetext {
             return '';
         }
 
-        $output = [];
-        $status = 1;
-        // Arguments are not user input: a configured path and a temp file Moodle named.
-        exec(escapeshellarg($program) . ' -enc UTF-8 -nopgbrk ' . escapeshellarg($tmp) . ' - 2>/dev/null', $output, $status);
+        $text = self::run_pdftotext($program, $tmp);
         @unlink($tmp);
 
-        return $status === 0 ? trim((string)preg_replace('/[ \t]+/u', ' ', implode("\n", $output))) : '';
+        return $text === null ? '' : trim((string)preg_replace('/[ \t]+/u', ' ', $text));
+    }
+
+    /**
+     * Runs pdftotext with a time limit.
+     *
+     * A PDF built to hang the converter would otherwise hold the web request until the server gave up on it. The
+     * program is started without a shell, so nothing in a file name is interpreted.
+     *
+     * @param string $program The configured pdftotext path.
+     * @param string $path The temporary copy of the PDF.
+     * @return string|null The text, or null when the program failed or ran out of time.
+     */
+    private static function run_pdftotext(string $program, string $path): ?string {
+        $limit = (float)get_config('aiplacement_competency', 'pdftimeout');
+        $deadline = microtime(true) + ($limit > 0 ? $limit : self::PDF_TIMEOUT);
+
+        $process = @proc_open(
+            [$program, '-enc', 'UTF-8', '-nopgbrk', $path, '-'],
+            [1 => ['pipe', 'w'], 2 => ['file', '/dev/null', 'w']],
+            $pipes
+        );
+        if (!is_resource($process)) {
+            return null;
+        }
+
+        stream_set_blocking($pipes[1], false);
+        $output = '';
+        $timedout = false;
+        while (!feof($pipes[1])) {
+            $read = [$pipes[1]];
+            $write = $except = null;
+            if (stream_select($read, $write, $except, 0, 200000) > 0) {
+                $output .= (string)fread($pipes[1], 65536);
+            }
+            if (microtime(true) > $deadline || strlen($output) > self::MAX_BYTES) {
+                $timedout = true;
+                break;
+            }
+        }
+        fclose($pipes[1]);
+
+        if ($timedout) {
+            proc_terminate($process, 9);
+        }
+        $status = proc_close($process);
+
+        return !$timedout && $status === 0 ? $output : null;
     }
 
     /**

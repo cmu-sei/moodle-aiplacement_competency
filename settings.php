@@ -91,6 +91,14 @@ if ($ADMIN->fulltree) {
         1
     ));
 
+    $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/pdftimeout',
+        get_string('setting_pdftimeout', 'aiplacement_competency'),
+        get_string('setting_pdftimeout_desc', 'aiplacement_competency'),
+        20,
+        PARAM_INT
+    ));
+
     $settings->add(new admin_setting_configexecutable(
         'aiplacement_competency/pdftotext',
         get_string('setting_pdftotext', 'aiplacement_competency'),
