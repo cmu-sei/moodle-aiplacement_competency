@@ -287,12 +287,22 @@ final class resolver {
             }
         }
 
-        $boldpattern = '/<p\b[^>]*>\s*<(strong|b)\b[^>]*>(.*?)<\/\1>/isu';
+        // A paragraph that opens in bold. When the bold is the whole paragraph it is a heading, and when text follows it
+        // is a lead-in such as 'Solution: use parameterised queries', which only the guide words count as.
+        $boldpattern = '/<p\b[^>]*>\s*<(strong|b)\b[^>]*>(.*?)<\/\1>(.*?)<\/p>/isu';
         if (preg_match_all($boldpattern, $content, $bold, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
-            foreach ($bold as $para) {
-                if (preg_match(self::HEADING_PATTERN, self::heading_text($para[2][0]))) {
-                    $cuts[] = [$para[0][1], strlen($content)];
+            foreach ($bold as $i => $para) {
+                $text = self::heading_text($para[2][0]);
+                $hasbody = self::heading_text($para[3][0]) !== '';
+                if ($hasbody ? !preg_match(self::LEADIN_PATTERN, rtrim($text, ': ')) : !preg_match(self::HEADING_PATTERN, $text)) {
+                    continue;
                 }
+                $end = strlen($content);
+                if (!$hasbody && !preg_match(self::LEADIN_PATTERN, $text)) {
+                    // A bare 'Solution' is as likely a lesson's own sub heading as a guide: it runs to the next heading.
+                    $end = self::next_heading($content, $para[0][1] + strlen($para[0][0]), $bold, $i);
+                }
+                $cuts[] = [$para[0][1], $end];
             }
         }
 
@@ -333,6 +343,29 @@ final class resolver {
         }
 
         return str_word_count($m[1]) <= 3 ? $m[1] . ($m[2] ?? '') : null;
+    }
+
+    /**
+     * Where the next heading begins after a position: a heading tag or a paragraph that is bold throughout.
+     *
+     * @param string $content The markup.
+     * @param int $from The offset to look from.
+     * @param array $bold The bold lead paragraphs found, as preg_match_all returned them with offsets.
+     * @param int $index The position in $bold of the paragraph the section opens with.
+     * @return int The offset, or the end of the content.
+     */
+    private static function next_heading(string $content, int $from, array $bold, int $index): int {
+        $next = strlen($content);
+        if (preg_match('/<h[1-6]\b/i', $content, $m, PREG_OFFSET_CAPTURE, $from)) {
+            $next = $m[0][1];
+        }
+        for ($j = $index + 1; $j < count($bold); $j++) {
+            if (self::heading_text($bold[$j][3][0]) === '') {
+                return min($next, $bold[$j][0][1]);
+            }
+        }
+
+        return $next;
     }
 
     /**
@@ -379,11 +412,21 @@ final class resolver {
         $name = trim((string)preg_replace('/[\s._\-]+/u', ' ', pathinfo($filename, PATHINFO_FILENAME)));
         // The file 'Endpoint Security Solutions.txt' is a lesson about solutions, and 'lab3-solution.pdf' is a guide.
         // A short name is a guide if it says so anywhere, a longer one only if the whole name is a solution heading.
-        if (str_word_count($name) <= 2) {
-            return (bool)preg_match(self::SOLUTION_PATTERN, $name);
+        if (!preg_match(self::SOLUTION_PATTERN, $name)) {
+            return false;
         }
 
-        return (bool)preg_match(self::HEADING_PATTERN, $name);
+        // The one exception: a name that is about solutions in the plural, as a lesson is, and says nothing of a lab,
+        // task or answers, as 'Endpoint Security Solutions' does.
+        $guidewords = '/\b(?:lab|ctf|task|challenge|exercise|module|answers?|instructors?|full|complete|\d+)\b|\d/iu';
+        $others = trim((string)preg_replace('/\bsolutions\b/iu', '', $name));
+        $othersguide = preg_match('/\b(?:solution|walk[- ]?through|answer|write[- ]?up|spoiler|cheat)/iu', $others);
+        $lesson = preg_match('/\bsolutions\b/iu', $name) && !$othersguide && !preg_match($guidewords, $others);
+        if ($lesson && str_word_count($others) >= 2) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

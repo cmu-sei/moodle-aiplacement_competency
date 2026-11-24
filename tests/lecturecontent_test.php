@@ -483,6 +483,11 @@ final class lecturecontent_test extends \advanced_testcase {
         $this->assertTrue(resolver::is_solution_file('ctf_writeup.txt'));
         $this->assertTrue(resolver::is_solution_file('Challenge 1 Solution.pdf'));
         $this->assertTrue(resolver::is_solution_file('lab-walk-through.txt'));
+        $guides = ['Lab3_Solution_Guide.pdf', 'SQLi_Challenge_Walkthrough.pdf', 'Module 3 Answer Key.docx',
+            'pcap-analysis-writeup.pdf', 'lab3-walk-through.txt', 'Kerberoasting Lab Solution.pdf'];
+        foreach ($guides as $name) {
+            $this->assertTrue(resolver::is_solution_file($name), $name);
+        }
     }
 
     public function test_a_pdf_that_is_only_a_solution_guide_is_left_out_without_a_warning(): void {
@@ -500,5 +505,23 @@ final class lecturecontent_test extends \advanced_testcase {
 
         $this->assertStringNotContainsString('SECRET', $content);
         $this->assertSame([], filetext::take_omitted());
+    }
+
+    public function test_a_bold_lead_in_with_text_after_it_is_kept_and_a_bare_bold_solution_ends_at_the_next_heading(): void {
+        $lead = '<p>Intro.</p><p><strong>Solution:</strong> use parameterised queries.</p><p>Practice it.</p>';
+        $this->assertSame($lead, resolver::drop_solutions($lead));
+
+        $bare = '<p>Intro.</p><p><strong>Solution</strong></p><p>Use parameterised queries.</p>' .
+            '<p><strong>Problem</strong></p><p>XSS.</p>';
+        $this->assertSame('<p>Intro.</p><p><strong>Problem</strong></p><p>XSS.</p>', resolver::drop_solutions($bare));
+    }
+
+    public function test_utf16_text_that_starts_with_a_long_non_latin_run_is_read(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $text = str_repeat("\u{4E2D}", 10001) . ' LONGBEWORDS';
+        $resource = $this->create_file_activity($course, ['long.txt' => mb_convert_encoding($text, 'UTF-16BE', 'UTF-8')]);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+
+        $this->assertStringContainsString('LONGBEWORDS', resolver::get_content($cm, \context_module::instance($resource->cmid)));
     }
 }
