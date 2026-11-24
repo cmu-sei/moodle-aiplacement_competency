@@ -49,8 +49,14 @@ namespace aiplacement_competency\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class utils {
-    /** The most competencies shown the model at once. Longer lists are narrowed to the best matches. */
-    public const DEFAULT_MAX_CANDIDATES = 80;
+    /**
+     * The most competencies shown the model at once. Longer lists are narrowed to the best matches.
+     *
+     * Measured against reviewed tags, a keyword shortlist of 80 reached under half the tags chosen from DCWF or NICE
+     * (about 2,500 statements each), while 400 reached three quarters and costs about 11,000 tokens per section.
+     * ATT&CK and D3FEND, at a few hundred entries, are sent whole.
+     */
+    public const DEFAULT_MAX_CANDIDATES = 400;
 
     /**
      * Build the instruction text for the model.
