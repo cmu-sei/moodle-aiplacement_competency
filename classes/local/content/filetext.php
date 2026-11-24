@@ -105,8 +105,9 @@ final class filetext {
 
         $ext = self::extension($file->get_filename());
         if ($ext === 'pdf') {
-            $text = resolver::drop_solutions(self::read_pdf($file));
-            if ($text === '') {
+            $extracted = self::read_pdf($file);
+            $text = resolver::drop_solutions($extracted);
+            if ($extracted === '') {
                 self::$omitted[] = $file->get_filename();
             }
 
@@ -214,7 +215,7 @@ final class filetext {
         if (strlen($raw) > 1 && substr_count($raw, "\0") >= strlen($raw) / 4) {
             // Mostly ASCII text has its NULs in the high byte: odd positions for little endian, even for big.
             $even = $odd = 0;
-            for ($i = 0, $n = min(strlen($raw), 200); $i < $n; $i++) {
+            for ($i = 0, $n = min(strlen($raw), 20000); $i < $n; $i++) {
                 if ($raw[$i] === "\0") {
                     ($i % 2 === 0) ? $even++ : $odd++;
                 }

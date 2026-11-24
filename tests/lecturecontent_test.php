@@ -411,7 +411,7 @@ final class lecturecontent_test extends \advanced_testcase {
         $html = "<p>Intro about Kerberos.</p>\n<p><strong>Walkthrough:</strong> Start by running nmap.</p>\n" .
             '<p>Then exploit it.</p>';
         $this->assertSame('<p>Intro about Kerberos.</p>', resolver::drop_solutions($html));
-        $this->assertSame('<p>Intro.</p>', resolver::drop_solutions('<p>Intro.</p><p>Solution: run SECRET</p>'));
+        $this->assertSame('<p>Intro.</p>', resolver::drop_solutions('<p>Intro.</p><p>Walkthrough: run SECRET</p>'));
     }
 
     public function test_a_bold_heading_before_a_heading_tag_solution_is_not_hidden_by_it(): void {
@@ -460,5 +460,45 @@ final class lecturecontent_test extends \advanced_testcase {
         $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
 
         $this->assertStringContainsString('BEWORDS', resolver::get_content($cm, \context_module::instance($resource->cmid)));
+    }
+
+    public function test_ordinary_lead_ins_that_use_the_word_solution_are_kept(): void {
+        $teaching = "<p>Common web flaws.</p><p>Problem: SQL injection.</p><p>Solution: use parameterised queries.</p>" .
+            '<p>Problem: stored XSS.</p>';
+        $assignment = "Write-up: submit a PDF by Friday.\nKeep me";
+
+        $this->assertSame($teaching, resolver::drop_solutions($teaching));
+        $this->assertSame($assignment, resolver::drop_solutions($assignment));
+    }
+
+    public function test_an_entity_encoded_heading_is_found_and_stops_at_the_next_section(): void {
+        $html = '<p>Intro.</p><h2>Solution&nbsp;guide</h2><p>Run SECRETCOMMAND.</p><h2>Reading</h2><p>Keep me.</p>';
+
+        $this->assertSame('<p>Intro.</p><h2>Reading</h2><p>Keep me.</p>', resolver::drop_solutions($html));
+    }
+
+    public function test_a_lesson_about_solutions_is_not_a_solution_file(): void {
+        $this->assertFalse(resolver::is_solution_file('Endpoint Security Solutions.txt'));
+        $this->assertTrue(resolver::is_solution_file('lab3-solution.pdf'));
+        $this->assertTrue(resolver::is_solution_file('ctf_writeup.txt'));
+        $this->assertTrue(resolver::is_solution_file('Challenge 1 Solution.pdf'));
+        $this->assertTrue(resolver::is_solution_file('lab-walk-through.txt'));
+    }
+
+    public function test_a_pdf_that_is_only_a_solution_guide_is_left_out_without_a_warning(): void {
+        $stub = sys_get_temp_dir() . '/pdftotext_stub_' . uniqid();
+        file_put_contents($stub, "#!/bin/sh\nprintf 'Solution guide\\nRun SECRET.'\n");
+        chmod($stub, 0755);
+        set_config('pdftotext', $stub, 'aiplacement_competency');
+        $course = $this->getDataGenerator()->create_course();
+        $resource = $this->create_file_activity($course, ['handout.pdf' => '%PDF-1.4']);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+        filetext::take_omitted();
+
+        $content = resolver::get_content($cm, \context_module::instance($resource->cmid));
+        unlink($stub);
+
+        $this->assertStringNotContainsString('SECRET', $content);
+        $this->assertSame([], filetext::take_omitted());
     }
 }

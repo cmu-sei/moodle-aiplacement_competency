@@ -67,7 +67,7 @@ final class resolver {
      * They teach nothing the lab's own tasks do not, so they are not sent.
      */
     private const SOLUTION_PATTERN =
-        '/\b(solutions?|walk-?throughs?|answer[ _-]?keys?|write-?ups?|spoilers?|cheat[ _-]?sheets?)\b/iu';
+        '/\b(solutions?|walk[- ]?throughs?|answer[ _-]?keys?|write[- ]?ups?|spoilers?|cheat[ _-]?sheets?)\b/iu';
 
     /**
      * A line that is nothing but a solution heading: 'Solution guide', 'Lab walkthrough', 'Answer key'.
@@ -78,9 +78,15 @@ final class resolver {
     private const HEADING_PATTERN = '/^\W*' .
         '(?:(?:lab|ctf|full|complete|instructors?|exercise|task|challenge|part|step|question|problem|level|detailed|' .
         'step[- ]by[- ]step|\#?\d+)\s+)*' .
-        '(?:solutions?|walk-?throughs?|answer[ _-]?keys?|write-?ups?|spoilers?|cheat[ _-]?sheets?)' .
+        '(?:solutions?|walk[- ]?throughs?|answer[ _-]?keys?|write[- ]?ups?|spoilers?|cheat[ _-]?sheets?)' .
         '(?:\s+(?:guide|guides|notes|steps|sheet|key|manual|only|section)|' .
         '\s+to\s+(?:(?:lab|task|challenge|exercise|question|problem)\s+)?\#?\d+)?\W*$/iu';
+
+    /**
+     * The words that open a guide even with its first sentence after the colon: 'Walkthrough: start by...'.
+     */
+    private const LEADIN_PATTERN = '/^\W*(?:(?:lab|ctf|full|complete|instructors?|exercise|task|challenge|\#?\d+)\s+)*' .
+        '(?:walk[- ]?throughs?|answer[ _-]?keys?|spoilers?|solutions?\s+(?:guide|guides|notes|steps|manual|key))\W*$/iu';
 
     /**
      * Returns the content source for an activity, or null when it has none.
@@ -267,7 +273,7 @@ final class resolver {
 
         if (preg_match_all('/<h([1-6])\b[^>]*>(.*?)<\/h\1>/isu', $content, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             foreach ($found as $i => $heading) {
-                if (!preg_match(self::HEADING_PATTERN, trim(strip_tags($heading[2][0])))) {
+                if (!preg_match(self::HEADING_PATTERN, self::heading_text($heading[2][0]))) {
                     continue;
                 }
                 $end = strlen($content);
@@ -284,7 +290,7 @@ final class resolver {
         $boldpattern = '/<p\b[^>]*>\s*<(strong|b)\b[^>]*>(.*?)<\/\1>/isu';
         if (preg_match_all($boldpattern, $content, $bold, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             foreach ($bold as $para) {
-                if (preg_match(self::HEADING_PATTERN, trim(strip_tags($para[2][0])))) {
+                if (preg_match(self::HEADING_PATTERN, self::heading_text($para[2][0]))) {
                     $cuts[] = [$para[0][1], strlen($content)];
                 }
             }
@@ -330,6 +336,18 @@ final class resolver {
     }
 
     /**
+     * The text of a heading's markup, tags removed and entities and non breaking spaces turned into what they stand for.
+     *
+     * @param string $html The heading's inner markup.
+     * @return string The text.
+     */
+    private static function heading_text(string $html): string {
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim(str_replace("\u{00A0}", ' ', $text));
+    }
+
+    /**
      * Whether a line of a description is, or opens with, a heading that introduces a solution.
      *
      * 'Walkthrough:' and 'Solution guide' qualify, with or without a body after the colon.
@@ -338,11 +356,17 @@ final class resolver {
      * @return bool True when it is such a heading.
      */
     private static function is_solution_heading(string $line): bool {
-        $line = trim(html_entity_decode(strip_tags($line), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        // The line 'Walkthrough: start by running nmap' opens a guide as much as a heading line on its own does.
-        $head = explode(': ', $line, 2)[0];
+        $line = self::heading_text($line);
+        if (preg_match(self::HEADING_PATTERN, rtrim($line, ':'))) {
+            return true;
+        }
 
-        return (bool)preg_match(self::HEADING_PATTERN, rtrim($head, ':'));
+        // A line like 'Walkthrough: start by running nmap' opens a guide as much as a heading does. Only words
+        // that are not ordinary teaching wording count with a body after the colon: 'Solution: use parameterised
+        // queries' follows 'Problem:' in any lesson, and 'Write-up: submit a PDF' is an assignment instruction.
+        $head = explode(': ', $line, 2);
+
+        return count($head) === 2 && preg_match(self::LEADIN_PATTERN, $head[0]);
     }
 
     /**
@@ -352,7 +376,14 @@ final class resolver {
      * @return bool True when it should not be sent.
      */
     public static function is_solution_file(string $filename): bool {
-        return (bool)preg_match(self::SOLUTION_PATTERN, str_replace(['.', '_'], ' ', $filename));
+        $name = trim((string)preg_replace('/[\s._\-]+/u', ' ', pathinfo($filename, PATHINFO_FILENAME)));
+        // The file 'Endpoint Security Solutions.txt' is a lesson about solutions, and 'lab3-solution.pdf' is a guide.
+        // A short name is a guide if it says so anywhere, a longer one only if the whole name is a solution heading.
+        if (str_word_count($name) <= 2) {
+            return (bool)preg_match(self::SOLUTION_PATTERN, $name);
+        }
+
+        return (bool)preg_match(self::HEADING_PATTERN, $name);
     }
 
     /**
