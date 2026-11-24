@@ -52,6 +52,9 @@ final class filetext {
     /** Files bigger than this are not read. A transcript of a whole day is well under it. */
     private const MAX_BYTES = 20 * 1024 * 1024;
 
+    /** @var string[] Names of files that were meant to be read and could not be, since the last take_omitted(). */
+    private static array $omitted = [];
+
     /** Extensions whose content is read directly. */
     private const PLAIN = ['txt', 'md', 'html', 'htm', 'csv'];
 
@@ -92,13 +95,22 @@ final class filetext {
      * @return string The text, or an empty string when it cannot be read.
      */
     public static function read(\stored_file $file): string {
-        if (!self::is_readable($file) || $file->get_filesize() > self::MAX_BYTES) {
+        if (!self::is_readable($file)) {
+            return '';
+        }
+        if ($file->get_filesize() > self::MAX_BYTES) {
+            self::$omitted[] = $file->get_filename();
             return '';
         }
 
         $ext = self::extension($file->get_filename());
         if ($ext === 'pdf') {
-            return self::read_pdf($file);
+            $text = self::read_pdf($file);
+            if ($text === '') {
+                self::$omitted[] = $file->get_filename();
+            }
+
+            return $text;
         }
 
         $raw = $file->get_content();
@@ -110,6 +122,18 @@ final class filetext {
         }
 
         return trim($raw);
+    }
+
+    /**
+     * The files read since the last call that could not be, such as a PDF with no text layer.
+     *
+     * @return string[] The file names. Cleared by this call.
+     */
+    public static function take_omitted(): array {
+        $omitted = array_values(array_unique(self::$omitted));
+        self::$omitted = [];
+
+        return $omitted;
     }
 
     /**

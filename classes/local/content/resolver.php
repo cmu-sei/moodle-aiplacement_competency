@@ -176,15 +176,54 @@ final class resolver {
         }
 
         $kept = [];
+        $skipping = false;
         foreach (preg_split('/\R{2,}/u', $content) ?: [] as $chunk) {
-            $heading = explode(': ', $chunk, 2)[0];
-            if (\core_text::strlen($heading) < 200 && preg_match(self::SOLUTION_PATTERN, $heading)) {
+            $heading = self::heading($chunk);
+            if ($heading !== '' && preg_match(self::SOLUTION_PATTERN, $heading)) {
+                // The guide runs on past its heading, in paragraphs that carry no heading of their own.
+                $skipping = true;
                 continue;
+            }
+            if ($skipping) {
+                if (!self::is_heading($chunk)) {
+                    continue;
+                }
+                $skipping = false;
             }
             $kept[] = $chunk;
         }
 
         return implode("\n\n", $kept);
+    }
+
+    /**
+     * The heading a chunk of content opens with, or an empty string.
+     *
+     * A source's chunk reads 'Heading (Title): body'. A description may instead open with a short line.
+     *
+     * @param string $chunk The chunk.
+     * @return string The heading.
+     */
+    private static function heading(string $chunk): string {
+        $first = trim(explode("\n", trim($chunk), 2)[0]);
+        $heading = explode(': ', $first, 2)[0];
+
+        return \core_text::strlen($heading) <= 120 ? $heading : '';
+    }
+
+    /**
+     * Whether a chunk is a heading that starts something new rather than a paragraph of the text before it.
+     *
+     * @param string $chunk The chunk.
+     * @return bool True for a short line with no sentence ending, or a labelled source chunk.
+     */
+    private static function is_heading(string $chunk): bool {
+        $chunk = trim($chunk);
+        if (preg_match('/^[^\n:]{1,100}: /u', $chunk) && !str_contains(explode(': ', $chunk, 2)[0], '.')) {
+            return true;
+        }
+
+        return !str_contains($chunk, "\n") && \core_text::strlen($chunk) <= 80 && !preg_match('/[.!?]$/u', $chunk);
     }
 
     /**

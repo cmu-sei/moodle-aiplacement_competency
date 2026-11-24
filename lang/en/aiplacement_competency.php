@@ -111,6 +111,7 @@ $string['contentmismatch'] = 'This content does not appear to be about the activ
 $string['contentpartial'] = 'The content was long, so it was read in {$a->read} of {$a->total} sections. Tags may miss material from the sections that were skipped.';
 $string['copy'] = 'Copy';
 $string['droppedbyverify'] = '{$a} suggested tag(s) were removed by the verification pass.';
+$string['filesomitted'] = 'These files could not be read and were left out, so the tags may be incomplete: {$a}.';
 $string['frameworkselection'] = 'Competency Framework Selection';
 $string['frameworkselection_error'] = 'The competency frameworks could not be loaded.';
 $string['frameworkselection_help'] = 'Choose the competency framework that the AI model should use to classify your content.';

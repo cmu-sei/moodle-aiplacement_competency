@@ -260,4 +260,54 @@ final class lecturecontent_test extends \advanced_testcase {
         $this->assertStringNotContainsString('FIRSTLECTURE', resolver::get_content($cm, $context));
         $this->assertFalse(resolver::has_content($cm, $context));
     }
+
+    public function test_a_solution_guide_is_dropped_through_its_following_paragraphs(): void {
+        $content = "Learners scan a host.\n\nSolution guide\n\nRun SECRETCOMMAND first.\n\nThen run ANOTHERSECRET.\n\n" .
+            "Grading\n\nEach task is worth ten points.";
+
+        $kept = resolver::drop_solutions($content);
+
+        $this->assertStringContainsString('Learners scan a host.', $kept);
+        $this->assertStringNotContainsString('SECRETCOMMAND', $kept);
+        $this->assertStringNotContainsString('ANOTHERSECRET', $kept);
+        $this->assertStringContainsString('Each task is worth ten points.', $kept);
+    }
+
+    public function test_a_pdf_that_cannot_be_read_is_reported_not_silently_skipped(): void {
+        // A program that always fails stands in for a PDF with no text layer.
+        set_config('pdftotext', '/bin/false', 'aiplacement_competency');
+        $course = $this->getDataGenerator()->create_course();
+        $resource = $this->create_file_activity($course, ['handout.pdf' => '%PDF-1.4 not really']);
+        $cm = get_coursemodule_from_id('resource', $resource->cmid, 0, false, MUST_EXIST);
+        filetext::take_omitted();
+
+        $this->assertSame('', resolver::get_content($cm, \context_module::instance($resource->cmid)));
+        $this->assertSame(['handout.pdf'], filetext::take_omitted());
+        $this->assertSame([], filetext::take_omitted());
+    }
+
+    public function test_tags_are_not_written_to_a_transcript_the_user_may_not_manage(): void {
+        global $DB;
+        set_config('enableccompetency', 1);
+        [$course, $label1, $trn1] = $this->create_two_lectures();
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $framework = $generator->create_framework();
+        $competency = $generator->create_competency(['competencyframeworkid' => $framework->get('id')]);
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $roleid = $DB->get_field('role', 'id', ['shortname' => 'editingteacher'], MUST_EXIST);
+        assign_capability(
+            'moodle/competency:coursecompetencymanage',
+            CAP_PROHIBIT,
+            $roleid,
+            \context_module::instance($trn1->cmid)->id,
+            true
+        );
+        accesslib_clear_all_caches_for_unit_testing();
+        $this->setUser($teacher);
+
+        add_cm_competency::execute($label1->cmid, $competency->get('id'));
+
+        $this->assertTrue($DB->record_exists('competency_modulecomp', ['cmid' => $label1->cmid]));
+        $this->assertFalse($DB->record_exists('competency_modulecomp', ['cmid' => $trn1->cmid]));
+    }
 }

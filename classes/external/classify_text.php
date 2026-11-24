@@ -43,6 +43,7 @@ use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_multiple_structure;
+use aiplacement_competency\local\content\filetext;
 use aiplacement_competency\local\content\resolver;
 use aiplacement_competency\local\classifier;
 
@@ -112,6 +113,8 @@ class classify_text extends external_api {
         self::validate_context($context);
         require_capability('aiplacement/competency:classify_text', $context);
 
+        filetext::take_omitted();
+
         // In an activity context, add whatever content that kind of activity holds.
         if ($context->contextlevel == CONTEXT_MODULE) {
             $cm = get_coursemodule_from_id('', $context->instanceid, 0, false, MUST_EXIST);
@@ -142,6 +145,11 @@ class classify_text extends external_api {
             $title,
             (bool)$params['verify'] && get_config('aiplacement_competency', 'verify') !== '0'
         );
+
+        $omitted = filetext::take_omitted();
+        if (!empty($omitted)) {
+            $result['warnings'][] = get_string('filesomitted', 'aiplacement_competency', implode(', ', $omitted));
+        }
 
         return [
             'frameworkid'        => (int)$params['selectedframeworkid'],
