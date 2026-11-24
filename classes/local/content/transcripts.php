@@ -79,32 +79,6 @@ final class transcripts {
     }
 
     /**
-     * The labels a transcript activity belongs to, as the inverse of for_label().
-     *
-     * @param \stdClass $resource The file activity's course module record.
-     * @return \cm_info[] The labels that have this activity as a transcript.
-     */
-    public static function labels_for(\stdClass $resource): array {
-        $modinfo = get_fast_modinfo($resource->course);
-        $ids = $modinfo->sections[$modinfo->get_cm($resource->id)->sectionnum] ?? [];
-
-        $labels = [];
-        foreach ($ids as $id) {
-            $cm = $modinfo->get_cm((int)$id);
-            if ($cm->modname !== 'label') {
-                continue;
-            }
-            foreach (self::for_label($cm->get_course_module_record()) as $pair) {
-                if ((int)$pair->id === (int)$resource->id) {
-                    $labels[] = $cm;
-                }
-            }
-        }
-
-        return $labels;
-    }
-
-    /**
      * Walks course module ids until the next label, collecting caption file activities.
      *
      * @param \course_modinfo $modinfo The course's module info.

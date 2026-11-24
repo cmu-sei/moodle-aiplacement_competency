@@ -226,14 +226,6 @@ final class lecturecontent_test extends \advanced_testcase {
         $this->assertFalse(resolver::has_content($cm, \context_module::instance($label->cmid)));
     }
 
-    public function test_transcripts_know_which_label_they_belong_to(): void {
-        [, $label1, $trn1, , $trn2] = $this->create_two_lectures();
-
-        $labels = transcripts::labels_for(get_coursemodule_from_id('resource', $trn1->cmid, 0, false, MUST_EXIST));
-        $this->assertSame([(int)$label1->cmid], array_map(static fn($cm) => (int)$cm->id, $labels));
-        $this->assertCount(1, transcripts::labels_for(get_coursemodule_from_id('resource', $trn2->cmid, 0, false, MUST_EXIST)));
-    }
-
     public function test_tags_on_a_label_also_go_to_its_transcript_and_the_course(): void {
         global $DB;
         set_config('enableccompetency', 1);
