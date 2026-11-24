@@ -430,7 +430,11 @@ define([
                       });
                       linkPromise = Promise.all(toLink.map(function(id){
                         return addToModule(cmid, id).then(function(res){
-                          return { id:id, status: res && res.added ? 'added' : 'exists', transcripts: (res && res.failedtranscripts) || [] };
+                          return {
+                            id: id,
+                            status: res && res.added ? 'added' : 'exists',
+                            transcripts: (res && res.failedtranscripts) || []
+                          };
                         })
                           .catch(function(){ return { id:id, status:'failed' }; });
                       })).then(function(results){
