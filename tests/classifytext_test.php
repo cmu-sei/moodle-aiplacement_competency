@@ -103,6 +103,22 @@ final class classifytext_test extends \advanced_testcase {
     }
 
     /**
+     * A failed provider response, built the way the running Moodle takes one.
+     *
+     * Moodle 5.2 added a required error name beside the code, and 5.0 has no such argument.
+     *
+     * @param string $message The provider's error message.
+     * @return response_generate_text The response.
+     */
+    private function failed_response(string $message): response_generate_text {
+        try {
+            return new response_generate_text(success: false, errorcode: 500, error: 'Error', errormessage: $message);
+        } catch (\Error $e) {
+            return new response_generate_text(success: false, errorcode: 500, errormessage: $message);
+        }
+    }
+
+    /**
      * Replaces core_ai\manager with a mock that answers each request with the next response.
      *
      * The last response repeats once the list runs out. Each item is a payload array
@@ -633,11 +649,7 @@ final class classifytext_test extends \advanced_testcase {
     public function test_execute_reports_a_refusal(): void {
         $cmctx = $this->create_module_context();
         $this->setAdminUser();
-        $response = new response_generate_text(
-            success: false,
-            errorcode: 400,
-            errormessage: 'The model stopped: content filter safeguards triggered'
-        );
+        $response = $this->failed_response('The model stopped: content filter safeguards triggered');
         $this->mock_ai_sequence([$response]);
 
         try {
@@ -740,7 +752,7 @@ final class classifytext_test extends \advanced_testcase {
         $cmctx = $this->create_module_context();
         $this->setAdminUser();
         $fw = $this->create_framework(['Tasks' => ['T1' => 'One']]);
-        $failed = new response_generate_text(success: false, errorcode: 500, errormessage: 'Provider timeout');
+        $failed = $this->failed_response('Provider timeout');
         $ok = new response_generate_text(success: true);
         $ok->set_response_data(['generatedcontent' => json_encode(['competencies' => ['T1']]), 'finishreason' => 'stop']);
         $this->mock_ai_sequence([$failed, $ok]);
@@ -809,7 +821,7 @@ final class classifytext_test extends \advanced_testcase {
     public function test_execute_does_not_call_a_refused_connection_a_refusal(): void {
         $cmctx = $this->create_module_context();
         $this->setAdminUser();
-        $response = new response_generate_text(success: false, errorcode: 500, errormessage: 'cURL error 7: Connection refused');
+        $response = $this->failed_response('cURL error 7: Connection refused');
         $this->mock_ai_sequence([$response]);
 
         try {
