@@ -89,6 +89,15 @@ final class resolver {
         '(?:walk[- ]?throughs?|answer[ _-]?keys?|spoilers?|solutions?\s+(?:guide|guides|notes|steps|manual|key))\W*$/iu';
 
     /**
+     * Headings that are a guide however they are used: the lead-in words plus the ones that are ordinary with a body.
+     *
+     * A heading of just 'Write-up' is a guide, where 'Write-up: submit a PDF' is an assignment.
+     */
+    private const STRONG_HEADING_PATTERN = '/^\W*(?:(?:lab|ctf|full|complete|instructors?|exercise|task|challenge|\#?\d+)\s+)*' .
+        '(?:walk[- ]?throughs?|answer[ _-]?keys?|write[- ]?ups?|cheat[ _-]?sheets?|spoilers?|' .
+        'solutions?\s+(?:guide|guides|notes|steps|manual|key))\W*$/iu';
+
+    /**
      * Returns the content source for an activity, or null when it has none.
      *
      * Sources are found by name: mod_book is served by book_source. A module
@@ -298,7 +307,7 @@ final class resolver {
                     continue;
                 }
                 $end = strlen($content);
-                if (!$hasbody && !preg_match(self::LEADIN_PATTERN, $text)) {
+                if (!$hasbody && !preg_match(self::STRONG_HEADING_PATTERN, $text)) {
                     // A bare 'Solution' is as likely a lesson's own sub heading as a guide: it runs to the next heading.
                     $end = self::next_heading($content, $para[0][1] + strlen($para[0][0]), $bold, $i);
                 }
@@ -418,7 +427,8 @@ final class resolver {
 
         // The one exception: a name that is about solutions in the plural, as a lesson is, and says nothing of a lab,
         // task or answers, as 'Endpoint Security Solutions' does.
-        $guidewords = '/\b(?:lab|ctf|task|challenge|exercise|module|answers?|instructors?|full|complete|\d+)\b|\d/iu';
+        $guidewords = '/\b(?:lab|ctf|task|challenge|exercise|module|answers?|instructors?|full|complete|homework|' .
+            'exam|quiz|test|midterm|final|assignment|worksheet|problems?|sets?)\b/iu';
         $others = trim((string)preg_replace('/\bsolutions\b/iu', '', $name));
         $othersguide = preg_match('/\b(?:solution|walk[- ]?through|answer|write[- ]?up|spoiler|cheat)/iu', $others);
         $lesson = preg_match('/\bsolutions\b/iu', $name) && !$othersguide && !preg_match($guidewords, $others);

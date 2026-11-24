@@ -558,4 +558,21 @@ final class lecturecontent_test extends \advanced_testcase {
         $this->assertTrue($result);
         $this->assertDebuggingCalledCount(1);
     }
+
+    public function test_write_up_and_cheat_sheet_headings_run_to_the_end_even_past_a_sub_heading(): void {
+        foreach (['Write-up', 'Cheat sheet'] as $heading) {
+            $html = "<p>Intro.</p><p><strong>{$heading}</strong></p><p>Step one.</p>" .
+                '<p><strong>Enumeration</strong></p><p>SECRET.</p>';
+
+            $this->assertSame('<p>Intro.</p>', resolver::drop_solutions($html), $heading);
+        }
+    }
+
+    public function test_names_of_lessons_about_solutions_are_read_and_answer_files_are_not(): void {
+        $this->assertFalse(resolver::is_solution_file('Lecture2-Endpoint-Security-Solutions.trn.vtt'));
+        $this->assertFalse(resolver::is_solution_file('Endpoint Security Solutions 2026.txt'));
+        foreach (['Problem Set Solutions.pdf', 'Midterm Exam Solutions.pdf', 'Kerberos Homework Solutions.pdf'] as $name) {
+            $this->assertTrue(resolver::is_solution_file($name), $name);
+        }
+    }
 }
