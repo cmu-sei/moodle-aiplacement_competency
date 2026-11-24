@@ -19,7 +19,7 @@ It adds a **“Classify Text”** button to supported course/activity editing pa
 - **Structured AI output** (JSON): the model returns competency **idnumbers** with a one line **reason** quoting the content. Anything that is not in the selected framework and levels is dropped on the server, and the reasons are shown in the drawer.
 - **Reads lecture content**: WebVTT transcripts and chapter files (`.vtt`, `.trn.vtt`, `.chp.vtt`), text and HTML files, and PDFs (when `pdftotext` is configured). A lecture **label** with an embedded video is read through the transcript file activities next to it in its section.
 - **Reads all of it**: long content is sent in sections and the answers merged, rather than cut at the first 20,000 characters.
-- **Short candidate lists**: frameworks with hundreds of statements (DCWF, NICE) are narrowed by keyword match to the closest 400 before the model chooses. Frameworks of a few hundred entries, such as ATT&CK and D3FEND, are sent whole.
+- **Short candidate lists**: frameworks with hundreds of statements (DCWF, NICE) are narrowed by keyword match to the closest 400 before the model chooses. A framework whose selected levels hold at most that many entries, as ATT&CK and D3FEND usually do, is sent whole.
 - **Fewer, better tags**: tags only what the activity teaches, capped per classification (default 3), with ATT&CK and D3FEND only where the content really explains the technique.
 - **Optional verification pass**: a checkbox in the drawer has the model review its own tags and remove weak ones.
 - **Warnings**: content that does not look like its activity title (a video carrying another lecture's transcript) is flagged before you apply.
@@ -75,7 +75,7 @@ Site administration → AI → Placements → Competency:
 | --- | --- | --- |
 | Default framework | empty | The idnumber or shortname of the framework the Classify drawer pre-selects, such as `DCWF-5.1`. An exact match, case ignored, not a prefix. The field says which framework it picks, or that it matches none. Builders can still choose another. |
 | Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
-| Time budget (seconds) | 40 | No further section or verification request starts after this, to stay inside the web server's 60 second limit. |
+| Time budget (seconds) | 40 | No further section or verification request starts once this much time has passed plus the longest request so far, to stay inside the web server's 60 second limit. |
 | Most tags per framework | 3 | The most competencies one classification returns. |
 | Candidates shown to the model | 400 | Frameworks with more competencies than this are narrowed to the closest keyword matches. |
 | Offer a verification pass | on | Adds the verify checkbox to the drawer. |

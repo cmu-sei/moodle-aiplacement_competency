@@ -149,4 +149,18 @@ final class settings_test extends \advanced_testcase {
         $this->assertNotNull($found);
         $this->assertSame(400, (int)$found->get_defaultsetting());
     }
+
+    public function test_upgrade_step_clears_a_saved_old_default_and_keeps_a_chosen_value(): void {
+        global $CFG;
+        $this->resetAfterTest();
+        require_once($CFG->dirroot . '/ai/placement/competency/db/upgrade.php');
+
+        set_config('maxcandidates', '80', 'aiplacement_competency');
+        aiplacement_competency_clear_old_shortlist_default();
+        $this->assertFalse(get_config('aiplacement_competency', 'maxcandidates'));
+
+        set_config('maxcandidates', '120', 'aiplacement_competency');
+        aiplacement_competency_clear_old_shortlist_default();
+        $this->assertSame('120', get_config('aiplacement_competency', 'maxcandidates'));
+    }
 }

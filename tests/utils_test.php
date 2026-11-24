@@ -209,10 +209,19 @@ final class utils_test extends \advanced_testcase {
         }
 
         $whole = utils::prepare($this->create_framework(['Techniques' => $small]), 'SMALL', ['Techniques'], 'text');
-        $narrowed = utils::prepare($this->create_framework(['Statements' => $large]), 'LARGE', ['Statements'], 'text');
+        // Named in the text, a competency from the far end of the framework outranks the first 400.
+        $narrowed = utils::prepare(
+            $this->create_framework(['Statements' => $large]),
+            'LARGE',
+            ['Statements'],
+            'Learners work through statement B0600, about governance.'
+        );
+        $codes = array_column($narrowed['candidates'], 'idnumber');
 
         $this->assertCount(348, $whole['candidates']);
         $this->assertCount(400, $narrowed['candidates']);
+        $this->assertContains('B0600', $codes);
+        $this->assertNotContains('B0400', $codes);
     }
 
     public function test_build_instruction_calls_out_codes_the_content_states(): void {
