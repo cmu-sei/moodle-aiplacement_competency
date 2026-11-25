@@ -114,7 +114,8 @@ final class classifier {
             $spent = microtime(true) - $started;
             // Not only 'is the budget spent' but 'would one more request of the longest length so far still fit':
             // a request that starts just inside the budget could otherwise end after the web server gives up.
-            $nomoretime = $spent + $longest >= $budget;
+            // A section with work roles is two requests, so it needs room for two.
+            $nomoretime = $spent + $longest * ($step[0] === job::STEP_ROLES ? 2 : 1) >= $budget;
             if ($step[0] === job::STEP_VERIFY && $nomoretime) {
                 $job->skip_verify();
                 continue;

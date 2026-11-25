@@ -94,10 +94,23 @@ define([
         }
 
         /**
+         * Whether a classification that was started is no longer the current one.
+         *
+         * Cancelling, or starting another, makes every earlier loop stale. The cancelled flag alone is not enough,
+         * since reopening the drawer clears it, and a cancelled loop would then go on to make paid requests.
+         * @param {number} run The number the classification was started with.
+         * @returns {boolean}
+         */
+        isStale(run) {
+            return this._run !== run || this.isRequestCancelled();
+        }
+
+        /**
          * Mark the request in flight as cancelled, so its response is discarded.
          */
         setRequestCancelled() {
             this.aiDrawerBodyElement.dataset.cancelled = '1';
+            this._run = (this._run || 0) + 1;
         }
 
         /**
@@ -659,6 +672,7 @@ define([
         // === Final: send classification ===
         async sendClassification(prompt, framework, levels) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
+            const run = this._run = (this._run || 0) + 1;
 
             const loadingHtml = await Templates.render('aiplacement_competency/loading', {});
             this.aiDrawerBodyElement.innerHTML = loadingHtml;
@@ -718,22 +732,20 @@ define([
 
                 let outcome;
                 do {
-                    if (this.isRequestCancelled()) {
-                        this.aiDrawerBodyElement.dataset.cancelled = '0';
+                    if (this.isStale(run)) {
                         return;
                     }
                     outcome = await Ajax.call([{
                         methodname: 'aiplacement_competency_classify_step',
                         args: {jobid: started.jobid},
                     }])[0];
+                    if (this.isStale(run)) {
+                        return;
+                    }
                     this.showProgress(outcome.message, outcome.done, outcome.total);
                 } while (!outcome.finished);
 
                 const result = outcome.result;
-                if (this.isRequestCancelled()) {
-                    this.aiDrawerBodyElement.dataset.cancelled = '0';
-                    return;
-                }
 
                 const {
                     frameworkid, frameworkshortname, usedlevels = [], competencies = [], suggestions = [], warnings = [],
@@ -791,7 +803,7 @@ define([
                     });
                 }
             } catch (error) {
-                if (!this.isRequestCancelled()) {
+                if (!this.isStale(run)) {
                     const errorHtml = await Templates.render('aiplacement_competency/error', {message: error?.message || ''});
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
                     Notification.exception(error);

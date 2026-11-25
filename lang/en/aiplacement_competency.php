@@ -168,6 +168,7 @@ Return JSON only, with this key and nothing else:
 { "roles": ["idnumber", "idnumber"] }
 Use only idnumbers from the list above, exactly as written in the square brackets.
 ';
+$string['rolesmissed'] = 'No work role could be chosen for {$a->missed} of {$a->total} sections, so those were matched against a keyword shortlist of the framework instead, which may miss some competencies.';
 $string['sectionsskipped'] = '{$a->skipped} of {$a->total} sections of the content could not be classified, so the tags may be incomplete. Try again.';
 $string['setting_defaultframework'] = 'Default framework';
 $string['setting_defaultframework_desc'] = 'The idnumber or shortname of the competency framework the Classify drawer selects for you, such as DCWF-5.1. It must match exactly, ignoring case, and is not a prefix: DCWF does not pick DCWF-5.1. Builders can still pick another. Leave empty to choose each time. Hidden frameworks are not offered.';

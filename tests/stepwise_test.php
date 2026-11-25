@@ -341,4 +341,87 @@ final class stepwise_test extends \advanced_testcase {
         $this->expectException(\moodle_exception::class);
         classify_step::execute($started['jobid']);
     }
+
+    public function test_a_section_with_no_role_chosen_says_so(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([
+            ['roles' => []],
+            ['competencies' => ['T1']],
+        ]);
+
+        [, $last] = $this->run_job($context, $fw, ['Tasks']);
+
+        $warnings = implode(' ', $last['result']['warnings']);
+        $this->assertStringContainsString('No work role could be chosen for 1 of 1 sections', $warnings);
+    }
+
+    public function test_a_failed_role_request_is_not_an_error_of_its_own_but_is_said(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $calls = 0;
+        $mock = $this->createMock(\core_ai\manager::class);
+        $mock->method('process_action')->willReturnCallback(function () use (&$calls) {
+            if ($calls++ === 0) {
+                try {
+                    return new response_generate_text(success: false, errorcode: 500, error: 'Error', errormessage: 'Timeout');
+                } catch (\Error $e) {
+                    return new response_generate_text(success: false, errorcode: 500, errormessage: 'Timeout');
+                }
+            }
+            $response = new response_generate_text(success: true);
+            $response->set_response_data([
+                'generatedcontent' => json_encode(['competencies' => ['T1']]),
+                'finishreason' => 'stop',
+            ]);
+
+            return $response;
+        });
+        $mock->method('is_action_available')->willReturn(true);
+        $mock->method('is_action_enabled')->willReturn(true);
+        \core\di::set(\core_ai\manager::class, function () use ($mock) {
+            return $mock;
+        });
+
+        [, $last] = $this->run_job($context, $fw, ['Tasks']);
+
+        $this->assertSame(['T1'], array_column($last['result']['suggestions'], 'idnumber'));
+        $this->assertStringContainsString('No work role could be chosen', implode(' ', $last['result']['warnings']));
+    }
+
+    public function test_the_synchronous_call_leaves_room_for_both_requests_of_a_section_with_roles(): void {
+        $this->setAdminUser();
+        set_config('timebudget', '0.5', 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $text = str_repeat("Some lecture material about intrusion alerts.\n\n", 800);
+        $answers = [['roles' => ['RA']], ['competencies' => ['T1']]];
+        $calls = 0;
+        $mock = $this->createMock(\core_ai\manager::class);
+        $mock->method('process_action')->willReturnCallback(function (\core_ai\aiactions\base $action) use (&$calls, $answers) {
+            $this->prompts[] = 'request';
+            usleep(250000);
+            $response = new response_generate_text(success: true);
+            $response->set_response_data([
+                'generatedcontent' => json_encode($answers[$calls++ % 2]),
+                'finishreason' => 'stop',
+            ]);
+
+            return $response;
+        });
+        $mock->method('is_action_available')->willReturn(true);
+        $mock->method('is_action_enabled')->willReturn(true);
+        \core\di::set(\core_ai\manager::class, function () use ($mock) {
+            return $mock;
+        });
+
+        $result = external\classify_text::execute($context->id, $text, $fw, 'ROLEFW', ['Tasks']);
+
+        // The first section (two requests, 0.5 s) uses the budget: a second section's roles request would need 0.5 s
+        // more, so only the first section is read, and no request starts that could end past the budget.
+        $this->assertCount(2, $this->prompts);
+        $this->assertStringContainsString('Stopped after 1 of', implode(' ', $result['warnings']));
+    }
 }

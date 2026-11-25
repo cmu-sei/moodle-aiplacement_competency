@@ -156,6 +156,7 @@ final class job {
             'kept' => null,
             'verifyremoved' => 0,
             'verifywarned' => false,
+            'rolesmissed' => 0,
         ]);
     }
 
@@ -361,6 +362,7 @@ final class job {
         try {
             $inner = classifier::decode($placement->send($context, $prompt, ['roles' => 1]));
         } catch (\moodle_exception $e) {
+            $this->state['rolesmissed']++;
             return;
         }
         $returned = is_array($inner['roles'] ?? null) ? $inner['roles'] : [];
@@ -372,6 +374,9 @@ final class job {
             $this->state['rolenames'][$found['id']] = trim((string)$roles[$found['id']]->shortname);
         }
         $this->state['picked'][$position] = $picked;
+        if (empty($picked)) {
+            $this->state['rolesmissed']++;
+        }
     }
 
     /**
@@ -535,6 +540,12 @@ final class job {
             $warnings[] = get_string('timebudgetreached', 'aiplacement_competency', (object)[
                 'read' => $sections - $state['unread'],
                 'total' => $state['total'],
+            ]);
+        }
+        if ($state['rolesmissed'] > 0) {
+            $warnings[] = get_string('rolesmissed', 'aiplacement_competency', (object)[
+                'missed' => $state['rolesmissed'],
+                'total' => $sections - $state['unread'],
             ]);
         }
         if ($state['offered'] === 0) {
