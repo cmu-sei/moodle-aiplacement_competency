@@ -53,7 +53,7 @@ class utils {
      * The most competencies shown the model at once. Longer lists are narrowed to the best matches.
      *
      * Measured against reviewed tags, a keyword shortlist of 80 reached under half the tags chosen from DCWF or NICE
-     * (about 2,500 statements each), while 400 reached three quarters and costs about 11,000 tokens per section.
+     * (about 2,500 statements each), while 400 reached three quarters. Measured on the dev site, 400 DCWF tasks cost 17,615 tokens in a request, about 44 tokens each, so 400 candidates cost something like $0.05 per section at Sonnet list price.
      * ATT&CK and D3FEND, at a few hundred entries, are sent whole.
      */
     public const DEFAULT_MAX_CANDIDATES = 400;
