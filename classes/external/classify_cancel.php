@@ -65,7 +65,8 @@ class classify_cancel extends external_api {
     }
 
     /**
-     * Drops the job if it is the caller's. A job that is gone, or someone else's, is left alone without a word.
+     * Drops the job if it is the caller's, once any step running on it has finished. A job that is gone, or someone
+     * else's, is left alone without a word.
      *
      * @param string $jobid The job.
      * @return bool True always.
@@ -76,9 +77,20 @@ class classify_cancel extends external_api {
         $params = self::validate_parameters(self::execute_parameters(), ['jobid' => $jobid]);
         $cache = \cache::make('aiplacement_competency', 'jobs');
 
-        $state = $cache->get($params['jobid']);
-        if (is_array($state) && (int)($state['userid'] ?? 0) === (int)$USER->id) {
-            $cache->delete($params['jobid']);
+        // Behind the step that may be running, which is when a teacher usually cancels: that step writes its state back
+        // when its model request returns, and a delete that came first would be undone. Waiting for the same lock puts
+        // this delete after it. If the step takes too long, the delete is made anyway.
+        $lock = \core\lock\lock_config::get_lock_factory('aiplacement_competency')
+            ->get_lock('job_' . $params['jobid'], 90);
+        try {
+            $state = $cache->get($params['jobid']);
+            if (is_array($state) && (int)($state['userid'] ?? 0) === (int)$USER->id) {
+                $cache->delete($params['jobid']);
+            }
+        } finally {
+            if ($lock) {
+                $lock->release();
+            }
         }
 
         return true;
