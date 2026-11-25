@@ -89,8 +89,11 @@ class utils {
         array $levels,
         string $text = '',
         string $title = '',
-        ?array $pool = null
+        ?array $pool = null,
+        bool $percategory = false
     ): array {
+        // With work roles the list is headed by category and the cap and the narrowing are for each of them.
+        $percategory = $percategory || $pool !== null;
         $normlevels = self::normalise_levels($levels);
         // A pool the caller worked out, such as the competencies of the work roles chosen for this text, replaces
         // the levels' own. Its entries carry the category they belong to, which heads them in the list.
@@ -104,14 +107,16 @@ class utils {
             $max = self::DEFAULT_MAX_CANDIDATES;
         }
         $total = count($candidates);
-        $candidates = narrower::top($candidates, $text, $max);
+        $candidates = $percategory
+            ? narrower::top_by_group($candidates, $text, $max)
+            : narrower::top($candidates, $text, $max);
 
         $availablecompetencies = '';
         if (!empty($candidates)) {
             $lines = [];
             $heading = null;
             foreach ($candidates as $candidate) {
-                if ($pool !== null && ($candidate->category ?? '') !== $heading) {
+                if ($percategory && ($candidate->category ?? '') !== $heading) {
                     $heading = (string)($candidate->category ?? '');
                     $lines[] = '== ' . $heading . ' ==';
                 }
@@ -144,7 +149,7 @@ class utils {
             'levels'            => implode(', ', $set['displaylevels']),
             'availablecompetencies' => $availablecompetencies,
             'limitrule'          => get_string(
-                $pool === null ? 'limit_total' : 'limit_percategory',
+                $percategory ? 'limit_percategory' : 'limit_total',
                 'aiplacement_competency',
                 self::max_tags()
             ),
@@ -173,10 +178,14 @@ class utils {
             return [];
         }
 
-        $sql = "SELECT DISTINCT r.id, r.shortname, r.description, r.idnumber, r.parentid, r.path
+        $sql = "SELECT r.id, r.shortname, r.description, r.idnumber, r.parentid, r.path
                   FROM {competency} r
-                  JOIN {competency_relatedcomp} rc ON rc.competencyid = r.id
                  WHERE r.competencyframeworkid = :frameworkid
+                   AND EXISTS (
+                           SELECT 1
+                             FROM {competency_relatedcomp} own
+                            WHERE own.competencyid = r.id
+                       )
                    AND NOT EXISTS (
                            SELECT 1
                              FROM {competency_relatedcomp} up
@@ -259,11 +268,14 @@ class utils {
 
         [$insql, $params] = $DB->get_in_or_equal($roleids, SQL_PARAMS_NAMED);
         $params['frameworkid'] = $frameworkid;
-        $sql = "SELECT DISTINCT c.id, c.shortname, c.description, c.idnumber, c.parentid, c.path
-                  FROM {competency_relatedcomp} rc
-                  JOIN {competency} c ON c.id = rc.relatedcompetencyid
-                 WHERE rc.competencyid {$insql}
-                   AND c.competencyframeworkid = :frameworkid";
+        $sql = "SELECT c.id, c.shortname, c.description, c.idnumber, c.parentid, c.path
+                  FROM {competency} c
+                 WHERE c.competencyframeworkid = :frameworkid
+                   AND c.id IN (
+                           SELECT rc.relatedcompetencyid
+                             FROM {competency_relatedcomp} rc
+                            WHERE rc.competencyid {$insql}
+                       )";
 
         $pool = [];
         foreach ($DB->get_records_sql($sql, $params) as $competency) {
@@ -426,6 +438,7 @@ class utils {
                         $line = self::competency_line($child);
                         if ($line !== '') {
                             $child->line = $line;
+                            $child->category = trim((string)$parent->shortname);
                             $competencylist[$child->id] = $child;
                         }
                     }
@@ -434,6 +447,9 @@ class utils {
                         $line = self::competency_line($grouped);
                         if ($line !== '' && !isset($competencylist[$grouped->id])) {
                             $grouped->line = $line;
+                            // Its own top level group, which is not necessarily the one being read.
+                            $top = (int)(explode('/', trim((string)$grouped->path, '/'))[1] ?? 0);
+                            $grouped->category = trim((string)($parentcompetencies[$top]->shortname ?? ''));
                             $competencylist[$grouped->id] = $grouped;
                             $linked = true;
                         }
@@ -645,7 +661,7 @@ class utils {
         [$insql, $params] = $DB->get_in_or_equal($competencyids, SQL_PARAMS_NAMED);
         $params['frameworkid'] = $frameworkid;
 
-        $sql = "SELECT DISTINCT c.id, c.shortname, c.description, c.idnumber
+        $sql = "SELECT DISTINCT c.id, c.shortname, c.description, c.idnumber, c.path
                   FROM {competency_relatedcomp} rc
                   JOIN {competency} c ON c.id = rc.relatedcompetencyid
                  WHERE rc.competencyid {$insql}

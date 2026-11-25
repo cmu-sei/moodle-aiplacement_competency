@@ -424,4 +424,100 @@ final class stepwise_test extends \advanced_testcase {
         $this->assertCount(2, $this->prompts);
         $this->assertStringContainsString('Stopped after 1 of', implode(' ', $result['warnings']));
     }
+
+    public function test_an_empty_role_pool_falls_back_with_a_warning(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        // Role B has no skills, so ticking Skills leaves its pool empty.
+        $this->mock_model([['roles' => ['RB']], ['competencies' => ['S1']]]);
+
+        [, $last] = $this->run_job($context, $fw, ['Skills']);
+
+        $this->assertStringContainsString('No work role could be chosen', implode(' ', $last['result']['warnings']));
+        $this->assertSame(['S1'], array_column($last['result']['suggestions'], 'idnumber'));
+        // Matched without roles, but still told which category it is.
+        $this->assertSame(['Skills'], array_column($last['result']['suggestions'], 'category'));
+    }
+
+    public function test_tags_found_without_roles_are_kept_for_their_own_category(): void {
+        $this->setAdminUser();
+        set_config('maxtags', 1, 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $text = str_repeat("Intrusion alerts are triaged by the learners.\n\n", 800);
+        // Section 1 has no usable role and gives T1, section 2 the same and gives K1: one tag for each category.
+        $this->mock_model([
+            ['roles' => []], ['competencies' => ['T1']],
+            ['roles' => []], ['competencies' => ['K1']],
+        ]);
+        $started = classify_start::execute($context->id, $text, $fw, 'ROLEFW', ['Tasks', 'Knowledge']);
+        $this->assertGreaterThanOrEqual(4, $started['total']);
+        do {
+            $step = classify_step::execute($started['jobid']);
+        } while (!$step['finished']);
+
+        $this->assertEqualsCanonicalizing(['T1', 'K1'], array_column($step['result']['suggestions'], 'idnumber'));
+    }
+
+    public function test_the_provider_message_survives_a_total_failure(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $mock = $this->createMock(\core_ai\manager::class);
+        $mock->method('process_action')->willReturnCallback(function () {
+            try {
+                return new response_generate_text(success: false, errorcode: 500, error: 'Error', errormessage: 'Quota exceeded');
+            } catch (\Error $e) {
+                return new response_generate_text(success: false, errorcode: 500, errormessage: 'Quota exceeded');
+            }
+        });
+        $mock->method('is_action_available')->willReturn(true);
+        $mock->method('is_action_enabled')->willReturn(true);
+        \core\di::set(\core_ai\manager::class, function () use ($mock) {
+            return $mock;
+        });
+
+        try {
+            $this->run_job($context, $fw, ['Tasks']);
+            $this->fail('Every section failed, so this should throw.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiclassifyfailed', $e->errorcode);
+            $this->assertStringContainsString('Quota exceeded', (string)$e->debuginfo);
+        }
+    }
+
+    public function test_narrowing_a_role_pool_keeps_every_category(): void {
+        $this->setAdminUser();
+        set_config('maxcandidates', 6, 'aiplacement_competency');
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
+        $fw = (int)$generator->create_framework(['shortname' => 'BIGFW'])->get('id');
+        $role = $generator->create_competency(['competencyframeworkid' => $fw, 'shortname' => 'Role', 'idnumber' => 'R']);
+        $tasks = $generator->create_competency(['competencyframeworkid' => $fw, 'shortname' => 'Tasks', 'idnumber' => 'Tasks']);
+        $skills = $generator->create_competency(['competencyframeworkid' => $fw, 'shortname' => 'Skills', 'idnumber' => 'Skills']);
+        foreach (range(1, 20) as $i) {
+            $task = $generator->create_competency([
+                'competencyframeworkid' => $fw,
+                'parentid' => $tasks->get('id'),
+                'shortname' => "T{$i}",
+                'idnumber' => "T{$i}",
+                'description' => 'Triage intrusion alerts',
+            ]);
+            $generator->create_related_competency(['competencyid' => $role->get('id'), 'relatedcompetencyid' => $task->get('id')]);
+        }
+        $skill = $generator->create_competency([
+            'competencyframeworkid' => $fw,
+            'parentid' => $skills->get('id'),
+            'shortname' => 'S1',
+            'idnumber' => 'S1',
+            'description' => 'Unrelated wording',
+        ]);
+        $generator->create_related_competency(['competencyid' => $role->get('id'), 'relatedcompetencyid' => $skill->get('id')]);
+
+        $pool = utils::role_pool($fw, [(int)$role->get('id')], ['Tasks', 'Skills']);
+        $prepared = utils::prepare($fw, 'BIGFW', ['Tasks', 'Skills'], 'Learners triage intrusion alerts.', '', $pool);
+
+        $this->assertLessThanOrEqual(7, count($prepared['candidates']));
+        $this->assertContains('S1', array_column($prepared['candidates'], 'idnumber'));
+    }
 }

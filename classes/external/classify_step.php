@@ -73,9 +73,31 @@ class classify_step extends external_api {
      */
     public static function execute(string $jobid): array {
         $params = self::validate_parameters(self::execute_parameters(), ['jobid' => $jobid]);
+
+        // One step at a time for a job. A second request for the same step, from a retry or a double click, waits and
+        // then finds the step done, instead of running the same paid request again.
+        $lock = \core\lock\lock_config::get_lock_factory('aiplacement_competency')
+            ->get_lock('job_' . $params['jobid'], 120);
+        if (!$lock) {
+            throw new \moodle_exception('classifyjobgone', 'aiplacement_competency');
+        }
+        try {
+            return self::run($params['jobid']);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Runs the next step of a job whose lock is held.
+     *
+     * @param string $jobid The job.
+     * @return array The response of execute().
+     */
+    private static function run(string $jobid): array {
         $cache = \cache::make('aiplacement_competency', 'jobs');
 
-        $state = $cache->get($params['jobid']);
+        $state = $cache->get($jobid);
         if (!is_array($state)) {
             throw new \moodle_exception('classifyjobgone', 'aiplacement_competency');
         }
@@ -90,10 +112,16 @@ class classify_step extends external_api {
         self::validate_context($context);
         require_capability('aiplacement/competency:classify_text', $context);
 
-        $job->step();
+        try {
+            $job->step();
+        } catch (\Throwable $e) {
+            // A job that failed has nothing to wait for, and nothing in it is worth keeping an hour.
+            $cache->delete($jobid);
+            throw $e;
+        }
 
         if (!$job->finished()) {
-            $cache->set($params['jobid'], $job->state());
+            $cache->set($jobid, $job->state());
 
             return [
                 'finished' => false,
@@ -103,7 +131,7 @@ class classify_step extends external_api {
             ];
         }
 
-        $cache->delete($params['jobid']);
+        $cache->delete($jobid);
         $state = $job->state();
         $result = classify_text::build_return(
             (int)$state['frameworkid'],

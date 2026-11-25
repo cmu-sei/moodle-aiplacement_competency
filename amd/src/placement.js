@@ -356,6 +356,8 @@ define([
 
         // === STEP 1: Select framework ===
         async showSelectFramework(prompt) {
+            // Going back to choose again ends any classification still running behind this panel.
+            this._run = (this._run || 0) + 1;
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const strings = await this.getStrings();
@@ -489,6 +491,8 @@ define([
 
         // === STEP 2: Select levels (checkboxes) ===
         async showLevels(prompt, framework) {
+            // Going back to choose again ends any classification still running behind this panel.
+            this._run = (this._run || 0) + 1;
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const strings = await this.getStrings();

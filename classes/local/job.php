@@ -394,8 +394,12 @@ final class job {
         $pool = null;
         if ($state['rolepick'] && !empty($state['picked'][$position])) {
             $pool = utils::role_pool((int)$state['frameworkid'], $state['picked'][$position], $state['levels']);
-            // Roles with nothing in the ticked categories leave the keyword shortlist to do the work.
-            $pool = $pool ?: null;
+            if (empty($pool)) {
+                // Roles with nothing in the ticked categories leave the keyword shortlist to do the work, which the
+                // teacher is told, as for a section in which no role could be chosen.
+                $pool = null;
+                $state['rolesmissed']++;
+            }
         }
         $prepared = utils::prepare(
             (int)$state['frameworkid'],
@@ -403,7 +407,8 @@ final class job {
             $state['levels'],
             $chunk,
             $state['title'],
-            $pool
+            $pool,
+            $state['rolepick']
         );
         $state['offered'] += count($prepared['candidates']);
         $count = count($state['chunks']);
@@ -418,7 +423,8 @@ final class job {
                 'levels' => $state['levels'],
             ]);
         } catch (\moodle_exception $e) {
-            $state['failure'] ??= $e->errorcode;
+            // The provider's own message is the debug information, which an administrator needs to find out why.
+            $state['failure'] ??= [$e->errorcode, $e->debuginfo];
             $state['skipped']++;
             return;
         }
@@ -431,13 +437,13 @@ final class job {
                 $reply = $reply . ' ' . json_encode($inner);
             }
             if (placement::looks_like_refusal($reply . ' ' . classifier::finish_reason($raw))) {
-                $state['failure'] ??= 'aiclassifyrefused';
+                $state['failure'] ??= ['aiclassifyrefused', null];
             } else if ($reply === '') {
                 // Some providers return only a reasoning block first, which core reads as no text at all.
-                $state['failure'] ??= 'aiclassifyempty';
+                $state['failure'] ??= ['aiclassifyempty', null];
             } else {
                 // Text that is not an answer at all.
-                $state['failure'] ??= 'aiclassifyunusable';
+                $state['failure'] ??= ['aiclassifyunusable', null];
             }
             $state['skipped']++;
             return;
@@ -531,7 +537,7 @@ final class job {
     public function result(): array {
         $state = $this->state;
         if ($state['succeeded'] === 0 && $state['failure'] !== null) {
-            throw new \moodle_exception($state['failure'], 'aiplacement_competency');
+            throw new \moodle_exception($state['failure'][0], 'aiplacement_competency', '', null, $state['failure'][1]);
         }
 
         $warnings = $state['warnings'];

@@ -121,6 +121,44 @@ final class narrower {
     }
 
     /**
+     * Keeps the competencies that best match the text, a share of the limit for each category.
+     *
+     * Narrowing the whole list by keyword score can leave a category with nothing, and the model could then never
+     * return a tag from it. Each category keeps a share in proportion to its size, and at least one entry.
+     *
+     * @param \stdClass[] $candidates Competencies keyed by id, each with a 'category'.
+     * @param string $text The content being classified.
+     * @param int $limit How many to keep in all. Zero or less keeps all.
+     * @return \stdClass[] The best matches, keyed by id, in their original order.
+     */
+    public static function top_by_group(array $candidates, string $text, int $limit): array {
+        $total = count($candidates);
+        if ($limit <= 0 || $total <= $limit) {
+            return $candidates;
+        }
+
+        $groups = [];
+        foreach ($candidates as $id => $candidate) {
+            $groups[(string)($candidate->category ?? '')][$id] = $candidate;
+        }
+
+        $keep = [];
+        foreach ($groups as $group) {
+            $share = max(1, (int)floor($limit * count($group) / $total));
+            $keep += self::top($group, $text, $share);
+        }
+
+        // Rounding down leaves a few places over: they go to the best of what was left out.
+        $left = $limit - count($keep);
+        if ($left > 0) {
+            $rest = array_diff_key($candidates, $keep);
+            $keep += self::top($rest, $text, $left);
+        }
+
+        return array_intersect_key($candidates, $keep);
+    }
+
+    /**
      * The code a competency is known by, lower cased, or an empty string.
      *
      * @param \stdClass $candidate The competency.
