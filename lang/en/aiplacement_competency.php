@@ -68,7 +68,7 @@ CRITICAL REQUIREMENTS:
 - Use ONLY competencies from the AVAILABLE COMPETENCIES list below, and refer to each by its idnumber exactly as written in the square brackets.
 - If no competency clearly applies, return an empty array.
 - For every competency, give a "reason" of one short sentence that quotes or closely paraphrases the content that supports it.
-- If the content does not appear to be about the activity title (for example it is another lecture\'s transcript), set "matches_title" to false.
+- Set "matches_title" to false only when the title names a specific subject that the content clearly is not about (for example it is another lecture\'s transcript). A title that names no subject, such as "Demo Page", "Page 1" or "Lab 3", always matches: set "matches_title" to true.
 
 Output format
 Return JSON only, with these keys:

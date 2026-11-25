@@ -76,6 +76,9 @@ final class classifier {
         'lecture', 'lab', 'labs', 'module', 'week', 'part', 'video', 'videos', 'transcript', 'introduction',
         'intro', 'chapter', 'exercise', 'activity', 'quiz', 'unit', 'course', 'section', 'overview', 'with',
         'from', 'and', 'the', 'for', 'session', 'class', 'lesson', 'day',
+        // Words that name the kind of activity or say it is an example, and so say nothing about its subject.
+        'demo', 'page', 'test', 'sample', 'example', 'untitled', 'new', 'label', 'file', 'files', 'resource',
+        'url', 'folder', 'book', 'assignment', 'forum', 'text', 'content', 'draft', 'temp', 'copy',
     ];
 
     /**
