@@ -94,10 +94,23 @@ define([
         }
 
         /**
+         * Whether a classification that was started is no longer the current one.
+         *
+         * Cancelling, or starting another, makes every earlier loop stale. The cancelled flag alone is not enough,
+         * since reopening the drawer clears it, and a cancelled loop would then go on to make paid requests.
+         * @param {number} run The number the classification was started with.
+         * @returns {boolean}
+         */
+        isStale(run) {
+            return this._run !== run || this.isRequestCancelled();
+        }
+
+        /**
          * Mark the request in flight as cancelled, so its response is discarded.
          */
         setRequestCancelled() {
             this.aiDrawerBodyElement.dataset.cancelled = '1';
+            this._run = (this._run || 0) + 1;
         }
 
         /**
@@ -343,6 +356,8 @@ define([
 
         // === STEP 1: Select framework ===
         async showSelectFramework(prompt) {
+            // Going back to choose again ends any classification still running behind this panel.
+            this._run = (this._run || 0) + 1;
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const strings = await this.getStrings();
@@ -476,6 +491,8 @@ define([
 
         // === STEP 2: Select levels (checkboxes) ===
         async showLevels(prompt, framework) {
+            // Going back to choose again ends any classification still running behind this panel.
+            this._run = (this._run || 0) + 1;
             this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const strings = await this.getStrings();
@@ -637,9 +654,29 @@ define([
             }
         }
 
+        /**
+         * Shows what the classification is doing, and how far along it is.
+         * @param {string} message What the work is doing now.
+         * @param {number} done Steps finished.
+         * @param {number} total Steps in all.
+         */
+        showProgress(message, done, total) {
+            const text = this.aiDrawerBodyElement.querySelector('[data-region="progress"]');
+            if (text) {
+                text.textContent = message || '';
+            }
+            const bar = this.aiDrawerBodyElement.querySelector('[data-region="progress-bar"]');
+            if (bar && total > 0) {
+                const percent = Math.round(100 * done / total);
+                bar.style.width = percent + '%';
+                bar.setAttribute('aria-valuenow', String(percent));
+            }
+        }
+
         // === Final: send classification ===
         async sendClassification(prompt, framework, levels) {
             this.aiDrawerBodyElement.dataset.cancelled = '0';
+            const run = this._run = (this._run || 0) + 1;
 
             const loadingHtml = await Templates.render('aiplacement_competency/loading', {});
             this.aiDrawerBodyElement.innerHTML = loadingHtml;
@@ -682,8 +719,10 @@ define([
                         return true;
                     });
 
-                const calls = Ajax.call([{
-                    methodname: 'aiplacement_competency_classify_text',
+                // A request for each step, which is a model request or two, so the drawer can say what is
+                // happening, Cancel stops between steps, and no one request outlasts the web server's limit.
+                const started = await Ajax.call([{
+                    methodname: 'aiplacement_competency_classify_start',
                     args: {
                         contextid: this.contextId,
                         prompttext: prompt,
@@ -692,17 +731,41 @@ define([
                         levels: selectedLevels,
                         verify: !!this._verify,
                     }
-                }]);
+                }])[0];
+                this.showProgress(started.message, 0, started.total);
 
-                const result = await calls[0];
-                if (this.isRequestCancelled()) {
-                    this.aiDrawerBodyElement.dataset.cancelled = '0';
-                    return;
-                }
+                let outcome;
+                do {
+                    if (this.isStale(run)) {
+                        return;
+                    }
+                    outcome = await Ajax.call([{
+                        methodname: 'aiplacement_competency_classify_step',
+                        args: {jobid: started.jobid},
+                    }])[0];
+                    if (this.isStale(run)) {
+                        return;
+                    }
+                    this.showProgress(outcome.message, outcome.done, outcome.total);
+                } while (!outcome.finished);
+
+                const result = outcome.result;
 
                 const {
                     frameworkid, frameworkshortname, usedlevels = [], competencies = [], suggestions = [], warnings = [],
+                    roles = [],
                 } = result;
+
+                // The reasons, under the group each tag belongs to, in the order the groups first appear.
+                const groups = [];
+                suggestions.filter(c => c.reason).forEach(c => {
+                    let group = groups.find(g => g.category === (c.category || ''));
+                    if (!group) {
+                        group = {category: c.category || '', items: []};
+                        groups.push(group);
+                    }
+                    group.items.push({idnumber: c.idnumber, reason: c.reason});
+                });
                 const uniqid  = 'resp-' + Math.random().toString(36).slice(2, 11);
                 const heading = await Str.get_string('classifyheading', 'aiplacement_competency');
 
@@ -719,7 +782,10 @@ define([
                         competencies: competencies.map((label, i) => ({label, idnumber: suggestions[i]?.idnumber || ''})),
                         warnings,
                         suggestions,
-                        hasreasons: suggestions.some(c => c.reason),
+                        hasreasons: groups.length > 0,
+                        reasongroups: groups,
+                        hasroles: roles.length > 0,
+                        roles: roles.join(', '),
                     }
                 );
 
@@ -741,7 +807,7 @@ define([
                     });
                 }
             } catch (error) {
-                if (!this.isRequestCancelled()) {
+                if (!this.isStale(run)) {
                     const errorHtml = await Templates.render('aiplacement_competency/error', {message: error?.message || ''});
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
                     Notification.exception(error);

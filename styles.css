@@ -44,6 +44,31 @@ DM26-0017
     margin-right: 5px;
 }
 
+/*
+ * The drawer is a column: a header of fixed height and a body that takes the rest and scrolls inside it. The body
+ * used to be given a height of its own, 100vh less the header and the top offset, and Moodle 5.3's own styles for
+ * a drawer of this class override that height, so the body grew past the bottom of the window and could not scroll.
+ * The id keeps these rules ahead of core's, whatever order the sheets load in.
+ */
+#ai-classify-drawer {
+    display: flex;
+    flex-direction: column;
+    /* In front of Moodle's right hand drawers. Moodle 5.2 sets its own z-index on this class, which wins without the id. */
+    z-index: 1040;
+}
+
+#ai-classify-drawer .ai-drawer-header {
+    flex: 0 0 auto;
+}
+
+#ai-classify-drawer .ai-drawer-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+}
+
 .ai-drawer-body {
     position: relative;
     height: calc(100vh - 120px);

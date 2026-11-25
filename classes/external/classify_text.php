@@ -109,36 +109,15 @@ class classify_text extends external_api {
             'verify' => $verify,
         ]);
 
-        $context = \context::instance_by_id($params['contextid']);
-        self::validate_context($context);
-        require_capability('aiplacement/competency:classify_text', $context);
-
-        filetext::take_omitted();
-
-        // In an activity context, add whatever content that kind of activity holds.
-        if ($context->contextlevel == CONTEXT_MODULE) {
-            $cm = get_coursemodule_from_id('', $context->instanceid, 0, false, MUST_EXIST);
-            $params['prompttext'] = resolver::augment_prompt($params['prompttext'], $cm, $context);
-        }
-
-        $selectedlevels = array_values(array_unique(array_filter(array_map(
-            static function ($s) {
-                $s = (string)$s;
-                $s = trim($s);
-                $s = preg_replace('/\s+/u', ' ', $s);
-                return $s;
-            },
+        [$context, $text, $selectedlevels, $title] = self::prepare_request(
+            $params['contextid'],
+            $params['prompttext'],
             $params['levels'] ?? []
-        ))));
-
-        $title = '';
-        if (isset($cm)) {
-            $title = trim(format_string($cm->name, true, ['context' => $context, 'escape' => false]));
-        }
+        );
 
         $result = classifier::classify(
             $context,
-            $params['prompttext'],
+            $text,
             (int)$params['selectedframeworkid'],
             (string)$params['selectedframeworkshortname'],
             $selectedlevels,
@@ -151,15 +130,69 @@ class classify_text extends external_api {
             $result['warnings'][] = get_string('filesomitted', 'aiplacement_competency', implode(', ', $omitted));
         }
 
+        return self::build_return((int)$params['selectedframeworkid'], $selectedlevels, $result);
+    }
+
+    /**
+     * Checks the caller and works out what is to be classified.
+     *
+     * @param int $contextid The context id.
+     * @param string $prompttext The text the drawer sent.
+     * @param array $levels The ticked level names.
+     * @return array [the context, the whole text, the cleaned level names, the activity title].
+     */
+    public static function prepare_request(int $contextid, string $prompttext, array $levels): array {
+        $context = \context::instance_by_id($contextid);
+        self::validate_context($context);
+        require_capability('aiplacement/competency:classify_text', $context);
+
+        filetext::take_omitted();
+
+        // In an activity context, add whatever content that kind of activity holds.
+        $title = '';
+        if ($context->contextlevel == CONTEXT_MODULE) {
+            $cm = get_coursemodule_from_id('', $context->instanceid, 0, false, MUST_EXIST);
+            $prompttext = resolver::augment_prompt($prompttext, $cm, $context);
+            $title = trim(format_string($cm->name, true, ['context' => $context, 'escape' => false]));
+        }
+
+        $selectedlevels = array_values(array_unique(array_filter(array_map(
+            static function ($s) {
+                $s = (string)$s;
+                $s = trim($s);
+                $s = preg_replace('/\s+/u', ' ', $s);
+                return $s;
+            },
+            $levels
+        ))));
+
+        return [$context, $prompttext, $selectedlevels, $title];
+    }
+
+    /**
+     * Shapes a classification result as this function returns it.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string[] $levels The levels used.
+     * @param array $result The result of a classification: 'competencies', 'warnings', 'frameworkshortname', 'roles'.
+     * @return array The structure execute_returns() describes.
+     */
+    public static function build_return(int $frameworkid, array $levels, array $result): array {
         return [
-            'frameworkid'        => (int)$params['selectedframeworkid'],
+            'frameworkid'        => $frameworkid,
             'frameworkshortname' => $result['frameworkshortname'],
-            'usedlevels'         => $selectedlevels,
+            'usedlevels'         => $levels,
             'competencies'       => array_column($result['competencies'], 'label'),
             'suggestions'        => array_map(static function ($c) {
-                return ['idnumber' => $c['idnumber'], 'label' => $c['label'], 'reason' => $c['reason']];
+                return [
+                    'idnumber' => $c['idnumber'],
+                    'label' => $c['label'],
+                    'reason' => $c['reason'],
+                    'category' => $c['category'] ?? '',
+                ];
             }, $result['competencies']),
             'warnings'           => $result['warnings'],
+            'roles'              => $result['roles'] ?? [],
         ];
     }
 
@@ -195,6 +228,7 @@ class classify_text extends external_api {
                     'idnumber' => new external_value(PARAM_RAW, 'Competency idnumber'),
                     'label' => new external_value(PARAM_TEXT, 'Competency "CODE - Name"'),
                     'reason' => new external_value(PARAM_TEXT, 'Why the content supports it', VALUE_DEFAULT, ''),
+                    'category' => new external_value(PARAM_TEXT, 'The group it belongs to, such as Tasks', VALUE_DEFAULT, ''),
                 ]),
                 'Classified competencies with the reason for each',
                 VALUE_DEFAULT,
@@ -203,6 +237,12 @@ class classify_text extends external_api {
             'warnings' => new external_multiple_structure(
                 new external_value(PARAM_TEXT, 'Something to check before applying'),
                 'Warnings about the content or the result',
+                VALUE_DEFAULT,
+                []
+            ),
+            'roles' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Name of a work role the content was matched through'),
+                'Work roles chosen for the content, for frameworks that have them',
                 VALUE_DEFAULT,
                 []
             ),

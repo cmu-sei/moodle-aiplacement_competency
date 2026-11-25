@@ -57,7 +57,15 @@ if ($ADMIN->fulltree) {
         'aiplacement_competency/maxtags',
         get_string('setting_maxtags', 'aiplacement_competency'),
         get_string('setting_maxtags_desc', 'aiplacement_competency'),
-        3,
+        4,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/maxtagspercategory',
+        get_string('setting_maxtagspercategory', 'aiplacement_competency'),
+        get_string('setting_maxtagspercategory_desc', 'aiplacement_competency'),
+        2,
         PARAM_INT
     ));
 
@@ -74,6 +82,22 @@ if ($ADMIN->fulltree) {
         get_string('setting_timebudget', 'aiplacement_competency'),
         get_string('setting_timebudget_desc', 'aiplacement_competency'),
         \aiplacement_competency\local\classifier::TIME_BUDGET,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/maxroles',
+        get_string('setting_maxroles', 'aiplacement_competency'),
+        get_string('setting_maxroles_desc', 'aiplacement_competency'),
+        4,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/keywordextras',
+        get_string('setting_keywordextras', 'aiplacement_competency'),
+        get_string('setting_keywordextras_desc', 'aiplacement_competency'),
+        \aiplacement_competency\local\utils::DEFAULT_KEYWORD_EXTRAS,
         PARAM_INT
     ));
 

@@ -76,10 +76,16 @@ final class classifier {
         'lecture', 'lab', 'labs', 'module', 'week', 'part', 'video', 'videos', 'transcript', 'introduction',
         'intro', 'chapter', 'exercise', 'activity', 'quiz', 'unit', 'course', 'section', 'overview', 'with',
         'from', 'and', 'the', 'for', 'session', 'class', 'lesson', 'day',
+        // Words that name the kind of activity or say it is an example, and so say nothing about its subject.
+        'demo', 'page', 'test', 'sample', 'example', 'untitled', 'new', 'label', 'file', 'files', 'resource',
+        'url', 'folder', 'book', 'assignment', 'forum', 'text', 'content', 'draft', 'temp', 'copy',
     ];
 
     /**
-     * Classifies content.
+     * Classifies content, running every step of a job and returning the result.
+     *
+     * The drawer runs the steps itself, a request each, to show progress. This runs them all in one go, within a
+     * time budget so that one web request stays inside the server's limit.
      *
      * @param context $context The context of the request.
      * @param string $text The whole content, intro and activity content.
@@ -88,8 +94,8 @@ final class classifier {
      * @param array $levels The selected level names.
      * @param string $title The activity's title, empty when there is none.
      * @param bool $verify Whether to run the verification pass.
-     * @return array With 'competencies' (each 'id', 'idnumber', 'label', 'reason'),
-     *               'warnings' (strings for the person applying the tags) and 'frameworkshortname'.
+     * @return array With 'competencies' (each 'id', 'idnumber', 'label', 'reason', 'category'),
+     *               'warnings' (strings for the person applying the tags), 'frameworkshortname' and 'roles'.
      * @throws \moodle_exception When the model fails or declines for every section.
      */
     public static function classify(
@@ -101,177 +107,34 @@ final class classifier {
         string $title = '',
         bool $verify = false
     ): array {
-        $placement = new placement();
-        $warnings = [];
-
-        $chunks = self::split($text);
-        $total = count($chunks);
+        $job = job::start($context->id, $text, $frameworkid, $shortname, $levels, $title, $verify);
         $started = microtime(true);
         $budget = self::time_budget();
-        $limit = self::max_sections();
-        if ($total > $limit) {
-            $chunks = self::sample($chunks, $limit);
-            $warnings[] = get_string('contentpartial', 'aiplacement_competency', (object)[
-                'read' => count($chunks),
-                'total' => $total,
-            ]);
-        }
-
-        $tally = [];
-        $mismatch = false;
-        $fwshort = $shortname;
-        $failure = null;
-        $succeeded = 0;
-        $skipped = 0;
-        $offered = 0;
-
-        $unread = 0;
         $longest = 0.0;
-        foreach ($chunks as $position => $chunk) {
+
+        while (!$job->finished()) {
+            $step = $job->next_step();
+            $spent = microtime(true) - $started;
             // Not only 'is the budget spent' but 'would one more request of the longest length so far still fit':
             // a request that starts just inside the budget could otherwise end after the web server gives up.
-            if ($position > 0 && microtime(true) - $started + $longest >= $budget) {
-                // Another request could carry the web server past its time limit, and the answer would be lost.
-                $unread = count($chunks) - $position;
-                $chunks = array_slice($chunks, 0, $position);
-                break;
-            }
-            $prepared = utils::prepare($frameworkid, $shortname, $levels, $chunk, $title);
-            $offered += count($prepared['candidates']);
-            $label = count($chunks) > 1
-                ? 'TEXT TO CLASSIFY (section ' . ($position + 1) . ' of ' . count($chunks) . "):\n"
-                : "TEXT TO CLASSIFY:\n";
-            $requeststart = microtime(true);
-            try {
-                $raw = $placement->send($context, $prepared['instruction'] . "\n\n" . $label . $chunk, [
-                    'frameworkid' => $frameworkid,
-                    'frameworkshortname' => $shortname,
-                    'levels' => $levels,
-                ]);
-                $longest = max($longest, microtime(true) - $requeststart);
-            } catch (\moodle_exception $e) {
-                $longest = max($longest, microtime(true) - $requeststart);
-                $failure ??= $e;
-                $skipped++;
+            // A section with work roles is two requests, so it needs room for two.
+            $nomoretime = $spent + $longest * ($step[0] === job::STEP_ROLES ? 2 : 1) >= $budget;
+            if ($step[0] === job::STEP_VERIFY && $nomoretime) {
+                $job->skip_verify();
                 continue;
             }
-
-            $inner = self::decode($raw);
-            if (!is_array($inner['competencies'] ?? null)) {
-                $reply = self::reply_text($raw);
-                if ($reply !== '' && $inner !== []) {
-                    // Valid JSON that is not the requested answer, such as a message from the model.
-                    $reply = $reply . ' ' . json_encode($inner);
-                }
-                if (placement::looks_like_refusal($reply . ' ' . self::finish_reason($raw))) {
-                    $failure ??= new \moodle_exception('aiclassifyrefused', 'aiplacement_competency');
-                } else if ($reply === '') {
-                    // Some providers return only a reasoning block first, which core reads as no text at all.
-                    $failure ??= new \moodle_exception('aiclassifyempty', 'aiplacement_competency');
-                } else {
-                    // Text that is not an answer at all.
-                    $failure ??= new \moodle_exception('aiclassifyunusable', 'aiplacement_competency');
-                }
-                $skipped++;
+            // The first section is always read. A role step is part of the section it belongs to.
+            $startsasection = $step[0] !== job::STEP_VERIFY && $job->done_steps() > 0
+                && ($step[0] === job::STEP_ROLES || $job->state()['rolepick'] === false);
+            if ($startsasection && $nomoretime) {
+                $job->stop_reading();
                 continue;
             }
-            $succeeded++;
-
-            $fwshort = (string)($inner['framework']['shortname'] ?? $fwshort);
-            if (($inner['matches_title'] ?? true) === false) {
-                $mismatch = true;
-            }
-
-            $returned = is_array($inner['competencies'] ?? null) ? $inner['competencies'] : [];
-            foreach (utils::resolve_competencies($returned, $prepared['candidates']) as $found) {
-                $id = $found['id'];
-                if (!isset($tally[$id])) {
-                    $tally[$id] = $found + ['count' => 0, 'first' => count($tally), 'sections' => []];
-                }
-                $tally[$id]['count']++;
-                $tally[$id]['sections'][$position] = true;
-                if ($tally[$id]['reason'] === '' && $found['reason'] !== '') {
-                    $tally[$id]['reason'] = $found['reason'];
-                }
-            }
+            $job->step();
+            $longest = max($longest, $job->last_duration());
         }
 
-        if ($succeeded === 0 && $failure !== null) {
-            throw $failure;
-        }
-        if ($unread > 0) {
-            $warnings[] = get_string('timebudgetreached', 'aiplacement_competency', (object)[
-                'read' => count($chunks),
-                'total' => $total,
-            ]);
-        }
-        if ($offered === 0) {
-            $warnings[] = get_string('nocandidates', 'aiplacement_competency');
-        }
-        if ($skipped > 0) {
-            $warnings[] = get_string('sectionsskipped', 'aiplacement_competency', (object)[
-                'skipped' => $skipped,
-                'total' => count($chunks),
-            ]);
-        }
-
-        // Backed by the most sections first, then in the order they were found.
-        $found = array_values($tally);
-        usort($found, static function ($a, $b) {
-            return [$b['count'], $a['first']] <=> [$a['count'], $b['first']];
-        });
-        $found = array_slice($found, 0, utils::max_tags());
-
-        // The review is one more request: skipped when the time left would not cover it.
-        if ($verify && !empty($found) && microtime(true) - $started + $longest >= $budget) {
-            $warnings[] = get_string('verifyskipped', 'aiplacement_competency');
-            $verify = false;
-        }
-        if ($verify && !empty($found)) {
-            [$found, $removed, $verified] = self::verify($placement, $context, $found, $chunks, $title, $shortname);
-            if (!$verified) {
-                $warnings[] = get_string('verifyfailed', 'aiplacement_competency');
-            }
-            if ($removed > 0) {
-                $warnings[] = get_string('droppedbyverify', 'aiplacement_competency', $removed);
-            }
-        }
-
-        if ($mismatch || self::title_mismatch($title, $text)) {
-            $warnings[] = get_string('contentmismatch', 'aiplacement_competency', $title !== '' ? $title : '?');
-        }
-
-        // Two competencies can read alike in full. The apply step is told which is which by the idnumber, and
-        // the person ticking them needs to be able to tell them apart too.
-        $seen = [];
-        foreach ($found as $tag) {
-            $seen[\core_text::strtolower($tag['label'])] = true;
-        }
-        $used = [];
-        foreach ($found as &$tag) {
-            $key = \core_text::strtolower($tag['label']);
-            while (isset($used[$key])) {
-                // Not the same text as any label in the list, the ones just given included.
-                $tag['label'] .= ' (' . $tag['idnumber'] . ')';
-                $key = \core_text::strtolower($tag['label']);
-                if (isset($seen[$key]) && !isset($used[$key])) {
-                    $tag['label'] .= '*';
-                    $key = \core_text::strtolower($tag['label']);
-                }
-            }
-            $used[$key] = true;
-        }
-        unset($tag);
-
-        $competencies = array_map(static function ($c) {
-            return array_intersect_key($c, array_flip(['id', 'idnumber', 'label', 'reason']));
-        }, $found);
-
-        return [
-            'competencies' => $competencies,
-            'warnings' => $warnings,
-            'frameworkshortname' => $fwshort,
-        ];
+        return $job->result();
     }
 
     /**
@@ -279,7 +142,7 @@ final class classifier {
      *
      * @return int At least one.
      */
-    private static function max_sections(): int {
+    public static function max_sections(): int {
         $max = (int)get_config('aiplacement_competency', 'maxsections');
 
         return $max > 0 ? $max : self::MAX_CHUNKS;
@@ -308,7 +171,7 @@ final class classifier {
      * @return array The kept tags, how many were removed, and whether the review gave a usable answer.
      *               All tags are kept when it did not.
      */
-    private static function verify(
+    public static function review(
         placement $placement,
         context $context,
         array $found,
@@ -436,7 +299,7 @@ final class classifier {
      * @param int $count How many to keep.
      * @return string[] The chosen sections, in order.
      */
-    private static function sample(array $chunks, int $count): array {
+    public static function sample(array $chunks, int $count): array {
         $total = count($chunks);
         if ($count >= $total) {
             return $chunks;
@@ -510,7 +373,7 @@ final class classifier {
      * @param string $rawjson The provider's response data, JSON encoded.
      * @return string The reason, or an empty string.
      */
-    private static function finish_reason(string $rawjson): string {
+    public static function finish_reason(string $rawjson): string {
         $outer = json_decode($rawjson, true);
 
         return is_array($outer) && is_string($outer['finishreason'] ?? null) ? $outer['finishreason'] : '';
@@ -522,7 +385,7 @@ final class classifier {
      * @param string $rawjson The provider's response data, JSON encoded.
      * @return string The reply, or an empty string.
      */
-    private static function reply_text(string $rawjson): string {
+    public static function reply_text(string $rawjson): string {
         $outer = json_decode($rawjson, true);
 
         return is_array($outer) && is_string($outer['generatedcontent'] ?? null) ? trim($outer['generatedcontent']) : '';
