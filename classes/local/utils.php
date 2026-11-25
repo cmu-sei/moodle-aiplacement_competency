@@ -60,6 +60,9 @@ class utils {
      */
     public const DEFAULT_MAX_CANDIDATES = 400;
 
+    /** How many closest keyword matches go beside a role's statements, when the setting is unset. */
+    public const DEFAULT_KEYWORD_EXTRAS = 150;
+
     /**
      * Build the instruction text for the model.
      *
@@ -90,10 +93,18 @@ class utils {
         string $shortname,
         array $levels,
         string $text = '',
-        string $title = ''
+        string $title = '',
+        ?array $pool = null,
+        bool $percategory = false
     ): array {
+        // With work roles the list is headed by category and the cap and the narrowing are for each of them.
+        $percategory = $percategory || $pool !== null;
         $normlevels = self::normalise_levels($levels);
-        $set = self::get_candidates($frameworkid, $normlevels);
+        // A pool the caller worked out, such as the competencies of the work roles chosen for this text, replaces
+        // the levels' own. Its entries carry the category they belong to, which heads them in the list.
+        $set = $pool === null
+            ? self::get_candidates($frameworkid, $normlevels)
+            : ['candidates' => $pool, 'displaylevels' => $normlevels, 'linked' => false];
         $candidates = $set['candidates'];
 
         $max = (int)get_config('aiplacement_competency', 'maxcandidates');
@@ -101,13 +112,29 @@ class utils {
             $max = self::DEFAULT_MAX_CANDIDATES;
         }
         $total = count($candidates);
-        $candidates = narrower::top($candidates, $text, $max);
+        $candidates = $percategory
+            ? narrower::top_by_group($candidates, $text, $max)
+            : narrower::top($candidates, $text, $max);
 
         $availablecompetencies = '';
         if (!empty($candidates)) {
             $lines = [];
-            foreach ($candidates as $candidate) {
-                $lines[] = '[' . $candidate->idnumber . '] ' . $candidate->line;
+            if ($percategory) {
+                // Each category once, in the order they first appear, however the competencies were gathered.
+                $bycategory = [];
+                foreach ($candidates as $candidate) {
+                    $bycategory[trim((string)($candidate->category ?? '')) ?: 'Other'][] = $candidate;
+                }
+                foreach ($bycategory as $heading => $group) {
+                    $lines[] = '== ' . $heading . ' ==';
+                    foreach ($group as $candidate) {
+                        $lines[] = '[' . $candidate->idnumber . '] ' . $candidate->line;
+                    }
+                }
+            } else {
+                foreach ($candidates as $candidate) {
+                    $lines[] = '[' . $candidate->idnumber . '] ' . $candidate->line;
+                }
             }
             $availablecompetencies = "\n\nAVAILABLE COMPETENCIES (one per line, as [idnumber] name):\n" .
                 implode("\n", $lines) .
@@ -135,7 +162,12 @@ class utils {
             'frameworkshortname' => $shortname,
             'levels'            => implode(', ', $set['displaylevels']),
             'availablecompetencies' => $availablecompetencies,
-            'maxtags'            => self::max_tags(),
+            'limitrule'          => $percategory
+                ? get_string('limit_percategory', 'aiplacement_competency', (object)[
+                    'total' => self::max_tags(),
+                    'percategory' => self::max_tags_per_category(),
+                ])
+                : get_string('limit_total', 'aiplacement_competency', self::max_tags()),
             'activitytitle'      => trim($title),
         ];
 
@@ -143,6 +175,168 @@ class utils {
             'instruction' => get_string('action_classify_text_instruction', 'aiplacement_competency', $a),
             'candidates' => $candidates,
         ];
+    }
+
+    /**
+     * The competencies of a framework that group others, such as DCWF's and NICE's work roles.
+     *
+     * A role is a competency that lists related competencies and is not listed by any, the same test the levels step
+     * uses to pull a work role's tasks, knowledge and skills in.
+     *
+     * @param int $frameworkid The framework id.
+     * @return \stdClass[] The roles by id, each with a 'line': its name and the start of its description.
+     */
+    public static function get_roles(int $frameworkid): array {
+        global $DB;
+
+        if ($frameworkid <= 0) {
+            return [];
+        }
+
+        $sql = "SELECT r.id, r.shortname, r.description, r.idnumber, r.parentid, r.path
+                  FROM {competency} r
+                 WHERE r.competencyframeworkid = :frameworkid
+                   AND EXISTS (
+                           SELECT 1
+                             FROM {competency_relatedcomp} own
+                            WHERE own.competencyid = r.id
+                       )
+                   AND NOT EXISTS (
+                           SELECT 1
+                             FROM {competency_relatedcomp} up
+                            WHERE up.relatedcompetencyid = r.id
+                       )
+              ORDER BY r.shortname";
+        $roles = $DB->get_records_sql($sql, ['frameworkid' => $frameworkid]);
+
+        foreach ($roles as $id => $role) {
+            $description = trim(strip_tags((string)$role->description));
+            // DCWF follows a role's sentence with the codes of its statements, which tell the model nothing.
+            $description = trim((string)preg_replace('/\s*\b(?:Core|Additional)\s*\(\d+\).*$/su', '', $description));
+            $role->line = trim((string)$role->shortname) .
+                ($description !== '' && stripos((string)$role->shortname, $description) === false
+                    ? ' - ' . \core_text::substr($description, 0, 140) : '');
+        }
+
+        return $roles;
+    }
+
+    /**
+     * Whether the levels the teacher ticked call for choosing work roles from the content.
+     *
+     * That is when the framework has roles and every ticked level is a category of statements, not a group of roles.
+     * A tick on a group of roles names those roles already, so they are used as they stand.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string[] $levels The ticked level names.
+     * @return bool True when a role must be picked.
+     */
+    public static function needs_role_pick(int $frameworkid, array $levels): bool {
+        $roles = self::get_roles($frameworkid);
+        $parents = self::selected_parents($frameworkid, self::normalise_levels($levels));
+        if (empty($roles) || empty($parents)) {
+            return false;
+        }
+
+        foreach ($roles as $role) {
+            if (isset($parents[$role->parentid])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * The top level competencies the ticked levels name.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string[] $normlevels The ticked level names, already cleaned.
+     * @return \stdClass[] The parents by id. Empty when none is ticked, or none matches.
+     */
+    public static function selected_parents(int $frameworkid, array $normlevels): array {
+        global $DB;
+
+        if (empty($normlevels)) {
+            return [];
+        }
+        $parents = $DB->get_records('competency', ['competencyframeworkid' => $frameworkid, 'parentid' => 0]);
+
+        return self::match_levels($parents, $normlevels);
+    }
+
+    /**
+     * The statements of the chosen work roles, in the categories the teacher ticked.
+     *
+     * @param int $frameworkid The framework id.
+     * @param int[] $roleids The ids of the roles.
+     * @param string[] $levels The ticked level names, which are the categories to keep.
+     * @return \stdClass[] The competencies by id, grouped by category, each with a 'line' and a 'category'.
+     */
+    public static function role_pool(int $frameworkid, array $roleids, array $levels): array {
+        global $DB;
+
+        if (empty($roleids)) {
+            return [];
+        }
+        $parents = self::selected_parents($frameworkid, self::normalise_levels($levels));
+
+        [$insql, $params] = $DB->get_in_or_equal($roleids, SQL_PARAMS_NAMED);
+        $params['frameworkid'] = $frameworkid;
+        $sql = "SELECT c.id, c.shortname, c.description, c.idnumber, c.parentid, c.path
+                  FROM {competency} c
+                 WHERE c.competencyframeworkid = :frameworkid
+                   AND c.id IN (
+                           SELECT rc.relatedcompetencyid
+                             FROM {competency_relatedcomp} rc
+                            WHERE rc.competencyid {$insql}
+                       )";
+
+        $pool = [];
+        foreach ($DB->get_records_sql($sql, $params) as $competency) {
+            // The top level group is the first id on the path: /0/<top>/.../<self>/.
+            $top = (int)(explode('/', trim((string)$competency->path, '/'))[1] ?? 0);
+            if (!isset($parents[$top])) {
+                continue;
+            }
+            $line = self::competency_line($competency);
+            if ($line === '') {
+                continue;
+            }
+            $competency->line = $line;
+            $competency->category = trim((string)$parents[$top]->shortname);
+            $pool[$competency->id] = $competency;
+        }
+
+        // Grouped by category, in the order the teacher ticked them, then by name.
+        $order = array_flip(array_map(static fn($p) => trim((string)$p->shortname), array_values($parents)));
+        uasort($pool, static function ($a, $b) use ($order) {
+            return [$order[$a->category] ?? 0, $a->shortname] <=> [$order[$b->category] ?? 0, $b->shortname];
+        });
+
+        return $pool;
+    }
+
+    /**
+     * The closest keyword matches to the text among everything in the ticked categories.
+     *
+     * Sent beside a role's own statements, they catch the statements of roles the model did not choose, and what the
+     * roles' sentences do not say about the text. Measured against reviewed tags, the two together reached more than
+     * either alone, for about the tokens of one longer keyword list.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string[] $levels The ticked level names.
+     * @param string $text The section's text.
+     * @return \stdClass[] The competencies by id, each with a 'line' and a 'category'. Empty when the setting is zero.
+     */
+    public static function keyword_extras(int $frameworkid, array $levels, string $text): array {
+        $count = (int)get_config('aiplacement_competency', 'keywordextras');
+        $count = get_config('aiplacement_competency', 'keywordextras') === false ? self::DEFAULT_KEYWORD_EXTRAS : $count;
+        if ($count <= 0) {
+            return [];
+        }
+
+        return narrower::top(self::get_candidates($frameworkid, self::normalise_levels($levels))['candidates'], $text, $count);
     }
 
     /**
@@ -193,12 +387,28 @@ class utils {
     /**
      * The most competencies one classification should return per framework.
      *
+     * Reviewers keeping tags from lectures kept about two per framework, so the default leaves room for a dense one.
+     *
      * @return int The cap, at least one.
      */
     public static function max_tags(): int {
         $max = (int)get_config('aiplacement_competency', 'maxtags');
 
-        return $max > 0 ? $max : 3;
+        return $max > 0 ? $max : 4;
+    }
+
+    /**
+     * The most competencies from any one category, when work roles are used.
+     *
+     * Together with max_tags(), whichever is reached first, so no single category, usually Knowledge, fills the whole
+     * quota.
+     *
+     * @return int The cap, at least one.
+     */
+    public static function max_tags_per_category(): int {
+        $max = (int)get_config('aiplacement_competency', 'maxtagspercategory');
+
+        return $max > 0 ? $max : 2;
     }
 
     /**
@@ -281,6 +491,7 @@ class utils {
                         $line = self::competency_line($child);
                         if ($line !== '') {
                             $child->line = $line;
+                            $child->category = trim((string)$parent->shortname);
                             $competencylist[$child->id] = $child;
                         }
                     }
@@ -289,6 +500,9 @@ class utils {
                         $line = self::competency_line($grouped);
                         if ($line !== '' && !isset($competencylist[$grouped->id])) {
                             $grouped->line = $line;
+                            // Its own top level group, which is not necessarily the one being read.
+                            $top = (int)(explode('/', trim((string)$grouped->path, '/'))[1] ?? 0);
+                            $grouped->category = trim((string)($parentcompetencies[$top]->shortname ?? '')) ?: 'Other';
                             $competencylist[$grouped->id] = $grouped;
                             $linked = true;
                         }
@@ -339,7 +553,7 @@ class utils {
      * @param array $returned The model's list: idnumber strings, "CODE - Name" strings,
      *                        or arrays with 'idnumber' and optionally 'reason'.
      * @param \stdClass[] $candidates The competencies the model was offered, by id.
-     * @return array[] Each with 'id', 'idnumber', 'label' (the "CODE - Name" line) and 'reason'.
+     * @return array[] Each with 'id', 'idnumber', 'label' (the "CODE - Name" line), 'reason' and 'category'.
      */
     public static function resolve_competencies(array $returned, array $candidates): array {
         $index = [];
@@ -380,6 +594,7 @@ class utils {
                 'idnumber' => (string)$candidate->idnumber,
                 'label' => (string)$candidate->line,
                 'reason' => clean_param($reason, PARAM_TEXT),
+                'category' => (string)($candidate->category ?? ''),
             ];
         }
 
@@ -499,7 +714,7 @@ class utils {
         [$insql, $params] = $DB->get_in_or_equal($competencyids, SQL_PARAMS_NAMED);
         $params['frameworkid'] = $frameworkid;
 
-        $sql = "SELECT DISTINCT c.id, c.shortname, c.description, c.idnumber
+        $sql = "SELECT DISTINCT c.id, c.shortname, c.description, c.idnumber, c.path
                   FROM {competency_relatedcomp} rc
                   JOIN {competency} c ON c.id = rc.relatedcompetencyid
                  WHERE rc.competencyid {$insql}

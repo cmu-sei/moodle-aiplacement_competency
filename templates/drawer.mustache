@@ -48,7 +48,6 @@
 
     Notes:
     - The drawer body is intentionally empty and is populated dynamically by JS.
-    - The body includes `data-cancelled` to allow JS to track whether the workflow was cancelled.
     - The embedded JS requires `aiplacement_competency/placement` and instantiates it with:
         new Cls(userid, contextid)
       where `contextid` is the current page context (course or module context).
@@ -63,7 +62,7 @@
         </button>
     </div>
 
-    <div class="ai-drawer-body" data-cancelled="0"></div>
+    <div class="ai-drawer-body"></div>
 </div>
 
 {{#js}}

@@ -1134,4 +1134,15 @@ final class classifytext_test extends \advanced_testcase {
         $this->assertSame(['T1 - One'], $result['competencies']);
         $this->assertStringContainsString('not enough time left', implode(' ', $result['warnings']));
     }
+
+    /**
+     * A title that names no subject cannot be contradicted by the content.
+     */
+    public function test_a_generic_title_never_warns_of_a_mismatch(): void {
+        $text = str_repeat('The instructor explains how routers forward packets between subnets. ', 40);
+
+        $this->assertFalse(\aiplacement_competency\local\classifier::title_mismatch('Demo Page', $text));
+        $this->assertFalse(\aiplacement_competency\local\classifier::title_mismatch('Sample file', $text));
+        $this->assertTrue(\aiplacement_competency\local\classifier::title_mismatch('Cryptography Lecture', $text));
+    }
 }
