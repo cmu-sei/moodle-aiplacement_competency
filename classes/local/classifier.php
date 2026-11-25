@@ -126,8 +126,11 @@ final class classifier {
         $offered = 0;
 
         $unread = 0;
+        $longest = 0.0;
         foreach ($chunks as $position => $chunk) {
-            if ($position > 0 && microtime(true) - $started >= $budget) {
+            // Not only 'is the budget spent' but 'would one more request of the longest length so far still fit':
+            // a request that starts just inside the budget could otherwise end after the web server gives up.
+            if ($position > 0 && microtime(true) - $started + $longest >= $budget) {
                 // Another request could carry the web server past its time limit, and the answer would be lost.
                 $unread = count($chunks) - $position;
                 $chunks = array_slice($chunks, 0, $position);
@@ -138,13 +141,16 @@ final class classifier {
             $label = count($chunks) > 1
                 ? 'TEXT TO CLASSIFY (section ' . ($position + 1) . ' of ' . count($chunks) . "):\n"
                 : "TEXT TO CLASSIFY:\n";
+            $requeststart = microtime(true);
             try {
                 $raw = $placement->send($context, $prepared['instruction'] . "\n\n" . $label . $chunk, [
                     'frameworkid' => $frameworkid,
                     'frameworkshortname' => $shortname,
                     'levels' => $levels,
                 ]);
+                $longest = max($longest, microtime(true) - $requeststart);
             } catch (\moodle_exception $e) {
+                $longest = max($longest, microtime(true) - $requeststart);
                 $failure ??= $e;
                 $skipped++;
                 continue;
@@ -217,7 +223,10 @@ final class classifier {
         $found = array_slice($found, 0, utils::max_tags());
 
         // The review is one more request: skipped when the time left would not cover it.
-        $verify = $verify && microtime(true) - $started < $budget;
+        if ($verify && !empty($found) && microtime(true) - $started + $longest >= $budget) {
+            $warnings[] = get_string('verifyskipped', 'aiplacement_competency');
+            $verify = false;
+        }
         if ($verify && !empty($found)) {
             [$found, $removed, $verified] = self::verify($placement, $context, $found, $chunks, $title, $shortname);
             if (!$verified) {

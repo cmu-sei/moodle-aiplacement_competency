@@ -195,6 +195,35 @@ final class utils_test extends \advanced_testcase {
         $this->assertStringContainsString('closest matches', $instruction);
     }
 
+    public function test_the_default_shortlist_sends_a_framework_of_a_few_hundred_whole_and_narrows_a_larger_one(): void {
+        $this->setAdminUser();
+        $this->assertSame(400, utils::DEFAULT_MAX_CANDIDATES);
+
+        $small = [];
+        for ($i = 1; $i <= 348; $i++) {
+            $small[sprintf('A%04d', $i)] = "Technique number {$i} of the adversary";
+        }
+        $large = [];
+        for ($i = 1; $i <= 600; $i++) {
+            $large[sprintf('B%04d', $i)] = "Statement number {$i} about governance";
+        }
+
+        $whole = utils::prepare($this->create_framework(['Techniques' => $small]), 'SMALL', ['Techniques'], 'text');
+        // Named in the text, a competency from the far end of the framework outranks the first 400.
+        $narrowed = utils::prepare(
+            $this->create_framework(['Statements' => $large]),
+            'LARGE',
+            ['Statements'],
+            'Learners work through statement B0600, about governance.'
+        );
+        $codes = array_column($narrowed['candidates'], 'idnumber');
+
+        $this->assertCount(348, $whole['candidates']);
+        $this->assertCount(400, $narrowed['candidates']);
+        $this->assertContains('B0600', $codes);
+        $this->assertNotContains('B0400', $codes);
+    }
+
     public function test_build_instruction_calls_out_codes_the_content_states(): void {
         $this->setAdminUser();
         $framework = $this->create_framework(['Tasks' => ['T1102' => 'Identify intrusions', 'T2000' => 'Audit']]);
