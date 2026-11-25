@@ -72,6 +72,14 @@ $functions = [
         'ajax'        => true,
         'capabilities' => 'aiplacement/competency:classify_text',
     ],
+    'aiplacement_competency_classify_cancel' => [
+        'classname'   => 'aiplacement_competency\\external\\classify_cancel',
+        'methodname'  => 'execute',
+        'description' => 'Drop a classification that was cancelled.',
+        'type'        => 'write',
+        'ajax'        => true,
+        'capabilities' => 'aiplacement/competency:classify_text',
+    ],
     'aiplacement_competency_add_cm_competency' => [
         'classname'   => 'aiplacement_competency\external\add_cm_competency',
         'methodname'  => 'execute',

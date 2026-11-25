@@ -155,6 +155,11 @@ final class narrower {
             $keep += self::top($rest, $text, $left);
         }
 
+        // A minimum of one for every category can pass the limit when there are more categories than places.
+        if (count($keep) > $limit) {
+            $keep = self::top(array_intersect_key($candidates, $keep), $text, $limit);
+        }
+
         return array_intersect_key($candidates, $keep);
     }
 

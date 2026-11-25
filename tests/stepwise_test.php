@@ -620,4 +620,108 @@ final class stepwise_test extends \advanced_testcase {
         $this->assertSame(['T1'], array_column($last['result']['suggestions'], 'idnumber'));
         $this->assertStringContainsString('No work role could be chosen', implode(' ', $last['result']['warnings']));
     }
+
+    public function test_cancelling_drops_the_job_and_only_the_owners_can_be_dropped(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([['roles' => ['RA']], ['competencies' => ['T1']]]);
+        $started = classify_start::execute($context->id, 'Text.', $fw, 'ROLEFW', ['Tasks']);
+        $cache = \cache::make('aiplacement_competency', 'jobs');
+
+        // Another user cancelling it changes nothing.
+        $this->setUser($this->getDataGenerator()->create_user());
+        $this->assertTrue(external\classify_cancel::execute($started['jobid']));
+        $this->assertIsArray($cache->get($started['jobid']));
+
+        $this->setAdminUser();
+        $this->assertTrue(external\classify_cancel::execute($started['jobid']));
+        $this->assertFalse($cache->get($started['jobid']));
+        // A job that is already gone is not an error.
+        $this->assertTrue(external\classify_cancel::execute($started['jobid']));
+    }
+
+    public function test_the_cached_state_holds_the_text_once(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $started = classify_start::execute($context->id, 'UNIQUEMARKER words about alerts.', $fw, 'ROLEFW', ['Tasks']);
+
+        $state = \cache::make('aiplacement_competency', 'jobs')->get($started['jobid']);
+
+        $this->assertSame(1, substr_count(json_encode($state), 'UNIQUEMARKER'));
+    }
+
+    public function test_an_error_that_is_not_a_moodle_exception_still_falls_back(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $calls = 0;
+        $mock = $this->createMock(\core_ai\manager::class);
+        $mock->method('process_action')->willReturnCallback(function () use (&$calls) {
+            if ($calls++ === 0) {
+                throw new \RuntimeException('curl error 28');
+            }
+            $response = new response_generate_text(success: true);
+            $response->set_response_data([
+                'generatedcontent' => json_encode(['competencies' => ['T1']]),
+                'finishreason' => 'stop',
+            ]);
+
+            return $response;
+        });
+        $mock->method('is_action_available')->willReturn(true);
+        $mock->method('is_action_enabled')->willReturn(true);
+        \core\di::set(\core_ai\manager::class, function () use ($mock) {
+            return $mock;
+        });
+
+        [, $last] = $this->run_job($context, $fw, ['Tasks']);
+
+        $this->assertSame(['T1'], array_column($last['result']['suggestions'], 'idnumber'));
+        $this->assertDebuggingCalled('Choosing work roles failed: curl error 28');
+    }
+
+    public function test_a_competency_with_no_category_is_listed_under_other_and_each_heading_once(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $a = new \stdClass();
+        $a->id = 1;
+        $a->idnumber = 'X1';
+        $a->shortname = 'X1';
+        $a->line = 'X1 - one';
+        $a->category = 'Tasks';
+        $b = clone $a;
+        $b->id = 2;
+        $b->idnumber = 'X2';
+        $b->line = 'X2 - two';
+        $b->category = '';
+        $c = clone $a;
+        $c->id = 3;
+        $c->idnumber = 'X3';
+        $c->line = 'X3 - three';
+
+        $prepared = utils::prepare($fw, 'ROLEFW', ['Tasks'], 'text', '', [1 => $a, 2 => $b, 3 => $c]);
+
+        $this->assertSame(1, substr_count($prepared['instruction'], '== Tasks =='));
+        $this->assertSame(1, substr_count($prepared['instruction'], '== Other =='));
+        $this->assertStringNotContainsString('== ==', $prepared['instruction']);
+    }
+
+    public function test_narrowing_by_category_never_returns_more_than_the_limit(): void {
+        $candidates = [];
+        foreach (range(1, 8) as $i) {
+            $candidate = new \stdClass();
+            $candidate->id = $i;
+            $candidate->shortname = "S{$i}";
+            $candidate->idnumber = "S{$i}";
+            $candidate->description = "Statement {$i}";
+            $candidate->category = "Group {$i}";
+            $candidates[$i] = $candidate;
+        }
+
+        $kept = local\narrower::top_by_group($candidates, 'text', 5);
+
+        $this->assertCount(5, $kept);
+    }
 }

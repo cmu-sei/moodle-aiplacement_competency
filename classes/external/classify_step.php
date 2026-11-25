@@ -80,7 +80,7 @@ class classify_step extends external_api {
         $lock = \core\lock\lock_config::get_lock_factory('aiplacement_competency')
             ->get_lock('job_' . $params['jobid'], 120);
         if (!$lock) {
-            throw new \moodle_exception('classifyjobgone', 'aiplacement_competency');
+            throw new \moodle_exception('classifyjobbusy', 'aiplacement_competency');
         }
         try {
             return self::run($params['jobid']);

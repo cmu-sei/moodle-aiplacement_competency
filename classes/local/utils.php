@@ -119,13 +119,22 @@ class utils {
         $availablecompetencies = '';
         if (!empty($candidates)) {
             $lines = [];
-            $heading = null;
-            foreach ($candidates as $candidate) {
-                if ($percategory && ($candidate->category ?? '') !== $heading) {
-                    $heading = (string)($candidate->category ?? '');
-                    $lines[] = '== ' . $heading . ' ==';
+            if ($percategory) {
+                // Each category once, in the order they first appear, however the competencies were gathered.
+                $bycategory = [];
+                foreach ($candidates as $candidate) {
+                    $bycategory[trim((string)($candidate->category ?? '')) ?: 'Other'][] = $candidate;
                 }
-                $lines[] = '[' . $candidate->idnumber . '] ' . $candidate->line;
+                foreach ($bycategory as $heading => $group) {
+                    $lines[] = '== ' . $heading . ' ==';
+                    foreach ($group as $candidate) {
+                        $lines[] = '[' . $candidate->idnumber . '] ' . $candidate->line;
+                    }
+                }
+            } else {
+                foreach ($candidates as $candidate) {
+                    $lines[] = '[' . $candidate->idnumber . '] ' . $candidate->line;
+                }
             }
             $availablecompetencies = "\n\nAVAILABLE COMPETENCIES (one per line, as [idnumber] name):\n" .
                 implode("\n", $lines) .
@@ -493,7 +502,7 @@ class utils {
                             $grouped->line = $line;
                             // Its own top level group, which is not necessarily the one being read.
                             $top = (int)(explode('/', trim((string)$grouped->path, '/'))[1] ?? 0);
-                            $grouped->category = trim((string)($parentcompetencies[$top]->shortname ?? ''));
+                            $grouped->category = trim((string)($parentcompetencies[$top]->shortname ?? '')) ?: 'Other';
                             $competencylist[$grouped->id] = $grouped;
                             $linked = true;
                         }

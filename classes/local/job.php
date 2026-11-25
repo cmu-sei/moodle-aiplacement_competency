@@ -132,7 +132,8 @@ final class job {
         return new self([
             'userid' => (int)$USER->id,
             'contextid' => $contextid,
-            'text' => $text,
+            // Worked out now, so the whole text need not be kept twice: the sections hold it.
+            'titlemismatch' => classifier::title_mismatch($title, $text),
             'frameworkid' => $frameworkid,
             'shortname' => $shortname,
             'levels' => array_values($levels),
@@ -361,9 +362,11 @@ final class job {
         $this->state['picked'][$position] = [];
         try {
             $inner = classifier::decode($placement->send($context, $prompt, ['roles' => 1]));
-        } catch (\moodle_exception $e) {
-            // Not an error of its own, but an administrator looking for why roles are missed should find the reason.
-            debugging('Choosing work roles failed: ' . $e->errorcode . ' ' . ($e->debuginfo ?? ''), DEBUG_DEVELOPER);
+        } catch (\Throwable $e) {
+            // Not an error of its own, whatever it was, but an administrator looking for why roles are missed should
+            // find the reason.
+            $reason = $e instanceof \moodle_exception ? $e->errorcode . ' ' . ($e->debuginfo ?? '') : $e->getMessage();
+            debugging('Choosing work roles failed: ' . $reason, DEBUG_DEVELOPER);
             $this->state['rolesmissed']++;
             return;
         }
@@ -436,9 +439,11 @@ final class job {
                 'frameworkshortname' => $state['shortname'],
                 'levels' => $state['levels'],
             ]);
-        } catch (\moodle_exception $e) {
+        } catch (\Throwable $e) {
             // The provider's own message is the debug information, which an administrator needs to find out why.
-            $state['failure'] ??= [$e->errorcode, $e->debuginfo];
+            $state['failure'] ??= $e instanceof \moodle_exception
+                ? [$e->errorcode, $e->debuginfo]
+                : ['aiclassifyfailed', $e->getMessage()];
             $state['skipped']++;
             return;
         }
@@ -595,7 +600,7 @@ final class job {
         if ($state['verifyremoved'] > 0) {
             $warnings[] = get_string('droppedbyverify', 'aiplacement_competency', $state['verifyremoved']);
         }
-        if ($state['mismatch'] || classifier::title_mismatch($state['title'], $state['text'])) {
+        if ($state['mismatch'] || $state['titlemismatch']) {
             $warnings[] = get_string(
                 'contentmismatch',
                 'aiplacement_competency',

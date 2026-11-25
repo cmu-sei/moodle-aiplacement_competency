@@ -102,6 +102,22 @@ define([
          */
         setRequestCancelled() {
             this._run = (this._run || 0) + 1;
+            this.discardJob();
+        }
+
+        /**
+         * Tell the server to drop the classification in progress, so its state is not left in the cache.
+         * @param {string} [jobid] The job, when it is not the current one.
+         */
+        discardJob(jobid) {
+            const id = jobid || this._jobid;
+            if (!jobid) {
+                this._jobid = null;
+            }
+            if (id) {
+                Ajax.call([{methodname: 'aiplacement_competency_classify_cancel', args: {jobid: id}}])[0]
+                    .catch(() => null);
+            }
         }
 
         /**
@@ -349,6 +365,7 @@ define([
         async showSelectFramework(prompt) {
             // Going back to choose again ends any classification still running behind this panel.
             this._run = (this._run || 0) + 1;
+            this.discardJob();
 
             const strings = await this.getStrings();
 
@@ -483,6 +500,7 @@ define([
         async showLevels(prompt, framework) {
             // Going back to choose again ends any classification still running behind this panel.
             this._run = (this._run || 0) + 1;
+            this.discardJob();
 
             const strings = await this.getStrings();
 
@@ -666,7 +684,9 @@ define([
         async sendClassification(prompt, framework, levels) {
             const run = this._run = (this._run || 0) + 1;
 
-            const loadingHtml = await Templates.render('aiplacement_competency/loading', {});
+            const loadingHtml = await Templates.render('aiplacement_competency/loading', {
+                message: await Str.get_string('progress_prepare', COMPONENT),
+            });
             this.aiDrawerBodyElement.innerHTML = loadingHtml;
 
             const cancelBtn = this.aiDrawerBodyElement.querySelector(SELECTOR_CANCEL);
@@ -720,6 +740,12 @@ define([
                         verify: !!this._verify,
                     }
                 }])[0];
+                if (this.isStale(run)) {
+                    // Cancelled, or another started, while this one was starting: its job is nobody's now.
+                    this.discardJob(started.jobid);
+                    return;
+                }
+                this._jobid = started.jobid;
                 this.showProgress(started.message, 0, started.total);
 
                 let outcome;
@@ -736,6 +762,8 @@ define([
                     }
                     this.showProgress(outcome.message, outcome.done, outcome.total);
                 } while (!outcome.finished);
+                // The server dropped the job with the last step.
+                this._jobid = null;
 
                 const result = outcome.result;
 

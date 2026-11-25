@@ -106,6 +106,7 @@ $string['classify_note_nocontent'] = 'Add content to this activity to enable the
 $string['classify_tooltips'] = 'Classify content based on competency framework.';
 $string['classifybutton'] = 'Classify Text';
 $string['classifyheading'] = 'AI Classification Result';
+$string['classifyjobbusy'] = 'This classification is still working on its last step. Wait a moment and try again.';
 $string['classifyjobgone'] = 'This classification is no longer available. Please start it again.';
 $string['competencies'] = 'Competencies';
 $string['competency:classify_text'] = 'Classify Text';
