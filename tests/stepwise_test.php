@@ -392,6 +392,8 @@ final class stepwise_test extends \advanced_testcase {
 
         $this->assertSame(['T1'], array_column($last['result']['suggestions'], 'idnumber'));
         $this->assertStringContainsString('No work role could be chosen', implode(' ', $last['result']['warnings']));
+        // The reason is left for an administrator who looks.
+        $this->assertDebuggingCalled('Choosing work roles failed: aiclassifyfailed Timeout');
     }
 
     public function test_the_synchronous_call_leaves_room_for_both_requests_of_a_section_with_roles(): void {

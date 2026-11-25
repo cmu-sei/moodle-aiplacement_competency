@@ -362,6 +362,8 @@ final class job {
         try {
             $inner = classifier::decode($placement->send($context, $prompt, ['roles' => 1]));
         } catch (\moodle_exception $e) {
+            // Not an error of its own, but an administrator looking for why roles are missed should find the reason.
+            debugging('Choosing work roles failed: ' . $e->errorcode . ' ' . ($e->debuginfo ?? ''), DEBUG_DEVELOPER);
             $this->state['rolesmissed']++;
             return;
         }
