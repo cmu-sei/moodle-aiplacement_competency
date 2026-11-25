@@ -74,8 +74,9 @@ class classify_step extends external_api {
     public static function execute(string $jobid): array {
         $params = self::validate_parameters(self::execute_parameters(), ['jobid' => $jobid]);
 
-        // One step at a time for a job. A second request for the same step, from a retry or a double click, waits and
-        // then finds the step done, instead of running the same paid request again.
+        // One step at a time for a job, so two requests that overlap cannot read the same state and both run the same
+        // paid step. The second waits, then runs the step after it. The drawer sends them in turn, and this is only
+        // a guard against a retry or a double click.
         $lock = \core\lock\lock_config::get_lock_factory('aiplacement_competency')
             ->get_lock('job_' . $params['jobid'], 120);
         if (!$lock) {
