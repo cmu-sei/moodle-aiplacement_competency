@@ -491,6 +491,7 @@ final class stepwise_test extends \advanced_testcase {
             $this->assertSame('aiclassifyfailed', $e->errorcode);
             $this->assertStringContainsString('Quota exceeded', (string)$e->debuginfo);
         }
+        $this->assertDebuggingCalled('Choosing work roles failed: aiclassifyfailed Quota exceeded');
     }
 
     public function test_narrowing_a_role_pool_keeps_every_category(): void {
