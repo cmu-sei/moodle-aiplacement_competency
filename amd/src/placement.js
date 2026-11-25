@@ -86,30 +86,21 @@ define([
         }
 
         /**
-         * Whether the user cancelled the request in flight.
-         * @returns {boolean}
-         */
-        isRequestCancelled() {
-            return this.aiDrawerBodyElement.dataset.cancelled === '1';
-        }
-
-        /**
          * Whether a classification that was started is no longer the current one.
          *
-         * Cancelling, or starting another, makes every earlier loop stale. The cancelled flag alone is not enough,
-         * since reopening the drawer clears it, and a cancelled loop would then go on to make paid requests.
+         * Each classification gets a number, and cancelling, going back to choose again, or starting another moves the
+         * count on, which makes every earlier loop stale. A loop that finds itself stale stops making requests.
          * @param {number} run The number the classification was started with.
          * @returns {boolean}
          */
         isStale(run) {
-            return this._run !== run || this.isRequestCancelled();
+            return this._run !== run;
         }
 
         /**
-         * Mark the request in flight as cancelled, so its response is discarded.
+         * Cancel the request in flight, so that its loop stops and its response is discarded.
          */
         setRequestCancelled() {
-            this.aiDrawerBodyElement.dataset.cancelled = '1';
             this._run = (this._run || 0) + 1;
         }
 
@@ -358,7 +349,6 @@ define([
         async showSelectFramework(prompt) {
             // Going back to choose again ends any classification still running behind this panel.
             this._run = (this._run || 0) + 1;
-            this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const strings = await this.getStrings();
 
@@ -493,7 +483,6 @@ define([
         async showLevels(prompt, framework) {
             // Going back to choose again ends any classification still running behind this panel.
             this._run = (this._run || 0) + 1;
-            this.aiDrawerBodyElement.dataset.cancelled = '0';
 
             const strings = await this.getStrings();
 
@@ -675,7 +664,6 @@ define([
 
         // === Final: send classification ===
         async sendClassification(prompt, framework, levels) {
-            this.aiDrawerBodyElement.dataset.cancelled = '0';
             const run = this._run = (this._run || 0) + 1;
 
             const loadingHtml = await Templates.render('aiplacement_competency/loading', {});
@@ -812,8 +800,6 @@ define([
                     this.aiDrawerBodyElement.innerHTML = errorHtml;
                     Notification.exception(error);
                 }
-            } finally {
-                this.aiDrawerBodyElement.dataset.cancelled = '0';
             }
         }
     };

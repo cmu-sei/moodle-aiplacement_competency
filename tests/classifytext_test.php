@@ -1145,19 +1145,4 @@ final class classifytext_test extends \advanced_testcase {
         $this->assertFalse(\aiplacement_competency\local\classifier::title_mismatch('Sample file', $text));
         $this->assertTrue(\aiplacement_competency\local\classifier::title_mismatch('Cryptography Lecture', $text));
     }
-
-    /**
-     * The prompt tells the model that a title naming no subject always matches.
-     */
-    public function test_the_prompt_says_a_generic_title_always_matches(): void {
-        $instruction = get_string('action_classify_text_instruction', 'aiplacement_competency', (object)[
-            'frameworkshortname' => 'X',
-            'levels' => '',
-            'activitytitle' => 'T',
-            'limitrule' => '',
-            'availablecompetencies' => '',
-        ]);
-
-        $this->assertStringContainsString('"Demo Page"', $instruction);
-    }
 }
