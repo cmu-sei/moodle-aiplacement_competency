@@ -57,7 +57,15 @@ if ($ADMIN->fulltree) {
         'aiplacement_competency/maxtags',
         get_string('setting_maxtags', 'aiplacement_competency'),
         get_string('setting_maxtags_desc', 'aiplacement_competency'),
-        3,
+        4,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/maxtagspercategory',
+        get_string('setting_maxtagspercategory', 'aiplacement_competency'),
+        get_string('setting_maxtagspercategory_desc', 'aiplacement_competency'),
+        2,
         PARAM_INT
     ));
 

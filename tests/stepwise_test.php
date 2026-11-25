@@ -248,7 +248,8 @@ final class stepwise_test extends \advanced_testcase {
 
     public function test_tags_are_capped_for_each_category_not_overall(): void {
         $this->setAdminUser();
-        set_config('maxtags', 1, 'aiplacement_competency');
+        set_config('maxtags', 10, 'aiplacement_competency');
+        set_config('maxtagspercategory', 1, 'aiplacement_competency');
         $fw = $this->create_role_framework();
         $context = $this->create_context();
         $this->mock_model([
@@ -444,7 +445,8 @@ final class stepwise_test extends \advanced_testcase {
 
     public function test_tags_found_without_roles_are_kept_for_their_own_category(): void {
         $this->setAdminUser();
-        set_config('maxtags', 1, 'aiplacement_competency');
+        set_config('maxtags', 10, 'aiplacement_competency');
+        set_config('maxtagspercategory', 1, 'aiplacement_competency');
         $fw = $this->create_role_framework();
         $context = $this->create_context();
         $text = str_repeat("Intrusion alerts are triaged by the learners.\n\n", 800);
@@ -549,5 +551,54 @@ final class stepwise_test extends \advanced_testcase {
 
         $this->assertStringNotContainsString('[K2]', $this->prompts[1]);
         $this->assertStringNotContainsString('[S1]', $this->prompts[1]);
+    }
+
+    public function test_the_defaults_are_four_in_all_and_two_from_one_category(): void {
+        // A site that saved the settings page holds the old default; these are the defaults of one that has not.
+        unset_config('maxtags', 'aiplacement_competency');
+        unset_config('maxtagspercategory', 'aiplacement_competency');
+        $this->assertSame(4, utils::max_tags());
+        $this->assertSame(2, utils::max_tags_per_category());
+    }
+
+    public function test_the_total_cap_is_reached_before_the_category_cap_when_it_is_lower(): void {
+        $this->setAdminUser();
+        set_config('maxtags', 3, 'aiplacement_competency');
+        set_config('maxtagspercategory', 2, 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([['roles' => ['RA', 'RB']], ['competencies' => ['T1', 'T2', 'K1', 'K2']]]);
+
+        [, $last] = $this->run_job($context, $fw, ['Tasks', 'Knowledge']);
+
+        // Four tags are on offer, two from each category, and the total allows three, in the order they were found.
+        $this->assertSame(['T1', 'T2', 'K1'], array_column($last['result']['suggestions'], 'idnumber'));
+    }
+
+    public function test_no_one_category_fills_the_quota(): void {
+        $this->setAdminUser();
+        set_config('maxtags', 4, 'aiplacement_competency');
+        set_config('maxtagspercategory', 1, 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([['roles' => ['RA', 'RB']], ['competencies' => ['T1', 'T2', 'K1', 'K2']]]);
+
+        [, $last] = $this->run_job($context, $fw, ['Tasks', 'Knowledge']);
+
+        $this->assertSame(['T1', 'K1'], array_column($last['result']['suggestions'], 'idnumber'));
+    }
+
+    public function test_the_prompt_states_both_caps(): void {
+        $this->setAdminUser();
+        set_config('maxtags', 5, 'aiplacement_competency');
+        set_config('maxtagspercategory', 2, 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([['roles' => ['RA']], ['competencies' => ['T1']]]);
+
+        $this->run_job($context, $fw, ['Tasks', 'Knowledge']);
+
+        $this->assertStringContainsString('at most 2 competencies from any one of the groups', $this->prompts[1]);
+        $this->assertStringContainsString('at most 5 in all', $this->prompts[1]);
     }
 }

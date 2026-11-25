@@ -508,8 +508,9 @@ final class job {
     /**
      * The tags found so far, best first, and cut to what a classification returns.
      *
-     * With work roles the cut is per category, so Tasks, Knowledge and Skills each keep their own best. Otherwise it
-     * is the best overall. Backed by the most sections first, then in the order they were found.
+     * With work roles there are two caps, whichever is reached first: the most from any one category, so Tasks,
+     * Knowledge and Skills each keep their own best, and the most in all. Otherwise it is the best overall. Backed by
+     * the most sections first, then in the order they were found.
      *
      * @return array[] The tags.
      */
@@ -524,13 +525,19 @@ final class job {
             return array_slice($found, 0, $max);
         }
 
-        $bycategory = [];
-        foreach ($found as $tag) {
-            $bycategory[$tag['category']][] = $tag;
-        }
+        // In rank order, a tag is taken while its category and the total both have room.
+        $percategory = utils::max_tags_per_category();
+        $taken = [];
         $kept = [];
-        foreach ($bycategory as $tags) {
-            $kept = array_merge($kept, array_slice($tags, 0, $max));
+        foreach ($found as $tag) {
+            if (count($kept) >= $max) {
+                break;
+            }
+            if (($taken[$tag['category']] ?? 0) >= $percategory) {
+                continue;
+            }
+            $taken[$tag['category']] = ($taken[$tag['category']] ?? 0) + 1;
+            $kept[] = $tag;
         }
 
         return $kept;

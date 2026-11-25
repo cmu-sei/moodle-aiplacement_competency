@@ -20,7 +20,7 @@ It adds a **“Classify Text”** button to supported course/activity editing pa
 - **Reads lecture content**: WebVTT transcripts and chapter files (`.vtt`, `.trn.vtt`, `.chp.vtt`), text and HTML files, and PDFs (when `pdftotext` is configured). A lecture **label** with an embedded video is read through the transcript file activities next to it in its section.
 - **Reads all of it**: long content is sent in sections and the answers merged, rather than cut at the first 20,000 characters.
 - **Short candidate lists**: frameworks with hundreds of statements (DCWF, NICE) are narrowed by keyword match to the closest 400 before the model chooses. A framework whose selected levels hold at most that many entries, as ATT&CK and D3FEND usually do, is sent whole.
-- **Fewer, better tags**: tags only what the activity teaches, capped per classification (default 3), with ATT&CK and D3FEND only where the content really explains the technique.
+- **Fewer, better tags**: tags only what the activity teaches, capped per classification (default 4 in all, and 2 from any one category when work roles are used), with ATT&CK and D3FEND only where the content really explains the technique.
 - **Optional verification pass**: a checkbox in the drawer has the model review its own tags and remove weak ones.
 - **Warnings**: content that does not look like its activity title (a video carrying another lecture's transcript) is flagged before you apply.
 - **Refusals are reported as refusals**: when the model declines on safety grounds the drawer says so. Solution guides and walkthroughs are never sent.
@@ -62,7 +62,7 @@ It adds a **“Classify Text”** button to supported course/activity editing pa
 4. For each section:
    - **A framework with work roles** (DCWF, NICE), when only categories of statements are ticked: the model first chooses up to 4 work roles the section prepares learners for, then chooses tags from those roles' statements in the ticked categories, which are usually few enough to send whole, together with the 150 closest keyword matches from the ticked categories, so a role it did not choose can still be offered. A section for which no role is usable falls back to the keyword shortlist.
    - **Otherwise**, a single request chooses from the keyword shortlist (see *Candidates shown to the model*).
-5. Tags are merged across sections, ranked by how many sections back them, and cut to the cap: per category when roles were used, overall otherwise. If Verify is ticked, one more request double-checks them.
+5. Tags are merged across sections, ranked by how many sections back them, and cut to the caps: when roles were used, the most from any one category and the most in all, whichever is reached first; otherwise the most in all. If Verify is ticked, one more request double-checks them.
 6. The UI renders results, the reason for each grouped by category, the roles considered, and any warnings, and offers **Back**, **Regenerate**, **Copy**, and **Apply**.
 
 `aiplacement_competency_classify_text` still runs a whole classification in one call, within the time budget, for other callers.
@@ -80,7 +80,8 @@ Site administration → AI → Placements → Competency:
 | Keyword matches beside the roles' statements | 150 | With work roles, the chosen roles' statements are sent with this many of the closest keyword matches from the ticked categories. 0 sends the roles' statements alone. |
 | Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
 | Time budget (seconds) | 40 | No further section or verification request starts once this much time has passed plus the longest request so far, to stay inside the web server's 60 second limit. |
-| Most tags per framework | 3 | The most competencies one classification returns; with work roles, the most for each category. |
+| Most tags per framework | 4 | The most competencies one classification returns. Reviewers kept about two per framework, so this leaves room for a dense lecture. |
+| Most tags per category | 2 | With work roles, the most from any one category, together with the total, whichever is reached first. |
 | Candidates shown to the model | 400 | Frameworks with more competencies than this are narrowed to the closest keyword matches. A site that saved this page under the old default of 80 keeps 80, as it trades cost for reach; raise it to 400 to reach more of a large framework. |
 | Offer a verification pass | on | Adds the verify checkbox to the drawer. |
 | Tag a lecture's transcript with its video | on | Applying a competency to a label also applies it to the transcript file activities beside it. |

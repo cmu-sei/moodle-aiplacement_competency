@@ -151,11 +151,12 @@ class utils {
             'frameworkshortname' => $shortname,
             'levels'            => implode(', ', $set['displaylevels']),
             'availablecompetencies' => $availablecompetencies,
-            'limitrule'          => get_string(
-                $percategory ? 'limit_percategory' : 'limit_total',
-                'aiplacement_competency',
-                self::max_tags()
-            ),
+            'limitrule'          => $percategory
+                ? get_string('limit_percategory', 'aiplacement_competency', (object)[
+                    'total' => self::max_tags(),
+                    'percategory' => self::max_tags_per_category(),
+                ])
+                : get_string('limit_total', 'aiplacement_competency', self::max_tags()),
             'activitytitle'      => trim($title),
         ];
 
@@ -375,12 +376,28 @@ class utils {
     /**
      * The most competencies one classification should return per framework.
      *
+     * Reviewers keeping tags from lectures kept about two per framework, so the default leaves room for a dense one.
+     *
      * @return int The cap, at least one.
      */
     public static function max_tags(): int {
         $max = (int)get_config('aiplacement_competency', 'maxtags');
 
-        return $max > 0 ? $max : 3;
+        return $max > 0 ? $max : 4;
+    }
+
+    /**
+     * The most competencies from any one category, when work roles are used.
+     *
+     * Together with max_tags(), whichever is reached first, so no single category, usually Knowledge, fills the whole
+     * quota.
+     *
+     * @return int The cap, at least one.
+     */
+    public static function max_tags_per_category(): int {
+        $max = (int)get_config('aiplacement_competency', 'maxtagspercategory');
+
+        return $max > 0 ? $max : 2;
     }
 
     /**
