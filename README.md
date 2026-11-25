@@ -60,7 +60,7 @@ It adds a **“Classify Text”** button to supported course/activity editing pa
 2. The drawer calls `aiplacement_competency_classify_start`, which gathers the activity's content, splits it into sections of about 12,000 characters and plans the steps. Nothing is sent to the model yet.
 3. The drawer then calls `aiplacement_competency_classify_step` once per step, one model request each, and shows what is happening ("Section 2 of 3: choosing the work roles") with a progress bar. **Cancel** stops between steps, and no single web request outlasts one model call.
 4. For each section:
-   - **A framework with work roles** (DCWF, NICE), when only categories of statements are ticked: the model first chooses up to 4 work roles the section prepares learners for, then chooses tags from those roles' statements in the ticked categories, which are usually few enough to send whole. A section for which no role is usable falls back to the keyword shortlist.
+   - **A framework with work roles** (DCWF, NICE), when only categories of statements are ticked: the model first chooses up to 4 work roles the section prepares learners for, then chooses tags from those roles' statements in the ticked categories, which are usually few enough to send whole, together with the 150 closest keyword matches from the ticked categories, so a role it did not choose can still be offered. A section for which no role is usable falls back to the keyword shortlist.
    - **Otherwise**, a single request chooses from the keyword shortlist (see *Candidates shown to the model*).
 5. Tags are merged across sections, ranked by how many sections back them, and cut to the cap: per category when roles were used, overall otherwise. If Verify is ticked, one more request double-checks them.
 6. The UI renders results, the reason for each grouped by category, the roles considered, and any warnings, and offers **Back**, **Regenerate**, **Copy**, and **Apply**.
@@ -77,6 +77,7 @@ Site administration → AI → Placements → Competency:
 | --- | --- | --- |
 | Default framework | empty | The idnumber or shortname of the framework the Classify drawer pre-selects, such as `DCWF-5.1`. An exact match, case ignored, not a prefix. The field says which framework it picks, or that it matches none. Builders can still choose another. |
 | Most work roles chosen per section | 4 | For a framework with work roles, how many the model may choose before choosing tags. |
+| Keyword matches beside the roles' statements | 150 | With work roles, the chosen roles' statements are sent with this many of the closest keyword matches from the ticked categories. 0 sends the roles' statements alone. |
 | Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
 | Time budget (seconds) | 40 | No further section or verification request starts once this much time has passed plus the longest request so far, to stay inside the web server's 60 second limit. |
 | Most tags per framework | 3 | The most competencies one classification returns; with work roles, the most for each category. |

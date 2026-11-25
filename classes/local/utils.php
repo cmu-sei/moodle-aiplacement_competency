@@ -58,6 +58,9 @@ class utils {
      */
     public const DEFAULT_MAX_CANDIDATES = 400;
 
+    /** How many closest keyword matches go beside a role's statements, when the setting is unset. */
+    public const DEFAULT_KEYWORD_EXTRAS = 150;
+
     /**
      * Build the instruction text for the model.
      *
@@ -300,6 +303,28 @@ class utils {
         });
 
         return $pool;
+    }
+
+    /**
+     * The closest keyword matches to the text among everything in the ticked categories.
+     *
+     * Sent beside a role's own statements, they catch the statements of roles the model did not choose, and what the
+     * roles' sentences do not say about the text. Measured against reviewed tags, the two together reached more than
+     * either alone, for about the tokens of one longer keyword list.
+     *
+     * @param int $frameworkid The framework id.
+     * @param string[] $levels The ticked level names.
+     * @param string $text The section's text.
+     * @return \stdClass[] The competencies by id, each with a 'line' and a 'category'. Empty when the setting is zero.
+     */
+    public static function keyword_extras(int $frameworkid, array $levels, string $text): array {
+        $count = (int)get_config('aiplacement_competency', 'keywordextras');
+        $count = get_config('aiplacement_competency', 'keywordextras') === false ? self::DEFAULT_KEYWORD_EXTRAS : $count;
+        if ($count <= 0) {
+            return [];
+        }
+
+        return narrower::top(self::get_candidates($frameworkid, self::normalise_levels($levels))['candidates'], $text, $count);
     }
 
     /**

@@ -63,6 +63,8 @@ final class stepwise_test extends \advanced_testcase {
         parent::setUp();
         $this->resetAfterTest();
         $this->prompts = [];
+        // Most tests are about the roles' own statements, so the keyword matches beside them are off unless asked for.
+        set_config('keywordextras', 0, 'aiplacement_competency');
     }
 
     /**
@@ -519,5 +521,33 @@ final class stepwise_test extends \advanced_testcase {
 
         $this->assertLessThanOrEqual(7, count($prepared['candidates']));
         $this->assertContains('S1', array_column($prepared['candidates'], 'idnumber'));
+    }
+
+    public function test_keyword_matches_are_sent_beside_the_roles_statements(): void {
+        $this->setAdminUser();
+        set_config('keywordextras', 150, 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([['roles' => ['RA']], ['competencies' => ['T1', 'T2']]]);
+
+        [, $last] = $this->run_job($context, $fw, ['Tasks', 'Knowledge']);
+
+        // T2 is role B's, and the model chose role A, but it is a keyword match for the ticked categories.
+        $this->assertStringContainsString('[T2]', $this->prompts[1]);
+        $this->assertStringContainsString('== Tasks ==', $this->prompts[1]);
+        $this->assertEqualsCanonicalizing(['T1', 'T2'], array_column($last['result']['suggestions'], 'idnumber'));
+    }
+
+    public function test_keyword_matches_are_limited_to_the_ticked_categories(): void {
+        $this->setAdminUser();
+        set_config('keywordextras', 150, 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([['roles' => ['RA']], ['competencies' => ['T1']]]);
+
+        $this->run_job($context, $fw, ['Tasks']);
+
+        $this->assertStringNotContainsString('[K2]', $this->prompts[1]);
+        $this->assertStringNotContainsString('[S1]', $this->prompts[1]);
     }
 }

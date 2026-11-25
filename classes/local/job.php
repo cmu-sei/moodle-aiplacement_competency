@@ -394,6 +394,15 @@ final class job {
         $pool = null;
         if ($state['rolepick'] && !empty($state['picked'][$position])) {
             $pool = utils::role_pool((int)$state['frameworkid'], $state['picked'][$position], $state['levels']);
+            if (!empty($pool)) {
+                // The chosen roles' statements first, then the closest keyword matches beside them: a role the model
+                // did not choose, or a statement its sentence does not bring to mind, can still be offered.
+                $extras = utils::keyword_extras((int)$state['frameworkid'], $state['levels'], $chunk);
+                $pool += array_diff_key($extras, $pool);
+                uasort($pool, static function ($a, $b) {
+                    return [$a->category, $a->shortname] <=> [$b->category, $b->shortname];
+                });
+            }
             if (empty($pool)) {
                 // Roles with nothing in the ticked categories leave the keyword shortlist to do the work, which the
                 // teacher is told, as for a section in which no role could be chosen.

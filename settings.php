@@ -86,6 +86,14 @@ if ($ADMIN->fulltree) {
     ));
 
     $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/keywordextras',
+        get_string('setting_keywordextras', 'aiplacement_competency'),
+        get_string('setting_keywordextras_desc', 'aiplacement_competency'),
+        \aiplacement_competency\local\utils::DEFAULT_KEYWORD_EXTRAS,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'aiplacement_competency/maxcandidates',
         get_string('setting_maxcandidates', 'aiplacement_competency'),
         get_string(
