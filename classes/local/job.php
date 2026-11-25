@@ -345,11 +345,8 @@ final class job {
     private function run_roles(placement $placement, context $context, int $position): void {
         $roles = utils::get_roles((int)$this->state['frameworkid']);
         $lines = [];
-        $index = [];
         foreach ($roles as $role) {
             $lines[] = '[' . $role->idnumber . '] ' . $role->line;
-            $index[\core_text::strtolower(trim((string)$role->idnumber))] = $role;
-            $index[\core_text::strtolower(trim((string)$role->shortname))] ??= $role;
         }
         $maxroles = (int)get_config('aiplacement_competency', 'maxroles');
         $maxroles = $maxroles > 0 ? $maxroles : 4;
@@ -368,16 +365,13 @@ final class job {
         }
         $returned = is_array($inner['roles'] ?? null) ? $inner['roles'] : [];
 
+        // Roles are competencies, and the model may name them as an idnumber, 'CODE - Name' or a name.
         $picked = [];
-        foreach ($returned as $item) {
-            $key = \core_text::strtolower(trim(explode(' - ', trim((string)$item, "[] \t"), 2)[0], "[] \t"));
-            if (isset($index[$key]) && count($picked) < $maxroles) {
-                $role = $index[$key];
-                $picked[$role->id] = (int)$role->id;
-                $this->state['rolenames'][$role->id] = trim((string)$role->shortname);
-            }
+        foreach (array_slice(utils::resolve_competencies($returned, $roles), 0, $maxroles) as $found) {
+            $picked[] = $found['id'];
+            $this->state['rolenames'][$found['id']] = trim((string)$roles[$found['id']]->shortname);
         }
-        $this->state['picked'][$position] = array_values($picked);
+        $this->state['picked'][$position] = $picked;
     }
 
     /**

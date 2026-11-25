@@ -280,7 +280,11 @@ final class stepwise_test extends \advanced_testcase {
         $this->setAdminUser();
         $generator = $this->getDataGenerator()->get_plugin_generator('core_competency');
         $fw = (int)$generator->create_framework(['shortname' => 'FLAT'])->get('id');
-        $parent = $generator->create_competency(['competencyframeworkid' => $fw, 'shortname' => 'Tactics', 'idnumber' => 'Tactics']);
+        $parent = $generator->create_competency([
+            'competencyframeworkid' => $fw,
+            'shortname' => 'Tactics',
+            'idnumber' => 'Tactics',
+        ]);
         $generator->create_competency([
             'competencyframeworkid' => $fw,
             'parentid' => $parent->get('id'),
