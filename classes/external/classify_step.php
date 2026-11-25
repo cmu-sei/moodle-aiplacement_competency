@@ -121,6 +121,14 @@ class classify_step extends external_api {
             throw $e;
         }
 
+        // Cancelled while this step ran: nothing is written back, and nothing more is done.
+        if ($cache->get('cancelled' . $jobid)) {
+            $cache->delete('cancelled' . $jobid);
+            $cache->delete($jobid);
+
+            return ['finished' => true, 'done' => $job->done_steps(), 'total' => $job->total_steps(), 'message' => ''];
+        }
+
         if (!$job->finished()) {
             $cache->set($jobid, $job->state());
 

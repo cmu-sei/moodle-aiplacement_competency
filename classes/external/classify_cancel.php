@@ -77,14 +77,15 @@ class classify_cancel extends external_api {
         $params = self::validate_parameters(self::execute_parameters(), ['jobid' => $jobid]);
         $cache = \cache::make('aiplacement_competency', 'jobs');
 
-        // Behind the step that may be running, which is when a teacher usually cancels: that step writes its state back
-        // when its model request returns, and a delete that came first would be undone. Waiting for the same lock puts
-        // this delete after it. If the step takes too long, the delete is made anyway.
+        // A step that is running writes its state back when its model request returns, which would undo a delete that
+        // came first. So the cancel leaves a mark the step looks for, and also waits for the same lock, to delete the
+        // job after it. If the step takes too long to wait for, the mark alone is what stops it.
         $lock = \core\lock\lock_config::get_lock_factory('aiplacement_competency')
             ->get_lock('job_' . $params['jobid'], 90);
         try {
             $state = $cache->get($params['jobid']);
             if (is_array($state) && (int)($state['userid'] ?? 0) === (int)$USER->id) {
+                $cache->set('cancelled' . $params['jobid'], 1);
                 $cache->delete($params['jobid']);
             }
         } finally {

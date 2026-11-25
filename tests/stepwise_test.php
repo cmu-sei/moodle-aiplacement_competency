@@ -724,4 +724,40 @@ final class stepwise_test extends \advanced_testcase {
 
         $this->assertCount(5, $kept);
     }
+
+    public function test_a_cancel_that_arrives_during_a_step_stops_it_writing_the_job_back(): void {
+        $this->setAdminUser();
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $started = classify_start::execute($context->id, 'Text.', $fw, 'ROLEFW', ['Tasks']);
+        $cache = \cache::make('aiplacement_competency', 'jobs');
+
+        // The cancel is made from inside the model request, as it would arrive from another request of the teacher's
+        // while the step waits for the model. Its job is deleted and marked, and the step then finishes.
+        $mock = $this->createMock(\core_ai\manager::class);
+        $mock->method('process_action')->willReturnCallback(function () use ($started) {
+            $lock = \core\lock\lock_config::get_lock_factory('aiplacement_competency');
+            // The same process already holds the job's lock, so this cancel waits out its timeout in a real request;
+            // here the state is marked and deleted directly, which is what the cancel does once it has the lock.
+            $cache = \cache::make('aiplacement_competency', 'jobs');
+            $cache->set('cancelled' . $started['jobid'], 1);
+            $cache->delete($started['jobid']);
+            $response = new response_generate_text(success: true);
+            $response->set_response_data(['generatedcontent' => json_encode(['roles' => ['RA']]), 'finishreason' => 'stop']);
+
+            return $response;
+        });
+        $mock->method('is_action_available')->willReturn(true);
+        $mock->method('is_action_enabled')->willReturn(true);
+        \core\di::set(\core_ai\manager::class, function () use ($mock) {
+            return $mock;
+        });
+
+        $step = classify_step::execute($started['jobid']);
+
+        $this->assertTrue($step['finished']);
+        $this->assertArrayNotHasKey('result', $step);
+        $this->assertFalse($cache->get($started['jobid']));
+        $this->assertFalse($cache->get('cancelled' . $started['jobid']));
+    }
 }
