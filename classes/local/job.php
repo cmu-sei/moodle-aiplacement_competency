@@ -392,23 +392,26 @@ final class job {
         $chunk = $state['chunks'][$position];
 
         $pool = null;
-        if ($state['rolepick'] && !empty($state['picked'][$position])) {
-            $pool = utils::role_pool((int)$state['frameworkid'], $state['picked'][$position], $state['levels']);
-            if (!empty($pool)) {
-                // The chosen roles' statements first, then the closest keyword matches beside them: a role the model
-                // did not choose, or a statement its sentence does not bring to mind, can still be offered.
-                $extras = utils::keyword_extras((int)$state['frameworkid'], $state['levels'], $chunk);
-                $pool += array_diff_key($extras, $pool);
-                uasort($pool, static function ($a, $b) {
-                    return [$a->category, $a->shortname] <=> [$b->category, $b->shortname];
-                });
-            }
-            if (empty($pool)) {
-                // Roles with nothing in the ticked categories leave the keyword shortlist to do the work, which the
-                // teacher is told, as for a section in which no role could be chosen.
-                $pool = null;
+        if ($state['rolepick']) {
+            $rolepool = empty($state['picked'][$position])
+                ? []
+                : utils::role_pool((int)$state['frameworkid'], $state['picked'][$position], $state['levels']);
+            if (empty($rolepool) && !empty($state['picked'][$position])) {
+                // The chosen roles have nothing in the ticked categories. The teacher is told, as when no role was
+                // chosen, which the roles step has already counted.
                 $state['rolesmissed']++;
             }
+            // The chosen roles' statements first, then the closest keyword matches beside them: a role the model did
+            // not choose, or a statement its sentence does not bring to mind, can still be offered. Without roles the
+            // keyword matches stand alone, a list a third of the length of the whole keyword shortlist, so content no
+            // role fits does not cost a full list. With neither, the keyword shortlist does the work.
+            $pool = $rolepool;
+            $extras = utils::keyword_extras((int)$state['frameworkid'], $state['levels'], $chunk);
+            $pool += array_diff_key($extras, $pool);
+            uasort($pool, static function ($a, $b) {
+                return [$a->category, $a->shortname] <=> [$b->category, $b->shortname];
+            });
+            $pool = $pool ?: null;
         }
         $prepared = utils::prepare(
             (int)$state['frameworkid'],

@@ -601,4 +601,20 @@ final class stepwise_test extends \advanced_testcase {
         $this->assertStringContainsString('at most 2 competencies from any one of the groups', $this->prompts[1]);
         $this->assertStringContainsString('at most 5 in all', $this->prompts[1]);
     }
+
+    public function test_a_section_no_role_fits_gets_only_the_keyword_matches_not_the_whole_shortlist(): void {
+        $this->setAdminUser();
+        set_config('keywordextras', 1, 'aiplacement_competency');
+        $fw = $this->create_role_framework();
+        $context = $this->create_context();
+        $this->mock_model([['roles' => []], ['competencies' => ['T1']]]);
+
+        [, $last] = $this->run_job($context, $fw, ['Tasks']);
+
+        // The text is about triaging intrusion alerts, so the one keyword match is T1, and T2 is not offered.
+        $this->assertStringContainsString('[T1]', $this->prompts[1]);
+        $this->assertStringNotContainsString('[T2]', $this->prompts[1]);
+        $this->assertSame(['T1'], array_column($last['result']['suggestions'], 'idnumber'));
+        $this->assertStringContainsString('No work role could be chosen', implode(' ', $last['result']['warnings']));
+    }
 }
