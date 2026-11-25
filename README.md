@@ -56,14 +56,16 @@ It adds a **“Classify Text”** button to supported course/activity editing pa
 ## How it works
 
 ### Classification workflow
-1. The user clicks **Classify Text**
-2. The plugin reads the activity description (intro editor content)
-3. The user selects a competency framework and levels
-4. The browser calls the AJAX webservice:
-   - `aiplacement_competency_classify_text`
-5. Server-side, the placement runs `core_ai\aiactions\generate_text` with an instruction prompt that asks for **JSON-only** output.
-   Content is read from the activity itself (see Content sources), split into sections of about 12,000 characters, and each section is classified against the closest candidates in the framework. Sections' answers are merged, ranked by how many sections back each tag, and trimmed to the cap.
-6. The UI renders results, the reason for each, and any warnings, and offers **Regenerate**, **Copy**, and **Apply** actions.
+1. The user clicks **Classify Text**, chooses a framework (or gets the default one) and ticks levels: the framework's top level groups, such as Tasks, Knowledge and Skills, or a group of work roles.
+2. The drawer calls `aiplacement_competency_classify_start`, which gathers the activity's content, splits it into sections of about 12,000 characters and plans the steps. Nothing is sent to the model yet.
+3. The drawer then calls `aiplacement_competency_classify_step` once per step, one model request each, and shows what is happening ("Section 2 of 3: choosing the work roles") with a progress bar. **Cancel** stops between steps, and no single web request outlasts one model call.
+4. For each section:
+   - **A framework with work roles** (DCWF, NICE), when only categories of statements are ticked: the model first chooses up to 4 work roles the section prepares learners for, then chooses tags from those roles' statements in the ticked categories, which are usually few enough to send whole. A section for which no role is usable falls back to the keyword shortlist.
+   - **Otherwise**, a single request chooses from the keyword shortlist (see *Candidates shown to the model*).
+5. Tags are merged across sections, ranked by how many sections back them, and cut to the cap: per category when roles were used, overall otherwise. If Verify is ticked, one more request double-checks them.
+6. The UI renders results, the reason for each grouped by category, the roles considered, and any warnings, and offers **Back**, **Regenerate**, **Copy**, and **Apply**.
+
+`aiplacement_competency_classify_text` still runs a whole classification in one call, within the time budget, for other callers.
 
 ### Content sources
 Each activity type contributes the text its author wrote. New in this version: **label** (captions attached to it, plus the transcript and chapter file activities that follow it in the same section, up to the next label) and **file** (`.vtt` transcripts and chapter lists, `.txt`, `.md`, `.html`, `.csv`, and `.pdf` when `pdftotext` is configured). Files and headings that look like solution guides (`solution`, `walkthrough`, `answer key`, `write-up`) are skipped.
@@ -74,9 +76,10 @@ Site administration → AI → Placements → Competency:
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | Default framework | empty | The idnumber or shortname of the framework the Classify drawer pre-selects, such as `DCWF-5.1`. An exact match, case ignored, not a prefix. The field says which framework it picks, or that it matches none. Builders can still choose another. |
+| Most work roles chosen per section | 4 | For a framework with work roles, how many the model may choose before choosing tags. |
 | Most sections read | 6 | Long content is read in sections of about 12,000 characters, each a model request; more are sampled evenly. |
 | Time budget (seconds) | 40 | No further section or verification request starts once this much time has passed plus the longest request so far, to stay inside the web server's 60 second limit. |
-| Most tags per framework | 3 | The most competencies one classification returns. |
+| Most tags per framework | 3 | The most competencies one classification returns; with work roles, the most for each category. |
 | Candidates shown to the model | 400 | Frameworks with more competencies than this are narrowed to the closest keyword matches. A site that saved this page under the old default of 80 keeps 80, as it trades cost for reach; raise it to 400 to reach more of a large framework. |
 | Offer a verification pass | on | Adds the verify checkbox to the drawer. |
 | Tag a lecture's transcript with its video | on | Applying a competency to a label also applies it to the transcript file activities beside it. |

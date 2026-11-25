@@ -95,7 +95,7 @@ final class template_render_test extends \advanced_testcase {
             'competencies' => [['label' => 'T1 - One', 'idnumber' => 'T1']],
             'warnings' => ['Check the <transcript>'],
             'hasreasons' => true,
-            'suggestions' => [['idnumber' => 'T1', 'reason' => 'Because <b>of this</b>']],
+            'reasongroups' => [['category' => 'Tasks', 'items' => [['idnumber' => 'T1', 'reason' => 'Because <b>of this</b>']]]],
         ]);
 
         $this->assertStringContainsString('Check the &lt;transcript&gt;', $html);

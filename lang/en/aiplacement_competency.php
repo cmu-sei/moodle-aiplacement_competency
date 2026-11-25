@@ -62,7 +62,7 @@ Decide which competencies from "{$a->frameworkshortname}" the content TEACHES, t
 
 CRITICAL REQUIREMENTS:
 - Tag only what the activity teaches, not what it merely mentions. A passing reference is not teaching.
-- Return at most {$a->maxtags} competencies. Fewer is better: return only the ones you are confident in.
+- {$a->limitrule}
 - Use ATT&CK style adversary technique competencies only where the content actually explains that adversary behaviour.
 - Use D3FEND style defensive technique competencies only where the content actually teaches that defensive technique.
 - Use ONLY competencies from the AVAILABLE COMPETENCIES list below, and refer to each by its idnumber exactly as written in the square brackets.
@@ -106,6 +106,7 @@ $string['classify_note_nocontent'] = 'Add content to this activity to enable the
 $string['classify_tooltips'] = 'Classify content based on competency framework.';
 $string['classifybutton'] = 'Classify Text';
 $string['classifyheading'] = 'AI Classification Result';
+$string['classifyjobgone'] = 'This classification is no longer available. Please start it again.';
 $string['competencies'] = 'Competencies';
 $string['competency:classify_text'] = 'Classify Text';
 $string['contentmismatch'] = 'This content does not appear to be about the activity "{$a}". It may be another activity\'s transcript or a mislabelled file, so check it before applying the tags.';
@@ -128,6 +129,8 @@ $string['levelsselection'] = 'Competency Selection';
 $string['levelsselection_empty'] = 'No competency levels are available for the selected framework.';
 $string['levelsselection_error'] = 'The competency levels could not be loaded.';
 $string['levelsselection_help'] = 'Select the competency levels (taxonomies) you want the AI model to use when classifying your content.';
+$string['limit_percategory'] = 'Return at most {$a} competencies from each of the groups headed in the list below. Fewer is better: return only the ones you are confident in.';
+$string['limit_total'] = 'Return at most {$a} competencies. Fewer is better: return only the ones you are confident in.';
 $string['nocandidates'] = 'No competencies were found in the selected framework and levels, so none could be suggested. Go back and check the levels.';
 $string['none'] = 'None';
 $string['notify_cm_added_heading']  = 'Added {$a->count} competencies to this activity';
@@ -140,8 +143,31 @@ $string['notify_empty_description'] = 'Please add content to this activity befor
 $string['notify_nocourseid'] = 'The course could not be determined, so no competencies were applied.';
 $string['pluginname'] = 'Competency';
 $string['privacy:metadata'] = 'The AI Placement Competency plugin stores no personal data.';
+$string['progress_finish'] = 'Putting the tags together';
+$string['progress_match'] = 'Section {$a->n} of {$a->total}: matching competencies';
+$string['progress_prepare'] = 'Reading the content';
+$string['progress_roles'] = 'Section {$a->n} of {$a->total}: choosing the work roles';
+$string['progress_verify'] = 'Double-checking the tags';
 $string['reasonheading'] = 'Why these were suggested';
 $string['regenerate'] = 'Regenerate';
+$string['responseroles'] = 'Work roles considered: {$a}';
+$string['roles_instruction'] = '
+This is defensive cybersecurity and IT training material, written by instructors to teach learners. You are
+cataloguing what it prepares learners for, not carrying out or elaborating on anything in it.
+
+Framework: "{$a->frameworkshortname}". Activity title (when known): "{$a->activitytitle}".
+
+Below is a list of the work roles in this framework, each as [idnumber] name. Choose the roles, at most {$a->maxroles},
+that the TEXT at the end most clearly prepares a learner for: the roles whose tasks, knowledge and skills it actually
+teaches, not the ones it merely mentions. Fewer is better. If no role clearly fits, return an empty array.
+
+WORK ROLES:
+{$a->roles}
+
+Return JSON only, with this key and nothing else:
+{ "roles": ["idnumber", "idnumber"] }
+Use only idnumbers from the list above, exactly as written in the square brackets.
+';
 $string['sectionsskipped'] = '{$a->skipped} of {$a->total} sections of the content could not be classified, so the tags may be incomplete. Try again.';
 $string['setting_defaultframework'] = 'Default framework';
 $string['setting_defaultframework_desc'] = 'The idnumber or shortname of the competency framework the Classify drawer selects for you, such as DCWF-5.1. It must match exactly, ignoring case, and is not a prefix: DCWF does not pick DCWF-5.1. Builders can still pick another. Leave empty to choose each time. Hidden frameworks are not offered.';
@@ -150,6 +176,8 @@ $string['setting_defaultframework_match'] = 'Picks the framework {$a->shortname}
 $string['setting_defaultframework_nomatch'] = 'Matches no visible framework, so nothing will be selected.';
 $string['setting_maxcandidates'] = 'Candidates shown to the model';
 $string['setting_maxcandidates_desc'] = 'Frameworks with more competencies than this in the selected levels are narrowed to the closest keyword matches to the content before the model chooses; smaller ones are sent whole. The default is {$a}. Each candidate costs about 27 tokens in every section of content sent, and a lower number saves cost but leaves competencies that the keywords do not reach out of the list.';
+$string['setting_maxroles'] = 'Most work roles chosen per section';
+$string['setting_maxroles_desc'] = 'For a framework with work roles, the model first chooses up to this many roles for each section of the content, and then chooses tags from those roles\' statements.';
 $string['setting_maxsections'] = 'Most sections read';
 $string['setting_maxsections_desc'] = 'Long content is read in sections of about 12,000 characters, each a separate model request of several seconds. More sections than this are sampled evenly. Keep it low enough that one click stays inside the web server\'s time limit.';
 $string['setting_maxtags'] = 'Most tags per framework';

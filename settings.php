@@ -78,6 +78,14 @@ if ($ADMIN->fulltree) {
     ));
 
     $settings->add(new admin_setting_configtext(
+        'aiplacement_competency/maxroles',
+        get_string('setting_maxroles', 'aiplacement_competency'),
+        get_string('setting_maxroles_desc', 'aiplacement_competency'),
+        4,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'aiplacement_competency/maxcandidates',
         get_string('setting_maxcandidates', 'aiplacement_competency'),
         get_string(

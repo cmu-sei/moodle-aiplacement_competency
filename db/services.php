@@ -56,6 +56,22 @@ $functions = [
         'ajax'        => true,
         'capabilities' => 'aiplacement/competency:classify_text',
     ],
+    'aiplacement_competency_classify_start' => [
+        'classname'   => 'aiplacement_competency\\external\\classify_start',
+        'methodname'  => 'execute',
+        'description' => 'Start a classification that is then run a step at a time.',
+        'type'        => 'write',
+        'ajax'        => true,
+        'capabilities' => 'aiplacement/competency:classify_text',
+    ],
+    'aiplacement_competency_classify_step' => [
+        'classname'   => 'aiplacement_competency\\external\\classify_step',
+        'methodname'  => 'execute',
+        'description' => 'Run the next step of a classification.',
+        'type'        => 'write',
+        'ajax'        => true,
+        'capabilities' => 'aiplacement/competency:classify_text',
+    ],
     'aiplacement_competency_add_cm_competency' => [
         'classname'   => 'aiplacement_competency\external\add_cm_competency',
         'methodname'  => 'execute',
